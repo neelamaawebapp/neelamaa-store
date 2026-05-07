@@ -5,8 +5,9 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, MapPin } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useEffect } from "react";
 
 export default function CheckoutPage() {
   const { cart, totalAmount, clearCart } = useCart();
@@ -20,6 +21,28 @@ export default function CheckoutPage() {
   const [pin, setPin] = useState("");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Auto-fill from user profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      try {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.name) setName(data.name);
+          if (data.phone) setPhone(data.phone);
+          if (data.street) setStreet(data.street);
+          if (data.city) setCity(data.city);
+          if (data.pin) setPin(data.pin);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
+      }
+    };
+    fetchUserProfile();
+  }, [user]);
 
   const discount = Math.round(totalAmount * 0.33);
   const finalAmount = totalAmount - discount;
