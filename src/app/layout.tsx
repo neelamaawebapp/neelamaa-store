@@ -17,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Myntra Clone",
+  title: "Neelamaa Store",
   description: "High-performance E-commerce Web Application",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
