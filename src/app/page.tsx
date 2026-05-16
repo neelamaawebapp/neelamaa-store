@@ -2,7 +2,6 @@ import Header from "@/components/Header";
 import CategoryMenu from "@/components/CategoryMenu";
 import HeroBanner from "@/components/HeroBanner";
 import ProductFeed from "@/components/ProductFeed";
-import BottomNav from "@/components/BottomNav";
 import { Suspense } from "react";
 
 export default function Home() {
@@ -17,7 +16,6 @@ export default function Home() {
             <ProductFeed />
           </Suspense>
         </main>
-        <BottomNav />
       </div>
     </div>
   );

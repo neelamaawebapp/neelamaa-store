@@ -70,7 +70,25 @@ export default function CheckoutPage() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "orders"), orderData);
+      const docRef = await addDoc(collection(db, "orders"), orderData);
+      
+      // Trigger Notification API
+      try {
+        await fetch("/api/send-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            email: user.email,
+            phone,
+            orderId: docRef.id.slice(-8).toUpperCase(),
+            amount: finalAmount
+          })
+        });
+      } catch (e) {
+        console.error("Notification trigger failed", e);
+      }
+
       await clearCart();
       setSuccess(true);
     } catch (err) {

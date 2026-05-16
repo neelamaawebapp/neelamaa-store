@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Link from "next/link";
 
 const defaultBanners = [
   {
@@ -15,28 +16,14 @@ const defaultBanners = [
     subtitle: "MIN. 82% OFF",
     brand1: "EL PASO",
     brand2: "REDTAPE",
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&h=800&fit=crop",
-    title: "Festive Season",
-    subtitle: "FLAT 50% OFF",
-    brand1: "BIBA",
-    brand2: "W",
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&h=800&fit=crop",
-    title: "Sneaker Heads",
-    subtitle: "NEW ARRIVALS",
-    brand1: "NIKE",
-    brand2: "PUMA",
+    link: "/categories"
   }
 ];
 
 export default function HeroBanner() {
   const { isAdmin } = useAuth();
-  const [banners, setBanners] = useState(defaultBanners);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Editor State
@@ -53,9 +40,15 @@ export default function HeroBanner() {
         if (docSnap.exists() && docSnap.data().data) {
           setBanners(docSnap.data().data);
           setEditBanners(docSnap.data().data);
+        } else {
+          setBanners(defaultBanners);
+          setEditBanners(defaultBanners);
         }
       } catch (err) {
         console.error("Failed to fetch banners", err);
+        setBanners(defaultBanners);
+      } finally {
+        setLoading(false);
       }
     };
     fetchBanners();
@@ -63,7 +56,7 @@ export default function HeroBanner() {
 
   // Auto Slider
   useEffect(() => {
-    if (isEditing) return; // Pause slider when editing
+    if (isEditing || banners.length === 0) return; // Pause slider when editing
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
     }, 4000);
@@ -126,39 +119,46 @@ export default function HeroBanner() {
       )}
 
       {/* Main Banner */}
-      <div className="relative w-full h-[400px] overflow-hidden">
-        {banners.map((banner, idx) => (
-          <div 
-            key={banner.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ${idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-          >
-            <Image
-              src={banner.image}
-              alt={banner.title}
-              fill
-              className="object-cover"
-              priority={idx === 0}
-            />
-            
-            {/* Banner Content Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4">
-              <div className="bg-white rounded-md w-max px-3 py-2 flex items-center space-x-3 mb-2 shadow-sm">
-                <span className="font-bold text-sm tracking-widest text-gray-800">{banner.brand1}</span>
-                <div className="h-4 w-px bg-gray-300"></div>
-                <span className="font-bold text-sm text-red-600">{banner.brand2}</span>
-                <span className="text-xs text-gray-500 font-medium">& More</span>
-              </div>
+      <div className="relative w-full h-[400px] overflow-hidden bg-gray-100">
+        {loading ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          banners.map((banner, idx) => (
+            <Link 
+              href={banner.link || "/categories"}
+              key={banner.id || idx}
+              className={`absolute inset-0 transition-opacity duration-1000 block ${idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              <Image
+                src={banner.image || "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&h=800&fit=crop"}
+                alt={banner.title || "Banner"}
+                fill
+                className="object-cover"
+                priority={idx === 0}
+              />
               
-              <h2 className="text-white text-3xl font-bold mb-1">{banner.title}</h2>
-              <div className="flex items-center justify-between w-full">
-                <p className="text-white text-sm font-medium">{banner.subtitle}</p>
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
-                  <ChevronRight size={20} className="text-gray-800" />
+              {/* Banner Content Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4">
+                <div className="bg-white rounded-md w-max px-3 py-2 flex items-center space-x-3 mb-2 shadow-sm">
+                  <span className="font-bold text-sm tracking-widest text-gray-800">{banner.brand1}</span>
+                  <div className="h-4 w-px bg-gray-300"></div>
+                  <span className="font-bold text-sm text-red-600">{banner.brand2}</span>
+                  <span className="text-xs text-gray-500 font-medium">& More</span>
+                </div>
+                
+                <h2 className="text-white text-3xl font-bold mb-1">{banner.title}</h2>
+                <div className="flex items-center justify-between w-full">
+                  <p className="text-white text-sm font-medium">{banner.subtitle}</p>
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                    <ChevronRight size={20} className="text-gray-800" />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ))}
+            </Link>
+          ))
+        )}
       </div>
 
       {/* Carousel Dots */}
@@ -259,7 +259,7 @@ export default function HeroBanner() {
                         <label className="block text-xs font-bold text-gray-500 mb-1">BRAND 1</label>
                         <input 
                           type="text" 
-                          value={banner.brand1} 
+                          value={banner.brand1 || ""} 
                           onChange={(e) => {
                             const newB = [...editBanners];
                             newB[idx].brand1 = e.target.value;
@@ -272,7 +272,7 @@ export default function HeroBanner() {
                         <label className="block text-xs font-bold text-gray-500 mb-1">BRAND 2</label>
                         <input 
                           type="text" 
-                          value={banner.brand2} 
+                          value={banner.brand2 || ""} 
                           onChange={(e) => {
                             const newB = [...editBanners];
                             newB[idx].brand2 = e.target.value;
@@ -281,6 +281,20 @@ export default function HeroBanner() {
                           className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500 uppercase" 
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">REDIRECT LINK</label>
+                      <input 
+                        type="text" 
+                        value={banner.link || ""} 
+                        onChange={(e) => {
+                          const newB = [...editBanners];
+                          newB[idx].link = e.target.value;
+                          setEditBanners(newB);
+                        }}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
+                        placeholder="/categories or /product/123"
+                      />
                     </div>
                   </div>
                 </div>

@@ -19,7 +19,50 @@ export default function ProductDetailPage() {
 
   const [selectedSize, setSelectedSize] = useState("");
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const sizes = ["S", "M", "L", "XL", "XXL"];
+
+  // Check local wishlist on load
+  useEffect(() => {
+    if (!id) return;
+    const localWishlist = JSON.parse(localStorage.getItem("neelamaa_wishlist") || "[]");
+    setIsWishlisted(localWishlist.includes(id));
+  }, [id]);
+
+  const toggleWishlist = () => {
+    if (!id) return;
+    const localWishlist = JSON.parse(localStorage.getItem("neelamaa_wishlist") || "[]");
+    let newWishlist;
+    if (isWishlisted) {
+      newWishlist = localWishlist.filter((itemId: string) => itemId !== id);
+      setToast("Removed from Wishlist");
+    } else {
+      newWishlist = [...localWishlist, id];
+      setToast("Added to Wishlist!");
+    }
+    localStorage.setItem("neelamaa_wishlist", JSON.stringify(newWishlist));
+    setIsWishlisted(!isWishlisted);
+    setTimeout(() => setToast(""), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!product) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Neelamaa - ${product.brand}`,
+          text: `Check out ${product.title} on Neelamaa!`,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setToast("Link copied to clipboard!");
+        setTimeout(() => setToast(""), 3000);
+      }
+    } catch (err) {
+      console.log("Error sharing:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -88,11 +131,11 @@ export default function ProductDetailPage() {
           <ChevronLeft size={24} className="text-gray-800" />
         </button>
         <div className="flex space-x-2">
-          <button className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+          <button onClick={handleShare} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
             <Share2 size={20} className="text-gray-800" />
           </button>
-          <button className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
-            <Heart size={20} className="text-gray-800" />
+          <button onClick={toggleWishlist} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+            <Heart size={20} className={isWishlisted ? "text-pink-500 fill-pink-500" : "text-gray-800"} />
           </button>
         </div>
       </div>
@@ -177,9 +220,9 @@ export default function ProductDetailPage() {
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 p-3 pb-safe flex space-x-3 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <button className="flex-1 py-3.5 border border-gray-300 rounded-md font-bold text-gray-800 flex items-center justify-center space-x-2">
-          <Heart size={20} />
-          <span>WISHLIST</span>
+        <button onClick={toggleWishlist} className={`flex-1 py-3.5 border rounded-md font-bold flex items-center justify-center space-x-2 transition-colors ${isWishlisted ? "border-pink-500 text-pink-500 bg-pink-50" : "border-gray-300 text-gray-800"}`}>
+          <Heart size={20} className={isWishlisted ? "fill-pink-500" : ""} />
+          <span>{isWishlisted ? "WISHLISTED" : "WISHLIST"}</span>
         </button>
         <button 
           onClick={handleAdd}
