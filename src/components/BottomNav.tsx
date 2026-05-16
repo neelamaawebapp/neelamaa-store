@@ -21,7 +21,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 px-6 py-3 pb-safe z-50">
+    <nav className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 px-6 py-3 pb-safe z-[100] shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
       <div className="flex justify-between items-center">
         {navItems.map((item) => {
           const isActive = pathname === item.path || (item.path !== "/" && pathname?.startsWith(item.path));
