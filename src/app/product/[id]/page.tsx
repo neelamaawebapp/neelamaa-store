@@ -86,7 +86,8 @@ export default function ProductDetailPage() {
 
   const handleAdd = async () => {
     if (!product) return;
-    if (!selectedSize) {
+    const isFashion = product.category?.toLowerCase() === "fashion";
+    if (isFashion && !selectedSize) {
       setToast("Please select a size first!");
       setTimeout(() => setToast(""), 3000);
       return;
@@ -104,6 +105,28 @@ export default function ProductDetailPage() {
     setAdding(false);
     setToast("Added to Bag!");
     setTimeout(() => setToast(""), 3000);
+  };
+
+  const handleBuyNow = async () => {
+    if (!product) return;
+    const isFashion = product.category?.toLowerCase() === "fashion";
+    if (isFashion && !selectedSize) {
+      setToast("Please select a size first!");
+      setTimeout(() => setToast(""), 3000);
+      return;
+    }
+
+    setAdding(true);
+    await addToBag({
+      productId: product.id,
+      brand: product.brand,
+      title: product.title,
+      price: product.price,
+      image: product.image,
+      size: selectedSize,
+    });
+    setAdding(false);
+    router.push("/checkout");
   };
 
   if (loading) {
@@ -163,6 +186,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Size Selection */}
+      {product.category?.toLowerCase() === "fashion" && (
       <div className="p-4 bg-white border-b border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -191,6 +215,7 @@ export default function ProductDetailPage() {
           <p className="text-red-500 text-xs font-bold mt-2 animate-bounce">Please select a size</p>
         )}
       </div>
+      )}
 
       {/* Delivery & Trust */}
       <div className="p-4 bg-white space-y-4">
@@ -219,23 +244,28 @@ export default function ProductDetailPage() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 p-3 pb-safe flex space-x-3 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <button onClick={toggleWishlist} className={`flex-1 py-3.5 border rounded-md font-bold flex items-center justify-center space-x-2 transition-colors ${isWishlisted ? "border-pink-500 text-pink-500 bg-pink-50" : "border-gray-300 text-gray-800"}`}>
+      <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 p-3 pb-safe flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-500 bg-pink-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
           <Heart size={20} className={isWishlisted ? "fill-pink-500" : ""} />
-          <span>{isWishlisted ? "WISHLISTED" : "WISHLIST"}</span>
         </button>
         <button 
           onClick={handleAdd}
           disabled={adding}
-          className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center space-x-2 hover:bg-pink-600 disabled:opacity-70 transition-colors"
+          className="flex-1 py-3.5 border border-pink-500 text-pink-500 bg-white rounded-md font-bold flex items-center justify-center hover:bg-pink-50 disabled:opacity-70 transition-colors text-sm"
         >
-          <ShoppingBag size={20} />
-          <span>{adding ? "ADDING..." : "ADD TO BAG"}</span>
+          ADD TO BAG
+        </button>
+        <button 
+          onClick={handleBuyNow}
+          disabled={adding}
+          className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center hover:bg-pink-600 disabled:opacity-70 transition-colors text-sm"
+        >
+          {adding ? "PROCESSING..." : "BUY NOW"}
         </button>
       </div>
 
       {/* Size Guide Modal */}
-      {showSizeGuide && (
+      {showSizeGuide && product.category?.toLowerCase() === "fashion" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-t-2xl p-6 transform transition-transform duration-300 translate-y-0">
             <div className="flex justify-between items-center mb-6">
