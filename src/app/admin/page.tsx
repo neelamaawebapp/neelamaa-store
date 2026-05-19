@@ -10,6 +10,9 @@ export default function AdminDashboard() {
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
+  
+  // Dynamic Categories State
+  const [availableCategories, setAvailableCategories] = useState<string[]>(STORE_CATEGORIES.map(c => c.name));
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -30,14 +33,27 @@ export default function AdminDashboard() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
-  // Fetch Products
+  // Fetch Products & Categories
   useEffect(() => {
+    // Fetch Products
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProducts(prods);
       setFetching(false);
     });
+
+    // Fetch Categories
+    import("firebase/firestore").then(({ getDoc, doc }) => {
+      getDoc(doc(db, "settings", "categories")).then((snap) => {
+        if (snap.exists() && snap.data().data) {
+          const fetchedCats = snap.data().data.map((c: any) => c.name);
+          // Combine constants and dynamic ones, removing duplicates
+          setAvailableCategories(Array.from(new Set([...STORE_CATEGORIES.map(c => c.name), ...fetchedCats])));
+        }
+      });
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -216,11 +232,20 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">CATEGORY</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
-                  {STORE_CATEGORIES.map(c => (
-                    <option key={c.name} value={c.name}>{c.name}</option>
+                <input 
+                  type="text" 
+                  list="category-options"
+                  required 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)} 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
+                  placeholder="e.g. Fashion"
+                />
+                <datalist id="category-options">
+                  {availableCategories.map(c => (
+                    <option key={c} value={c} />
                   ))}
-                </select>
+                </datalist>
               </div>
             </div>
 
