@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Edit2, Plus, Save, Trash2, UploadCloud, X, PenTool, Hexagon, Shirt, Scroll, Sparkles } from "lucide-react";
+import { Edit2, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 
 export default function CategoryMenu() {
@@ -112,15 +112,6 @@ export default function CategoryMenu() {
     );
   }
 
-  const getCategoryIcon = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes("diy")) return <PenTool strokeWidth={1} className="w-8 h-8 text-slate-800 group-hover:scale-110 transition-transform" />;
-    if (n.includes("mdf") || n.includes("wood")) return <Hexagon strokeWidth={1} className="w-8 h-8 text-slate-800 group-hover:scale-110 transition-transform" />;
-    if (n.includes("fashion") || n.includes("clothes")) return <Shirt strokeWidth={1} className="w-8 h-8 text-slate-800 group-hover:scale-110 transition-transform" />;
-    if (n.includes("paper")) return <Scroll strokeWidth={1} className="w-8 h-8 text-slate-800 group-hover:scale-110 transition-transform" />;
-    return <Sparkles strokeWidth={1} className="w-8 h-8 text-slate-800 group-hover:scale-110 transition-transform" />;
-  };
-
   return (
     <div className="bg-gradient-to-b from-[#fff0f0] to-white pb-4 pt-4 relative">
       
@@ -143,14 +134,20 @@ export default function CategoryMenu() {
             onClick={() => router.push(`/category/${encodeURIComponent(cat.name)}`)}
             className="flex flex-col items-center flex-shrink-0 focus:outline-none group"
           >
-            <div className="w-16 h-16 rounded-full mb-3 shadow-[0_4px_14px_0_rgb(0,0,0,0.05)] group-hover:shadow-[0_6px_20px_rgb(0,0,0,0.1)] transition-all bg-white border border-gray-100 flex items-center justify-center relative overflow-hidden">
-              {/* Subtle radial gradient for depth */}
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-50 to-white opacity-50"></div>
-              <div className="relative z-10">
-                {getCategoryIcon(cat.name)}
-              </div>
+            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border border-gray-200 shadow-sm group-hover:ring-2 group-hover:ring-slate-900 group-hover:ring-offset-2 transition-all bg-gray-100">
+              {cat.image ? (
+                <Image
+                  src={cat.image}
+                  alt={cat.name}
+                  width={64}
+                  height={64}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">?</div>
+              )}
             </div>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
+            <span className="text-xs font-bold text-gray-800">
               {cat.name}
             </span>
           </button>
