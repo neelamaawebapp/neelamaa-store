@@ -244,7 +244,7 @@ export default function ProductDetailPage() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 p-3 pb-safe flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-500 bg-pink-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
           <Heart size={20} className={isWishlisted ? "fill-pink-500" : ""} />
         </button>

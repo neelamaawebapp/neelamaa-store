@@ -201,10 +201,10 @@ export default function ProductFeed() {
 
       {/* 2. New Arrivals Section */}
       {newArrivals.length > 0 && (
-        <div className="bg-white p-4 py-6 shadow-sm border-y border-gray-100">
+        <div className="bg-gradient-to-r from-rose-50 via-white to-teal-50 p-4 py-6 shadow-sm border-y border-pink-100">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-gray-900 tracking-tight">New Arrivals</h2>
-            <Link href="/categories" className="text-xs font-bold text-pink-600 flex items-center hover:underline bg-pink-50 px-2 py-1 rounded-full">
+            <Link href="/categories" className="text-xs font-bold text-pink-600 flex items-center hover:underline bg-white px-2 py-1 rounded-full shadow-sm">
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
           </div>
@@ -217,9 +217,9 @@ export default function ProductFeed() {
       )}
 
       {/* 3. Explore More / Main Grid */}
-      <div className="bg-white p-4 pt-6 shadow-sm border-t border-gray-100 min-h-screen">
+      <div className="bg-gradient-to-b from-gray-50 to-white p-4 pt-6 shadow-sm border-t border-gray-100 min-h-screen">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Trending Highlights</h2>
+          <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 tracking-tight">Trending Highlights</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {allOtherProducts.length > 0 ? (
