@@ -195,13 +195,21 @@ export default function AdminOrders() {
                   <div className="flex flex-col sm:flex-row gap-3 items-end">
                     <div className="flex-1 w-full">
                       <label className="block text-[10px] font-bold text-gray-600 mb-1">SHIPPING COMPANY</label>
-                      <input 
-                        type="text" 
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" 
-                        placeholder="e.g. FedEx, BlueDart" 
+                      <select 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white" 
                         value={shippingData[order.id]?.company ?? order.shippingCompany ?? ""} 
                         onChange={(e) => handleShippingChange(order.id, 'company', e.target.value)} 
-                      />
+                      >
+                        <option value="" disabled>Select Courier</option>
+                        <option value="Delhivery">Delhivery</option>
+                        <option value="BlueDart">BlueDart</option>
+                        <option value="DTDC">DTDC</option>
+                        <option value="XpressBees">XpressBees</option>
+                        <option value="Ecom Express">Ecom Express</option>
+                        <option value="India Post">India Post</option>
+                        <option value="Shadowfax">Shadowfax</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                     <div className="flex-1 w-full">
                       <label className="block text-[10px] font-bold text-gray-600 mb-1">TRACKING NUMBER</label>

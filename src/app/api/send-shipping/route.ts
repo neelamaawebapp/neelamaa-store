@@ -14,8 +14,33 @@ export async function POST(req: Request) {
       },
     });
 
-    // Provide a generic Google search link for the tracking number
-    const trackingLink = `https://www.google.com/search?q=${encodeURIComponent(shippingCompany + " tracking " + trackingNumber)}`;
+    // Determine direct tracking link based on courier company
+    let trackingLink = `https://www.google.com/search?q=${encodeURIComponent(shippingCompany + " tracking " + trackingNumber)}`;
+    
+    switch (shippingCompany) {
+      case "Delhivery":
+        trackingLink = `https://www.delhivery.com/track/package/${trackingNumber}`;
+        break;
+      case "BlueDart":
+        trackingLink = `https://www.bluedart.com/tracking`; // Direct query links are protected, redirect to tracking portal
+        break;
+      case "DTDC":
+        trackingLink = `https://www.dtdc.in/tracking.asp`; 
+        break;
+      case "XpressBees":
+        trackingLink = `https://www.xpressbees.com/track?awb=${trackingNumber}`;
+        break;
+      case "Ecom Express":
+        trackingLink = `https://ecomexpress.in/tracking/?awb=${trackingNumber}`;
+        break;
+      case "India Post":
+        trackingLink = `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+        break;
+      case "Shadowfax":
+        trackingLink = `https://track.shadowfax.in/track?order=${trackingNumber}`;
+        break;
+      // "Other" falls back to the Google search
+    }
 
     const mailOptions = {
       from: `"Neelamaa Store" <${process.env.EMAIL_USER}>`,
