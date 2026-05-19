@@ -8,6 +8,7 @@ import { Package, Truck, CheckCircle, XCircle, Clock } from "lucide-react";
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shippingData, setShippingData] = useState<Record<string, { company: string, tracking: string }>>({});
 
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -29,6 +30,55 @@ export default function AdminOrders() {
     } catch (err) {
       console.error("Failed to update status", err);
       alert("Failed to update order status.");
+    }
+  };
+
+  const handleShippingChange = (orderId: string, field: 'company' | 'tracking', value: string) => {
+    setShippingData(prev => ({
+      ...prev,
+      [orderId]: {
+        ...prev[orderId],
+        [field]: value
+      }
+    }));
+  };
+
+  const saveShippingAndNotify = async (order: any) => {
+    const data = shippingData[order.id] || { company: order.shippingCompany || "", tracking: order.trackingNumber || "" };
+    if (!data.company || !data.tracking) {
+      alert("Please provide both shipping company and tracking number");
+      return;
+    }
+
+    try {
+      // 1. Save to DB
+      await updateDoc(doc(db, "orders", order.id), {
+        shippingCompany: data.company,
+        trackingNumber: data.tracking
+      });
+
+      // 2. Notify User
+      const res = await fetch("/api/send-shipping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: order.customerName,
+          email: order.customerEmail,
+          phone: order.phone,
+          orderId: order.id,
+          shippingCompany: data.company,
+          trackingNumber: data.tracking
+        })
+      });
+
+      if (res.ok) {
+        alert("Shipping details saved and customer notified!");
+      } else {
+        alert("Saved to DB, but failed to send email notification.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save and notify.");
     }
   };
 
@@ -135,6 +185,43 @@ export default function AdminOrders() {
                   </div>
                 </div>
               </div>
+
+              {/* Shipping Details Box */}
+              {order.status === 'Shipped' && (
+                <div className="bg-blue-50 border-t border-blue-100 p-4">
+                  <h3 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Truck size={14} /> Provide Shipping Details
+                  </h3>
+                  <div className="flex flex-col sm:flex-row gap-3 items-end">
+                    <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-gray-600 mb-1">SHIPPING COMPANY</label>
+                      <input 
+                        type="text" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" 
+                        placeholder="e.g. FedEx, BlueDart" 
+                        value={shippingData[order.id]?.company ?? order.shippingCompany ?? ""} 
+                        onChange={(e) => handleShippingChange(order.id, 'company', e.target.value)} 
+                      />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-gray-600 mb-1">TRACKING NUMBER</label>
+                      <input 
+                        type="text" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" 
+                        placeholder="e.g. 123456789" 
+                        value={shippingData[order.id]?.tracking ?? order.trackingNumber ?? ""} 
+                        onChange={(e) => handleShippingChange(order.id, 'tracking', e.target.value)} 
+                      />
+                    </div>
+                    <button 
+                      onClick={() => saveShippingAndNotify(order)} 
+                      className="bg-blue-600 text-white font-bold py-2 px-4 rounded text-sm hover:bg-blue-700 transition-colors w-full sm:w-auto flex-shrink-0"
+                    >
+                      Save & Notify
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
