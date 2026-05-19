@@ -207,7 +207,7 @@ export default function AdminDashboard() {
               {editingId ? "Edit Product" : "Add New Product"}
             </h2>
             {editingId && (
-              <button onClick={resetForm} className="text-xs text-pink-600 font-bold hover:underline">Cancel Edit</button>
+              <button onClick={resetForm} className="text-xs text-slate-800 font-bold hover:underline">Cancel Edit</button>
             )}
           </div>
           
@@ -217,18 +217,18 @@ export default function AdminDashboard() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">BRAND</label>
-              <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. LEVIS" />
+              <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. LEVIS" />
             </div>
             
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">TITLE</label>
-              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. Men Slim Fit Jeans" />
+              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. Men Slim Fit Jeans" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
-                <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
+                <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="999" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">CATEGORY</label>
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
                   required 
                   value={category} 
                   onChange={(e) => setCategory(e.target.value)} 
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" 
                   placeholder="e.g. Fashion"
                 />
                 <datalist id="category-options">
@@ -260,10 +260,10 @@ export default function AdminDashboard() {
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors
-                    ${isDragging ? 'border-pink-500 bg-pink-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
+                    ${isDragging ? 'border-slate-900 bg-slate-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
                   `}
                 >
-                  <UploadCloud size={32} className={`mb-2 ${isDragging ? 'text-pink-500' : 'text-gray-400'}`} />
+                  <UploadCloud size={32} className={`mb-2 ${isDragging ? 'text-slate-900' : 'text-gray-400'}`} />
                   <p className="text-xs text-center text-gray-600 font-medium">Click or drag image to upload</p>
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                 </div>
@@ -292,13 +292,13 @@ export default function AdminDashboard() {
                   setImageUrl(e.target.value);
                   if (e.target.value) clearImageSelection();
                 }} 
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" 
                 placeholder="https://..." 
               />
             </div>
 
             <div className="pt-4">
-              <button type="submit" disabled={loading} className="w-full bg-pink-500 text-white font-bold py-3 rounded-md hover:bg-pink-600 disabled:opacity-70 transition-colors">
+              <button type="submit" disabled={loading} className="w-full bg-slate-900 text-white font-bold py-3 rounded-md hover:bg-slate-800 disabled:opacity-70 transition-colors">
                 {loading ? "SAVING..." : editingId ? "UPDATE PRODUCT" : "ADD PRODUCT"}
               </button>
             </div>
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
         
         {fetching ? (
           <div className="flex justify-center items-center py-20">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : products.length === 0 ? (
           <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">

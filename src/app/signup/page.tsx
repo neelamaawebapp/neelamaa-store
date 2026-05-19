@@ -102,40 +102,40 @@ export default function Signup() {
             
             {/* Account Details */}
             <div className="space-y-3 pb-4 border-b border-gray-100">
-              <h3 className="font-bold text-sm text-pink-600 uppercase tracking-wider">Account Details</h3>
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider">Account Details</h3>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Email *</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="you@example.com" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" placeholder="you@example.com" required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Password *</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="Min 6 characters" required minLength={6} />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" placeholder="Min 6 characters" required minLength={6} />
               </div>
             </div>
 
             {/* Personal Details */}
             <div className="space-y-3 pb-4">
-              <h3 className="font-bold text-sm text-pink-600 uppercase tracking-wider">Contact & Shipping</h3>
+              <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider">Contact & Shipping</h3>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Full Name *</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="John Doe" required />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" placeholder="John Doe" required />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number *</label>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="10-digit number" required minLength={10} />
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" placeholder="10-digit number" required minLength={10} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Street Address *</label>
-                <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="House/Flat No., Building Name, Street" required />
+                <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" placeholder="House/Flat No., Building Name, Street" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">City *</label>
-                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" required />
+                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" required />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Pincode *</label>
-                  <input type="text" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" required />
+                  <input type="text" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 text-sm text-gray-900" required />
                 </div>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center"
+                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-70 flex justify-center items-center"
               >
                 {loading ? "CREATING PROFILE..." : "CREATE ACCOUNT"}
               </button>
@@ -152,7 +152,7 @@ export default function Signup() {
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
                   Already have an account?{" "}
-                  <Link href="/login" className="text-pink-600 font-bold hover:underline">
+                  <Link href="/login" className="text-slate-800 font-bold hover:underline">
                     Login here
                   </Link>
                 </p>

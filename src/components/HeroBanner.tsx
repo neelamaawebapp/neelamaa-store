@@ -122,7 +122,7 @@ export default function HeroBanner() {
       <div className="relative w-full h-[400px] overflow-hidden bg-gray-100">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
-             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+             <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
           banners.map((banner, idx) => (
@@ -148,7 +148,7 @@ export default function HeroBanner() {
                   <span className="text-xs text-gray-500 font-medium">& More</span>
                 </div>
                 
-                <h2 className="text-white text-3xl font-bold mb-1">{banner.title}</h2>
+                <h2 className="text-white text-4xl font-serif font-bold mb-2 tracking-wide">{banner.title}</h2>
                 <div className="flex items-center justify-between w-full">
                   <p className="text-white text-sm font-medium">{banner.subtitle}</p>
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
@@ -190,7 +190,7 @@ export default function HeroBanner() {
             <div className="overflow-y-auto p-4 flex-1 space-y-8 bg-gray-50">
               {editBanners.map((banner, idx) => (
                 <div key={banner.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative">
-                  <div className="absolute -top-3 -left-3 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold border-4 border-gray-50">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center font-bold border-4 border-gray-50">
                     {idx + 1}
                   </div>
                   
@@ -209,7 +209,7 @@ export default function HeroBanner() {
                       
                       {uploadingIdx === idx && (
                         <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                          <div className="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
                         </div>
                       )}
 
@@ -236,7 +236,7 @@ export default function HeroBanner() {
                           newB[idx].title = e.target.value;
                           setEditBanners(newB);
                         }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-slate-900" 
                         placeholder="e.g. Diwali Special"
                       />
                     </div>
@@ -250,7 +250,7 @@ export default function HeroBanner() {
                           newB[idx].subtitle = e.target.value;
                           setEditBanners(newB);
                         }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-slate-900" 
                         placeholder="e.g. FLAT 50% OFF"
                       />
                     </div>
@@ -265,7 +265,7 @@ export default function HeroBanner() {
                             newB[idx].brand1 = e.target.value;
                             setEditBanners(newB);
                           }}
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500 uppercase" 
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-slate-900 uppercase" 
                         />
                       </div>
                       <div>
@@ -278,7 +278,7 @@ export default function HeroBanner() {
                             newB[idx].brand2 = e.target.value;
                             setEditBanners(newB);
                           }}
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500 uppercase" 
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-slate-900 uppercase" 
                         />
                       </div>
                     </div>
@@ -292,7 +292,7 @@ export default function HeroBanner() {
                           newB[idx].link = e.target.value;
                           setEditBanners(newB);
                         }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-slate-900" 
                         placeholder="/categories or /product/123"
                       />
                     </div>
@@ -305,7 +305,7 @@ export default function HeroBanner() {
             <div className="bg-white p-4 border-t border-gray-200">
               <button 
                 onClick={handleSave}
-                className="w-full bg-pink-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors"
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"
               >
                 <Save size={20} />
                 SAVE & PUBLISH

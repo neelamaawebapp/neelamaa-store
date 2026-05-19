@@ -95,7 +95,7 @@ export default function AdminOrders() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -138,7 +138,7 @@ export default function AdminOrders() {
                   <select
                     value={order.status}
                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-pink-500 flex-1 sm:flex-none"
+                    className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-slate-900 flex-1 sm:flex-none"
                   >
                     <option value="Pending">Pending</option>
                     <option value="Shipped">Shipped</option>
@@ -181,7 +181,7 @@ export default function AdminOrders() {
                   
                   <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
                     <span className="font-bold text-gray-700">Total Amount (COD)</span>
-                    <span className="text-lg font-bold text-pink-600">₹{order.totalAmount}</span>
+                    <span className="text-lg font-bold text-slate-800">₹{order.totalAmount}</span>
                   </div>
                 </div>
               </div>

@@ -66,7 +66,7 @@ function ResetPasswordForm() {
   if (verifying) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -98,7 +98,7 @@ function ResetPasswordForm() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900"
+              className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-colors text-gray-900"
               placeholder="••••••••"
               required
               minLength={6}
@@ -109,7 +109,7 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center"
+              className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-70 flex justify-center items-center"
             >
               {loading ? "SAVING..." : "RESET PASSWORD"}
             </button>
@@ -125,7 +125,7 @@ export default function AuthActionPage() {
     <div className="min-h-screen bg-gray-50 flex justify-center w-full">
       <div className="w-full max-w-md bg-white min-h-screen flex flex-col relative shadow-md border-x border-gray-200">
         <div className="p-4 flex items-center border-b border-gray-100 justify-center">
-          <h1 className="font-bold text-lg text-pink-600 tracking-widest">MYNTRA</h1>
+          <h1 className="font-bold text-lg text-slate-800 tracking-widest">MYNTRA</h1>
         </div>
         
         <Suspense fallback={<div className="p-10 text-center text-gray-500">Loading...</div>}>

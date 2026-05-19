@@ -49,14 +49,14 @@ export default function CategoriesPage() {
       <div className="p-4 grid grid-cols-2 gap-4">
         {loading ? (
            <div className="col-span-2 py-20 flex justify-center items-center">
-             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+             <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
            </div>
         ) : (
           categories.map((cat, idx) => (
             <button
               key={idx}
               onClick={() => router.push(`/category/${encodeURIComponent(cat.name)}`)}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:border-pink-300 transition-colors focus:outline-none"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:border-slate-400 transition-colors focus:outline-none"
             >
               <div className="w-full aspect-square relative bg-gray-100">
                 {cat.image ? (

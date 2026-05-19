@@ -57,7 +57,7 @@ export default function ProductFeed() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20 bg-white">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -66,16 +66,16 @@ export default function ProductFeed() {
   const ProductCard = ({ product, isHorizontal = false }: { product: any, isHorizontal?: boolean }) => (
     <Link 
       href={`/product/${product.id}`} 
-      className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow
-        ${isHorizontal ? 'w-40 flex-shrink-0' : 'w-full'}`}
+      className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none
+        ${isHorizontal ? 'w-44 flex-shrink-0' : 'w-full'}`}
     >
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
         <img
           src={product.image}
           alt={product.brand}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <button className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-400 hover:text-pink-500 hover:bg-white transition-all z-10" onClick={(e) => { e.preventDefault(); /* Wishlist logic if needed */ }}>
+        <button className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-400 hover:text-slate-900 hover:bg-white transition-all z-10" onClick={(e) => { e.preventDefault(); /* Wishlist logic if needed */ }}>
           <Heart size={16} />
         </button>
         <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-800 flex items-center space-x-1">
@@ -84,12 +84,11 @@ export default function ProductFeed() {
         </div>
       </div>
       <div className="p-3">
-        <h3 className="font-bold text-sm text-gray-900 truncate">{product.brand}</h3>
+        <h3 className="font-bold text-sm text-gray-900 truncate tracking-tight">{product.brand}</h3>
         <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
-        <div className="mt-2 flex items-baseline space-x-1.5 flex-wrap">
-          <span className="font-bold text-sm text-gray-900">₹{product.price}</span>
-          <span className="text-xs text-gray-400 line-through">₹{Math.round(product.price * 1.5)}</span>
-          <span className="text-[10px] font-bold text-orange-500">(33% OFF)</span>
+        <div className="mt-2 flex items-baseline space-x-2 flex-wrap">
+          <span className="font-extrabold text-[15px] text-slate-900">₹{product.price}</span>
+          <span className="text-[10px] text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
         </div>
       </div>
     </Link>
@@ -106,7 +105,7 @@ export default function ProductFeed() {
           </h2>
           <button 
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center space-x-1 border px-2 py-1 rounded-full text-xs font-bold transition-colors ${showFilters ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-gray-200 text-gray-700'}`}
+            className={`flex items-center space-x-1 border px-2 py-1 rounded-full text-xs font-bold transition-colors ${showFilters ? 'bg-slate-50 border-slate-200 text-slate-800' : 'border-gray-200 text-gray-700'}`}
           >
             <span>FILTER</span>
             <SlidersHorizontal size={12} />
@@ -121,13 +120,13 @@ export default function ProductFeed() {
               <div className="flex space-x-2">
                 <button 
                   onClick={() => setSortOrder(sortOrder === "lowHigh" ? "none" : "lowHigh")}
-                  className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "lowHigh" ? "border-pink-500 bg-pink-50 text-pink-600" : "border-gray-300 bg-white text-gray-700"}`}
+                  className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "lowHigh" ? "border-slate-900 bg-slate-50 text-slate-800" : "border-gray-300 bg-white text-gray-700"}`}
                 >
                   Low to High
                 </button>
                 <button 
                   onClick={() => setSortOrder(sortOrder === "highLow" ? "none" : "highLow")}
-                  className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "highLow" ? "border-pink-500 bg-pink-50 text-pink-600" : "border-gray-300 bg-white text-gray-700"}`}
+                  className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "highLow" ? "border-slate-900 bg-slate-50 text-slate-800" : "border-gray-300 bg-white text-gray-700"}`}
                 >
                   High to Low
                 </button>
@@ -140,7 +139,7 @@ export default function ProductFeed() {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(selectedSize === size ? null : size)}
-                    className={`w-10 h-10 flex items-center justify-center text-xs font-bold border rounded-full flex-shrink-0 ${selectedSize === size ? "border-pink-500 bg-pink-50 text-pink-600" : "border-gray-300 bg-white text-gray-700"}`}
+                    className={`w-10 h-10 flex items-center justify-center text-xs font-bold border rounded-full flex-shrink-0 ${selectedSize === size ? "border-slate-900 bg-slate-50 text-slate-800" : "border-gray-300 bg-white text-gray-700"}`}
                   >
                     {size}
                   </button>
@@ -177,17 +176,20 @@ export default function ProductFeed() {
       
       {/* 1. Flash Sale Section */}
       {flashDeals.length > 0 && (
-        <div className="bg-gradient-to-br from-purple-900 via-pink-800 to-orange-600 p-4 pt-6 pb-6">
-          <div className="flex justify-between items-end mb-4">
+        <div className="bg-white/60 backdrop-blur-xl border-y border-white/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
+          {/* Subtle background element for the glassmorphism to pop against */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-200 rounded-full blur-3xl opacity-30 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+          
+          <div className="flex justify-between items-end mb-5 relative z-10">
             <div>
               <div className="flex items-center space-x-1 mb-1">
-                <Zap size={16} className="text-yellow-400 fill-yellow-400" />
-                <span className="text-yellow-400 text-xs font-bold uppercase tracking-wider">Hot Deals</span>
+                <Zap size={16} className="text-slate-500" />
+                <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Limited Time</span>
               </div>
-              <h2 className="text-xl font-bold text-white leading-none">Flash Sale</h2>
+              <h2 className="text-2xl font-serif font-bold text-slate-900 leading-none">Flash Sale</h2>
             </div>
-            <div className="text-white bg-white/20 px-2 py-1 rounded text-xs font-mono font-bold backdrop-blur-sm shadow-sm">
-              Ends in 05:42:19
+            <div className="text-slate-800 bg-white px-2 py-1 rounded shadow-sm border border-slate-100 text-xs font-mono font-bold tracking-wider">
+              05:42:19
             </div>
           </div>
           
@@ -201,10 +203,10 @@ export default function ProductFeed() {
 
       {/* 2. New Arrivals Section */}
       {newArrivals.length > 0 && (
-        <div className="bg-gradient-to-r from-rose-50 via-white to-teal-50 p-4 py-6 shadow-sm border-y border-pink-100">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight">New Arrivals</h2>
-            <Link href="/categories" className="text-xs font-bold text-pink-600 flex items-center hover:underline bg-white px-2 py-1 rounded-full shadow-sm">
+        <div className="bg-[#F9F9F9] p-4 py-8 relative">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">New Arrivals</h2>
+            <Link href="/categories" className="text-xs font-bold text-slate-500 flex items-center hover:text-slate-900 transition-colors uppercase tracking-wider">
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
           </div>
@@ -217,9 +219,9 @@ export default function ProductFeed() {
       )}
 
       {/* 3. Explore More / Main Grid */}
-      <div className="bg-gradient-to-b from-gray-50 to-white p-4 pt-6 shadow-sm border-t border-gray-100 min-h-screen">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 tracking-tight">Trending Highlights</h2>
+      <div className="bg-[#F9F9F9] p-4 pt-8 min-h-screen">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">Trending</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {allOtherProducts.length > 0 ? (

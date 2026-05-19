@@ -132,7 +132,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white w-full max-w-md mx-auto">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white w-full max-w-md mx-auto">
         <p className="text-gray-500">Product not found.</p>
-        <button onClick={() => router.push("/")} className="mt-4 text-pink-500 font-bold">Go Home</button>
+        <button onClick={() => router.push("/")} className="mt-4 text-slate-900 font-bold">Go Home</button>
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
             <Share2 size={20} className="text-gray-800" />
           </button>
           <button onClick={toggleWishlist} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
-            <Heart size={20} className={isWishlisted ? "text-pink-500 fill-pink-500" : "text-gray-800"} />
+            <Heart size={20} className={isWishlisted ? "text-slate-900 fill-slate-900" : "text-gray-800"} />
           </button>
         </div>
       </div>
@@ -174,15 +174,14 @@ export default function ProductDetailPage() {
 
       {/* Product Info */}
       <div className="p-4 bg-white border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900">{product.brand}</h1>
-        <p className="text-gray-500 mt-1">{product.title}</p>
+        <h1 className="text-2xl font-serif font-bold text-slate-900">{product.brand}</h1>
+        <p className="text-gray-500 mt-1 tracking-tight">{product.title}</p>
         
-        <div className="mt-4 flex items-baseline space-x-2">
-          <span className="text-2xl font-bold text-gray-900">₹{product.price}</span>
-          <span className="text-sm text-gray-500 line-through">₹{Math.round(product.price * 1.5)}</span>
-          <span className="text-sm font-bold text-orange-500">(33% OFF)</span>
+        <div className="mt-4 flex items-baseline space-x-3">
+          <span className="text-3xl font-extrabold text-slate-900">₹{product.price}</span>
+          <span className="text-sm text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
         </div>
-        <p className="text-xs text-green-700 font-medium mt-1">inclusive of all taxes</p>
+        <p className="text-[10px] text-green-700 font-bold tracking-widest uppercase mt-2">inclusive of all taxes</p>
       </div>
 
       {/* Size Selection */}
@@ -192,7 +191,7 @@ export default function ProductDetailPage() {
           <h2 className="font-bold text-gray-900 flex items-center gap-2">
             Select Size
           </h2>
-          <button onClick={() => setShowSizeGuide(true)} className="text-pink-600 font-bold text-sm uppercase flex items-center gap-1 hover:underline">
+          <button onClick={() => setShowSizeGuide(true)} className="text-slate-800 font-bold text-sm uppercase flex items-center gap-1 hover:underline">
             Size Guide
           </button>
         </div>
@@ -204,7 +203,7 @@ export default function ProductDetailPage() {
               onClick={() => setSelectedSize(size)}
               className={`w-12 h-12 rounded-full border flex items-center justify-center font-bold transition-colors flex-shrink-0
                 ${selectedSize === size 
-                  ? 'border-pink-500 bg-pink-50 text-pink-600' 
+                  ? 'border-slate-900 bg-slate-50 text-slate-800' 
                   : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
             >
               {size}
@@ -245,20 +244,20 @@ export default function ProductDetailPage() {
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-500 bg-pink-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
-          <Heart size={20} className={isWishlisted ? "fill-pink-500" : ""} />
+        <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-slate-900 text-slate-900 bg-slate-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
+          <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
         </button>
         <button 
           onClick={handleAdd}
           disabled={adding}
-          className="flex-1 py-3.5 border border-pink-500 text-pink-500 bg-white rounded-md font-bold flex items-center justify-center hover:bg-pink-50 disabled:opacity-70 transition-colors text-sm"
+          className="flex-1 py-3.5 border border-slate-900 text-slate-900 bg-white rounded-md font-bold flex items-center justify-center hover:bg-slate-50 disabled:opacity-70 transition-colors text-sm"
         >
           ADD TO BAG
         </button>
         <button 
           onClick={handleBuyNow}
           disabled={adding}
-          className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center hover:bg-pink-600 disabled:opacity-70 transition-colors text-sm"
+          className="flex-1 py-3.5 bg-slate-900 rounded-md font-bold text-white flex items-center justify-center hover:bg-slate-800 disabled:opacity-70 transition-colors text-sm"
         >
           {adding ? "PROCESSING..." : "BUY NOW"}
         </button>
@@ -293,7 +292,7 @@ export default function ProductDetailPage() {
               </table>
             </div>
 
-            <button onClick={() => setShowSizeGuide(false)} className="w-full bg-pink-500 text-white font-bold py-3 mt-6 rounded-md">
+            <button onClick={() => setShowSizeGuide(false)} className="w-full bg-slate-900 text-white font-bold py-3 mt-6 rounded-md">
               CLOSE
             </button>
           </div>

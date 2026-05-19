@@ -66,7 +66,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900"
+                className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-colors text-gray-900"
                 placeholder="you@example.com"
                 required
               />
@@ -78,21 +78,21 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900"
+                className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-colors text-gray-900"
                 placeholder="••••••••"
                 required
               />
             </div>
 
             <div className="flex justify-end mt-2">
-              <Link href="/forgot-password" className="text-sm font-bold text-pink-600 hover:underline">Forgot Password?</Link>
+              <Link href="/forgot-password" className="text-sm font-bold text-slate-800 hover:underline">Forgot Password?</Link>
             </div>
 
             <div className="mt-auto pt-8">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center"
+                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-70 flex justify-center items-center"
               >
                 {loading ? "LOGGING IN..." : "LOGIN"}
               </button>
@@ -100,7 +100,7 @@ export default function Login() {
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
                   New to Neelamaa?{" "}
-                  <Link href="/signup" className="text-pink-600 font-bold hover:underline">
+                  <Link href="/signup" className="text-slate-800 font-bold hover:underline">
                     Create an account
                   </Link>
                 </p>

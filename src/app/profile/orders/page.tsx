@@ -72,7 +72,7 @@ export default function CustomerOrdersPage() {
       <div className="flex-1 p-4 overflow-y-auto">
         {loading ? (
           <div className="flex justify-center items-center py-20">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center mt-4">
@@ -83,7 +83,7 @@ export default function CustomerOrdersPage() {
             <p className="text-sm text-gray-500 mb-6">Looks like you haven't placed an order yet.</p>
             <button 
               onClick={() => router.push("/")}
-              className="px-6 py-2 border-2 border-pink-500 text-pink-500 font-bold rounded-md hover:bg-pink-50 transition-colors text-sm"
+              className="px-6 py-2 border-2 border-slate-900 text-slate-900 font-bold rounded-md hover:bg-slate-50 transition-colors text-sm"
             >
               START SHOPPING
             </button>

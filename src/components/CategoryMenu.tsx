@@ -134,7 +134,7 @@ export default function CategoryMenu() {
             onClick={() => router.push(`/category/${encodeURIComponent(cat.name)}`)}
             className="flex flex-col items-center flex-shrink-0 focus:outline-none group"
           >
-            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border border-gray-200 shadow-sm group-hover:ring-2 group-hover:ring-pink-500 group-hover:ring-offset-2 transition-all bg-gray-100">
+            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border border-gray-200 shadow-sm group-hover:ring-2 group-hover:ring-slate-900 group-hover:ring-offset-2 transition-all bg-gray-100">
               {cat.image ? (
                 <Image
                   src={cat.image}
@@ -184,7 +184,7 @@ export default function CategoryMenu() {
                     
                     {uploadingIdx === idx && (
                       <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                        <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
 
@@ -207,7 +207,7 @@ export default function CategoryMenu() {
                         newCats[idx].name = e.target.value;
                         setEditCategories(newCats);
                       }}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-pink-500 font-bold text-gray-800" 
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-slate-900 font-bold text-gray-800" 
                       placeholder="e.g. Fashion"
                     />
                   </div>
@@ -224,7 +224,7 @@ export default function CategoryMenu() {
               {/* Add New Category Button */}
               <button 
                 onClick={handleAddCategory}
-                className="w-full border-2 border-dashed border-gray-300 bg-white text-gray-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:border-pink-300 hover:text-pink-600 hover:bg-pink-50 transition-colors"
+                className="w-full border-2 border-dashed border-gray-300 bg-white text-gray-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:border-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
               >
                 <Plus size={20} />
                 ADD NEW CATEGORY
@@ -235,7 +235,7 @@ export default function CategoryMenu() {
             <div className="bg-white p-4 border-t border-gray-200">
               <button 
                 onClick={handleSave}
-                className="w-full bg-pink-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors"
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"
               >
                 <Save size={20} />
                 SAVE CATEGORIES

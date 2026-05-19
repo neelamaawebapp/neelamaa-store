@@ -20,7 +20,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[#fff0f0] pt-4 pb-2 px-4 sticky top-0 z-50">
+    <header className="bg-[#f9f9f9] pt-4 pb-2 px-4 sticky top-0 z-50">
       {/* Top Row: Location & Rewards */}
       <div className="flex justify-between items-center mb-3 text-sm">
         <div className="flex items-center space-x-1 text-gray-800 font-medium overflow-hidden whitespace-nowrap">
@@ -42,7 +42,7 @@ export default function Header() {
       <div className="flex items-center space-x-3">
         {/* Search Bar */}
         <div className="flex-1 bg-white rounded-full flex items-center px-3 py-2 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-center w-6 h-6 bg-pink-100 text-pink-600 rounded-full mr-2 font-bold text-xs">
+          <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-slate-800 rounded-full mr-2 font-bold text-xs">
             M
           </div>
           <input
@@ -59,13 +59,13 @@ export default function Header() {
         {/* Action Icons */}
         <div className="flex items-center space-x-4 text-gray-700">
           <Link href="/notifications">
-            <Bell size={22} className="hover:text-pink-500 transition-colors" />
+            <Bell size={22} className="hover:text-slate-900 transition-colors" />
           </Link>
           <Link href="/wishlist">
-            <Heart size={22} className="hover:text-pink-500 transition-colors" />
+            <Heart size={22} className="hover:text-slate-900 transition-colors" />
           </Link>
           <Link href={isAdmin ? "/admin" : user ? "/profile" : "/login"}>
-            <User size={22} className={user ? "text-pink-600" : ""} />
+            <User size={22} className={user ? "text-slate-800" : ""} />
           </Link>
         </div>
       </div>

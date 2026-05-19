@@ -45,14 +45,14 @@ export default function ProfilePage() {
         
         {/* User Card */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center mb-6">
-          <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mb-3">
-            <UserCircle size={40} className="text-pink-600" />
+          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <UserCircle size={40} className="text-slate-800" />
           </div>
           <h2 className="text-lg font-bold text-gray-900">{user.email?.split("@")[0]}</h2>
           <p className="text-sm text-gray-500">{user.email}</p>
           
           {isAdmin && (
-            <span className="mt-2 bg-pink-100 text-pink-800 text-xs font-bold px-2.5 py-0.5 rounded border border-pink-200">
+            <span className="mt-2 bg-slate-100 text-pink-800 text-xs font-bold px-2.5 py-0.5 rounded border border-slate-200">
               Admin Account
             </span>
           )}

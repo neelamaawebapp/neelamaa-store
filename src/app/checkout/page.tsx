@@ -108,7 +108,7 @@ export default function CheckoutPage() {
         <p className="text-gray-500 mb-8">Thank you for shopping with us. Your order will be delivered soon.</p>
         <button 
           onClick={() => router.push("/")}
-          className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors"
+          className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors"
         >
           CONTINUE SHOPPING
         </button>
@@ -129,31 +129,31 @@ export default function CheckoutPage() {
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <div className="flex items-center space-x-2 mb-4 pb-2 border-b border-gray-100 text-gray-800">
-            <MapPin size={20} className="text-pink-600" />
+            <MapPin size={20} className="text-slate-800" />
             <h2 className="font-bold text-sm uppercase tracking-wide">Delivery Address</h2>
           </div>
           
           <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
-              <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+              <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none text-gray-900" />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Mobile Number *</label>
-              <input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+              <input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none text-gray-900" />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Street Address *</label>
-              <input type="text" required value={street} onChange={e => setStreet(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+              <input type="text" required value={street} onChange={e => setStreet(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none text-gray-900" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">City *</label>
-                <input type="text" required value={city} onChange={e => setCity(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+                <input type="text" required value={city} onChange={e => setCity(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none text-gray-900" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Pincode *</label>
-                <input type="text" required value={pin} onChange={e => setPin(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+                <input type="text" required value={pin} onChange={e => setPin(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none text-gray-900" />
               </div>
             </div>
           </form>
@@ -161,8 +161,8 @@ export default function CheckoutPage() {
 
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
            <h2 className="font-bold text-sm uppercase tracking-wide mb-3 text-gray-800 border-b border-gray-100 pb-2">Payment</h2>
-           <div className="flex items-center space-x-3 p-3 border border-pink-200 bg-pink-50 rounded-md">
-             <div className="w-4 h-4 rounded-full border-4 border-pink-500"></div>
+           <div className="flex items-center space-x-3 p-3 border border-slate-200 bg-slate-50 rounded-md">
+             <div className="w-4 h-4 rounded-full border-4 border-slate-900"></div>
              <span className="font-bold text-sm text-gray-900">Cash on Delivery (COD)</span>
            </div>
         </div>
@@ -173,13 +173,13 @@ export default function CheckoutPage() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>
-            <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">Total to pay</a>
+            <a href="#" className="text-xs text-slate-800 font-bold uppercase tracking-wide">Total to pay</a>
           </div>
           <button 
             type="submit"
             form="checkout-form"
             disabled={placing}
-            className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center w-[60%]"
+            className="bg-slate-900 text-white font-bold py-3.5 px-8 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-70 flex justify-center items-center w-[60%]"
           >
             {placing ? "PROCESSING..." : "CONFIRM ORDER"}
           </button>
