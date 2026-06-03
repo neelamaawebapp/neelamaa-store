@@ -99,7 +99,7 @@ export default function Login() {
               
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
-                  New to Neelamaa?{" "}
+                  New to NeelSutra?{" "}
                   <Link href="/signup" className="text-slate-800 font-bold hover:underline">
                     Create an account
                   </Link>

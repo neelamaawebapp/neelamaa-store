@@ -16,9 +16,9 @@ export default function Footer() {
         <Link href="/shipping" className="hover:text-slate-800 transition-colors">Shipping & Refunds</Link>
       </div>
       <div className="flex justify-center items-center space-x-2 mb-4">
-        <span className="font-bold text-lg text-slate-800 tracking-widest">NEELAMAA</span>
+        <span className="font-bold text-lg text-slate-800 tracking-widest">NEELSUTRA</span>
       </div>
-      <p className="text-xs text-gray-400">© 2026 Neelamaa. All rights reserved.</p>
+      <p className="text-xs text-gray-400">© 2026 NeelSutra. All rights reserved.</p>
     </footer>
   );
 }

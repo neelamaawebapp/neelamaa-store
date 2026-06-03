@@ -90,7 +90,7 @@ export default function Signup() {
         <div className="p-6 flex-1 flex flex-col overflow-y-auto">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
-            <p className="text-gray-500 text-sm">Join Neelamaa to track your orders and save details.</p>
+            <p className="text-gray-500 text-sm">Join NeelSutra to track your orders and save details.</p>
           </div>
 
           <form onSubmit={handleSignup} className="flex flex-col space-y-4">
