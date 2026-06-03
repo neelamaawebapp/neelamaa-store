@@ -1,6 +1,6 @@
 {
-  "name": "Neelamaa Store",
-  "short_name": "Neelamaa",
+  "name": "NeelSutra",
+  "short_name": "NeelSutra",
   "description": "High-performance E-commerce Web Application",
   "start_url": "/",
   "display": "standalone",

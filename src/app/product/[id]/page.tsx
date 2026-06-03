@@ -25,13 +25,13 @@ export default function ProductDetailPage() {
   // Check local wishlist on load
   useEffect(() => {
     if (!id) return;
-    const localWishlist = JSON.parse(localStorage.getItem("neelamaa_wishlist") || "[]");
+    const localWishlist = JSON.parse(localStorage.getItem("neelsutra_wishlist") || "[]");
     setIsWishlisted(localWishlist.includes(id));
   }, [id]);
 
   const toggleWishlist = () => {
     if (!id) return;
-    const localWishlist = JSON.parse(localStorage.getItem("neelamaa_wishlist") || "[]");
+    const localWishlist = JSON.parse(localStorage.getItem("neelsutra_wishlist") || "[]");
     let newWishlist;
     if (isWishlisted) {
       newWishlist = localWishlist.filter((itemId: string) => itemId !== id);
@@ -40,7 +40,7 @@ export default function ProductDetailPage() {
       newWishlist = [...localWishlist, id];
       setToast("Added to Wishlist!");
     }
-    localStorage.setItem("neelamaa_wishlist", JSON.stringify(newWishlist));
+    localStorage.setItem("neelsutra_wishlist", JSON.stringify(newWishlist));
     setIsWishlisted(!isWishlisted);
     setTimeout(() => setToast(""), 2000);
   };
@@ -50,8 +50,8 @@ export default function ProductDetailPage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Neelamaa - ${product.brand}`,
-          text: `Check out ${product.title} on Neelamaa!`,
+          title: `NeelSutra - ${product.brand}`,
+          text: `Check out ${product.title} on NeelSutra!`,
           url: window.location.href,
         });
       } else {
