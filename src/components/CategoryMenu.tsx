@@ -157,7 +157,7 @@ export default function CategoryMenu() {
       {/* Editor Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center">
-          <div className="bg-white w-full max-w-md h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in-up">
+          <div className="bg-white w-full max-w-md h-[85dvh] sm:h-auto sm:max-h-[85dvh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in-up">
             {/* Modal Header */}
             <div className="bg-gray-900 p-4 flex justify-between items-center sticky top-0 z-10">
               <h2 className="text-white font-bold text-lg flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function CategoryMenu() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-white p-4 border-t border-gray-200">
+            <div className="bg-white p-4 pb-safe border-t border-gray-200">
               <button 
                 onClick={handleSave}
                 className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"

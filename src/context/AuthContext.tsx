@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "neelsutra1@gmail.com")) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
