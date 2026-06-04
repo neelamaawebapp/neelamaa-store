@@ -10,6 +10,9 @@ import { useSearchParams } from "next/navigation";
 export default function ProductFeed() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [flashSaleEndTime, setFlashSaleEndTime] = useState<number | null>(null);
+  const [flashSaleCountdown, setFlashSaleCountdown] = useState<string>("00:00:00");
+  
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search")?.toLowerCase() || "";
 
@@ -28,6 +31,13 @@ export default function ProductFeed() {
           ...doc.data(),
         }));
         setProducts(data);
+        
+        // Fetch Flash Sale settings
+        const { getDoc, doc: fdoc } = await import("firebase/firestore");
+        const snap = await getDoc(fdoc(db, "settings", "flashSale"));
+        if (snap.exists() && snap.data().endTime) {
+          setFlashSaleEndTime(snap.data().endTime.toMillis());
+        }
       } catch (err) {
         console.error("Error fetching products:", err);
       } finally {
@@ -36,6 +46,32 @@ export default function ProductFeed() {
     };
     fetchProducts();
   }, []);
+
+  // Countdown Timer Logic
+  useEffect(() => {
+    if (!flashSaleEndTime) return;
+    
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = flashSaleEndTime - now;
+      
+      if (distance < 0) {
+        setFlashSaleCountdown("ENDED");
+        clearInterval(interval);
+        return;
+      }
+      
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      
+      setFlashSaleCountdown(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [flashSaleEndTime]);
 
   // Filtering Logic
   let filteredProducts = products;
@@ -166,10 +202,11 @@ export default function ProductFeed() {
   }
 
   // HOME MODE (Dynamic Dashboard)
-  // Safely partition products
-  const flashDeals = products.slice(0, Math.min(4, products.length));
-  const newArrivals = products.slice(Math.min(4, products.length), Math.min(9, products.length));
-  const allOtherProducts = products.slice(Math.min(9, products.length));
+  // Safely partition products by homeSection tag
+  const flashDeals = products.filter(p => p.homeSection === "Flash Sale");
+  const newArrivals = products.filter(p => p.homeSection === "New Arrivals");
+  const trending = products.filter(p => p.homeSection === "Trending");
+  const allOtherProducts = products.filter(p => p.homeSection === "Standard" || !p.homeSection);
 
   return (
     <div className="bg-gray-50 pb-24 space-y-2">
@@ -189,7 +226,7 @@ export default function ProductFeed() {
               <h2 className="text-2xl font-serif font-bold text-slate-900 leading-none">Flash Sale</h2>
             </div>
             <div className="text-slate-800 bg-white px-2 py-1 rounded shadow-sm border border-slate-100 text-xs font-mono font-bold tracking-wider">
-              05:42:19
+              {flashSaleCountdown}
             </div>
           </div>
           
@@ -224,12 +261,17 @@ export default function ProductFeed() {
           <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">Trending</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {allOtherProducts.length > 0 ? (
+          {trending.length > 0 ? (
+            trending.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          ) : allOtherProducts.length > 0 ? (
+            // Fallback if there are no explicit trending products
             allOtherProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))
           ) : (
-            // Fallback if there are fewer than 9 products total
+            // Absolute fallback
              products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))

@@ -20,6 +20,11 @@ export default function AdminDashboard() {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
+  const [homeSection, setHomeSection] = useState("Standard");
+  
+  // Flash Sale State
+  const [flashSaleEnd, setFlashSaleEnd] = useState("");
+  const [flashSaleLoading, setFlashSaleLoading] = useState(false);
   
   // Image Upload State
   const [imageUrl, setImageUrl] = useState("");
@@ -52,10 +57,39 @@ export default function AdminDashboard() {
           setAvailableCategories(Array.from(new Set([...STORE_CATEGORIES.map(c => c.name), ...fetchedCats])));
         }
       });
+      // Fetch Flash Sale Setting
+      getDoc(doc(db, "settings", "flashSale")).then((snap) => {
+        if (snap.exists() && snap.data().endTime) {
+          // Convert Firestore Timestamp to datetime-local string
+          const date = snap.data().endTime.toDate();
+          // Format to YYYY-MM-DDThh:mm
+          const offset = date.getTimezoneOffset() * 60000;
+          const localISOTime = (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
+          setFlashSaleEnd(localISOTime);
+        }
+      });
     });
 
     return () => unsubscribe();
   }, []);
+
+  const saveFlashSaleTimer = async () => {
+    if (!flashSaleEnd) return;
+    setFlashSaleLoading(true);
+    try {
+      const { doc, setDoc, Timestamp } = await import("firebase/firestore");
+      const dateObj = new Date(flashSaleEnd);
+      await setDoc(doc(db, "settings", "flashSale"), {
+        endTime: Timestamp.fromDate(dateObj)
+      });
+      setSuccess("Flash sale timer updated!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to update flash sale timer");
+    } finally {
+      setFlashSaleLoading(false);
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -106,6 +140,7 @@ export default function AdminDashboard() {
     setTitle("");
     setPrice("");
     setCategory("Fashion");
+    setHomeSection("Standard");
     setImageUrl("");
     clearImageSelection();
   };
@@ -116,6 +151,7 @@ export default function AdminDashboard() {
     setTitle(product.title);
     setPrice(product.price.toString());
     setCategory(product.category);
+    setHomeSection(product.homeSection || "Standard");
     setImageUrl(product.image);
     clearImageSelection();
     setImagePreview(product.image); // Show current image as preview
@@ -173,6 +209,7 @@ export default function AdminDashboard() {
         title,
         price: Number(price),
         category,
+        homeSection,
         image: finalImageUrl,
       };
 
@@ -227,8 +264,13 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
-                <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="999" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">HOME SECTION</label>
+                <select value={homeSection} onChange={(e) => setHomeSection(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none">
+                  <option value="Standard">Standard</option>
+                  <option value="Flash Sale">Flash Sale</option>
+                  <option value="New Arrivals">New Arrivals</option>
+                  <option value="Trending">Trending</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">CATEGORY</label>
@@ -246,6 +288,13 @@ export default function AdminDashboard() {
                     <option key={c} value={c} />
                   ))}
                 </datalist>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
+                <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="999" />
               </div>
             </div>
 
@@ -303,6 +352,27 @@ export default function AdminDashboard() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Flash Sale Timer Settings Panel */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Flash Sale Settings</h2>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">END TIME</label>
+            <input 
+              type="datetime-local" 
+              value={flashSaleEnd} 
+              onChange={(e) => setFlashSaleEnd(e.target.value)} 
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none mb-4" 
+            />
+            <button 
+              onClick={saveFlashSaleTimer} 
+              disabled={flashSaleLoading} 
+              className="w-full bg-pink-500 text-white font-bold py-2 rounded-md hover:bg-pink-600 disabled:opacity-70 transition-colors"
+            >
+              {flashSaleLoading ? "SAVING..." : "SET TIMER"}
+            </button>
+          </div>
         </div>
       </div>
 
