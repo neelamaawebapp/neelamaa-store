@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Package, Truck, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Package, Truck, CheckCircle, XCircle, Clock, FileText } from "lucide-react";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -145,6 +145,10 @@ export default function AdminOrders() {
                     <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
                   </select>
+                  <a href={`/admin/invoice/${order.id}`} target="_blank" className="bg-white border border-gray-300 rounded px-3 py-1.5 text-sm font-bold text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center gap-1 shadow-sm">
+                    <FileText size={16} />
+                    Invoice
+                  </a>
                 </div>
               </div>
 
@@ -179,9 +183,22 @@ export default function AdminOrders() {
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
-                    <span className="font-bold text-gray-700">Total Amount (COD)</span>
-                    <span className="text-lg font-bold text-pink-600">₹{order.totalAmount}</span>
+                  <div className="mt-4 pt-3 border-t border-gray-200 flex flex-col">
+                    {order.paymentMethod === "Online" ? (
+                      <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
+                        <span>Paid Online via Razorpay</span>
+                        <span className="font-mono">{order.paymentId}</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
+                        <span>Payment Method</span>
+                        <span>{order.paymentMethod || "Cash on Delivery"}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="font-bold text-gray-700">Total Amount</span>
+                      <span className="text-lg font-bold text-pink-600">₹{order.totalAmount}</span>
+                    </div>
                   </div>
                 </div>
               </div>

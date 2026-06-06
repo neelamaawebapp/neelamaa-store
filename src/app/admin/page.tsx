@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
   const [homeSection, setHomeSection] = useState("Standard");
+  const [gstRate, setGstRate] = useState("18");
   
   // Flash Sale State
   const [flashSaleEnd, setFlashSaleEnd] = useState("");
@@ -41,7 +42,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
 
   // BULK UPLOAD STATE
-  const [bulkFiles, setBulkFiles] = useState<{file: File, preview: string, brand: string, title: string, price: string, category: string, homeSection: string}[]>([]);
+  const [bulkFiles, setBulkFiles] = useState<{file: File, preview: string, brand: string, title: string, price: string, category: string, homeSection: string, gstRate: string}[]>([]);
   const [isDraggingBulk, setIsDraggingBulk] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +146,7 @@ export default function AdminDashboard() {
     setPrice("");
     setCategory("Fashion");
     setHomeSection("Standard");
+    setGstRate("18");
     setImageUrl("");
     clearImageSelection();
   };
@@ -157,6 +159,7 @@ export default function AdminDashboard() {
     setPrice(product.price.toString());
     setCategory(product.category);
     setHomeSection(product.homeSection || "Standard");
+    setGstRate(product.gstRate?.toString() || "18");
     setImageUrl(product.image);
     clearImageSelection();
     setImagePreview(product.image);
@@ -213,6 +216,7 @@ export default function AdminDashboard() {
         price: Number(price),
         category,
         homeSection,
+        gstRate: Number(gstRate),
         image: finalImageUrl,
       };
 
@@ -260,7 +264,8 @@ export default function AdminDashboard() {
       title: "",
       price: "",
       category: STORE_CATEGORIES[0].name,
-      homeSection: "Standard"
+      homeSection: "Standard",
+      gstRate: "18"
     }));
     setBulkFiles(prev => [...prev, ...newBulkItems]);
   };
@@ -307,6 +312,7 @@ export default function AdminDashboard() {
           price: Number(item.price),
           category: item.category,
           homeSection: item.homeSection,
+          gstRate: Number(item.gstRate),
           image: finalUrl,
           createdAt: serverTimestamp(),
         });
@@ -407,6 +413,16 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
                     <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">GST RATE (%)</label>
+                    <select value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
+                      <option value="0">0% (No GST)</option>
+                      <option value="5">5%</option>
+                      <option value="12">12%</option>
+                      <option value="18">18%</option>
+                      <option value="28">28%</option>
+                    </select>
                   </div>
                 </div>
 
@@ -605,6 +621,16 @@ export default function AdminDashboard() {
                         <option value="Flash Sale">Flash Sale</option>
                         <option value="New Arrivals">New Arrivals</option>
                         <option value="Trending">Trending</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">GST RATE (%)</label>
+                      <select value={item.gstRate} onChange={(e) => updateBulkItem(index, "gstRate", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
                       </select>
                     </div>
                     <div className="sm:col-span-2">

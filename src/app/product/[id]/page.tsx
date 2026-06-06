@@ -101,6 +101,7 @@ export default function ProductDetailPage() {
       price: product.price,
       image: product.image,
       size: selectedSize,
+      gstRate: product.gstRate || 0,
     });
     setAdding(false);
     setToast("Added to Bag!");
@@ -124,6 +125,7 @@ export default function ProductDetailPage() {
       price: product.price,
       image: product.image,
       size: selectedSize,
+      gstRate: product.gstRate || 0,
     });
     setAdding(false);
     router.push("/checkout");

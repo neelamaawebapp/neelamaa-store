@@ -14,6 +14,7 @@ export interface CartItem {
   image: string;
   quantity: number;
   size?: string;
+  gstRate?: number;
 }
 
 interface CartContextType {
