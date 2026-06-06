@@ -68,7 +68,7 @@ export default function CategoryProductsPage() {
         </h2>
         <button 
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center space-x-1 border px-2 py-1 rounded text-xs font-bold transition-colors ${showFilters ? 'bg-slate-50 border-slate-200 text-slate-800' : 'border-gray-300 text-gray-700'}`}
+          className={`flex items-center space-x-1 border px-2 py-1 rounded text-xs font-bold transition-colors ${showFilters ? 'bg-slate-50 border-slate-200 text-pink-600' : 'border-gray-300 text-gray-700'}`}
         >
           <span>FILTER</span>
           <SlidersHorizontal size={12} />
@@ -83,13 +83,13 @@ export default function CategoryProductsPage() {
             <div className="flex space-x-2">
               <button 
                 onClick={() => setSortOrder(sortOrder === "lowHigh" ? "none" : "lowHigh")}
-                className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "lowHigh" ? "border-slate-900 bg-slate-50 text-slate-800" : "border-gray-300 bg-white text-gray-700"}`}
+                className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "lowHigh" ? "border-pink-500 bg-slate-50 text-pink-600" : "border-gray-300 bg-white text-gray-700"}`}
               >
                 Low to High
               </button>
               <button 
                 onClick={() => setSortOrder(sortOrder === "highLow" ? "none" : "highLow")}
-                className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "highLow" ? "border-slate-900 bg-slate-50 text-slate-800" : "border-gray-300 bg-white text-gray-700"}`}
+                className={`px-3 py-1.5 text-xs font-bold border rounded-full ${sortOrder === "highLow" ? "border-pink-500 bg-slate-50 text-pink-600" : "border-gray-300 bg-white text-gray-700"}`}
               >
                 High to Low
               </button>
@@ -101,7 +101,7 @@ export default function CategoryProductsPage() {
       {/* Product Grid */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
-          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="py-20 text-center text-gray-500 flex flex-col items-center">
@@ -117,7 +117,7 @@ export default function CategoryProductsPage() {
                   alt={product.brand}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <button className="absolute bottom-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-600 hover:text-slate-900 transition-colors">
+                <button className="absolute bottom-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-600 hover:text-pink-600 transition-colors">
                   <Heart size={18} />
                 </button>
               </div>

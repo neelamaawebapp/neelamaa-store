@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
       {/* Admin Sidebar (Desktop) / Topbar (Mobile) */}
       <div className="w-full md:w-64 bg-[#2a2a3c] text-white p-4 shadow-lg flex flex-col">
-        <div className="text-xl font-bold text-slate-900 mb-8 mt-2 flex items-center gap-2">
+        <div className="text-xl font-bold text-pink-600 mb-8 mt-2 flex items-center gap-2">
            <div className="w-8 h-8 bg-gradient-to-r from-slate-900 to-orange-400 rounded-md flex items-center justify-center text-white font-bold">
             M
           </div>

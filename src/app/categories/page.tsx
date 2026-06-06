@@ -49,7 +49,7 @@ export default function CategoriesPage() {
       <div className="p-4 grid grid-cols-2 gap-4">
         {loading ? (
            <div className="col-span-2 py-20 flex justify-center items-center">
-             <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+             <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
            </div>
         ) : (
           categories.map((cat, idx) => (

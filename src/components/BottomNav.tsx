@@ -28,14 +28,14 @@ export default function BottomNav() {
           
           return (
             <Link href={item.path} key={item.name} className="flex flex-col items-center relative group">
-              <div className={`p-1.5 rounded-full transition-colors ${isActive ? 'bg-slate-50 text-slate-800' : 'text-gray-500 group-hover:text-slate-900 group-hover:bg-slate-50'}`}>
+              <div className={`p-1.5 rounded-full transition-colors ${isActive ? 'bg-slate-50 text-pink-600' : 'text-gray-500 group-hover:text-pink-600 group-hover:bg-slate-50'}`}>
                 <item.icon size={22} className={isActive ? "fill-slate-100/50" : ""} />
               </div>
-              <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'text-slate-800 font-bold' : 'text-gray-500'}`}>
+              <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'text-pink-600 font-bold' : 'text-gray-500'}`}>
                 {item.name}
               </span>
               {item.count ? (
-                <span className="absolute top-0 right-1 bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transform translate-x-1/2 -translate-y-1/2">
+                <span className="absolute top-0 right-1 bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transform translate-x-1/2 -translate-y-1/2">
                   {item.count}
                 </span>
               ) : null}

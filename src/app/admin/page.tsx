@@ -331,13 +331,13 @@ export default function AdminDashboard() {
         <div className="bg-gray-100 p-1 rounded-lg flex space-x-1 shadow-inner border border-gray-200">
           <button 
             onClick={() => setViewMode("single")}
-            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${viewMode === "single" ? "bg-white shadow text-slate-900" : "text-gray-500 hover:text-slate-800"}`}
+            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${viewMode === "single" ? "bg-white shadow text-pink-600" : "text-gray-500 hover:text-pink-600"}`}
           >
             Inventory & Single Upload
           </button>
           <button 
             onClick={() => { setViewMode("bulk"); resetForm(); }}
-            className={`px-6 py-2 rounded-md text-sm font-bold flex items-center space-x-2 transition-all ${viewMode === "bulk" ? "bg-slate-900 shadow text-white" : "text-gray-500 hover:text-slate-800"}`}
+            className={`px-6 py-2 rounded-md text-sm font-bold flex items-center space-x-2 transition-all ${viewMode === "bulk" ? "bg-pink-500 shadow text-white" : "text-gray-500 hover:text-pink-600"}`}
           >
             <Layers size={16} />
             <span>Bulk Upload Mode</span>
@@ -359,25 +359,25 @@ export default function AdminDashboard() {
                   {editingId ? "Edit Product" : "Add New Product"}
                 </h2>
                 {editingId && (
-                  <button onClick={resetForm} className="text-xs text-slate-800 font-bold hover:underline">Cancel Edit</button>
+                  <button onClick={resetForm} className="text-xs text-pink-600 font-bold hover:underline">Cancel Edit</button>
                 )}
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">BRAND</label>
-                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. LEVIS" />
+                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. LEVIS" />
                 </div>
                 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">TITLE</label>
-                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. Men Slim Fit Jeans" />
+                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. Men Slim Fit Jeans" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">HOME SECTION</label>
-                    <select value={homeSection} onChange={(e) => setHomeSection(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none">
+                    <select value={homeSection} onChange={(e) => setHomeSection(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
                       <option value="Standard">Standard</option>
                       <option value="Flash Sale">Flash Sale</option>
                       <option value="New Arrivals">New Arrivals</option>
@@ -392,7 +392,7 @@ export default function AdminDashboard() {
                       required 
                       value={category} 
                       onChange={(e) => setCategory(e.target.value)} 
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" 
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
                       placeholder="e.g. Fashion"
                     />
                     <datalist id="category-options">
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
-                    <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="999" />
+                    <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
                   </div>
                 </div>
 
@@ -421,10 +421,10 @@ export default function AdminDashboard() {
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
                       className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors
-                        ${isDragging ? 'border-slate-900 bg-slate-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
+                        ${isDragging ? 'border-pink-500 bg-slate-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
                       `}
                     >
-                      <UploadCloud size={32} className={`mb-2 ${isDragging ? 'text-slate-900' : 'text-gray-400'}`} />
+                      <UploadCloud size={32} className={`mb-2 ${isDragging ? 'text-pink-600' : 'text-gray-400'}`} />
                       <p className="text-xs text-center text-gray-600 font-medium">Click or drag image to upload</p>
                       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                     </div>
@@ -453,13 +453,13 @@ export default function AdminDashboard() {
                       setImageUrl(e.target.value);
                       if (e.target.value) clearImageSelection();
                     }} 
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" 
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
                     placeholder="https://..." 
                   />
                 </div>
 
                 <div className="pt-4">
-                  <button type="submit" disabled={loading} className="w-full bg-slate-900 text-white font-bold py-3 rounded-md hover:bg-slate-800 disabled:opacity-70 transition-colors">
+                  <button type="submit" disabled={loading} className="w-full bg-pink-500 text-white font-bold py-3 rounded-md hover:bg-pink-600 disabled:opacity-70 transition-colors">
                     {loading ? "SAVING..." : editingId ? "UPDATE PRODUCT" : "ADD PRODUCT"}
                   </button>
                 </div>
@@ -475,7 +475,7 @@ export default function AdminDashboard() {
                   type="datetime-local" 
                   value={flashSaleEnd} 
                   onChange={(e) => setFlashSaleEnd(e.target.value)} 
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none mb-4" 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none mb-4" 
                 />
                 <button 
                   onClick={saveFlashSaleTimer} 
@@ -494,7 +494,7 @@ export default function AdminDashboard() {
             
             {fetching ? (
               <div className="flex justify-center items-center py-20">
-                <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : products.length === 0 ? (
               <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">
@@ -556,10 +556,10 @@ export default function AdminDashboard() {
             onDrop={handleBulkDrop}
             onClick={() => bulkFileInputRef.current?.click()}
             className={`border-4 border-dashed rounded-2xl p-16 flex flex-col items-center justify-center cursor-pointer transition-all mb-8
-              ${isDraggingBulk ? 'border-slate-900 bg-slate-100 scale-[1.02]' : 'border-gray-300 bg-white hover:border-slate-400 hover:bg-gray-50'}
+              ${isDraggingBulk ? 'border-pink-500 bg-slate-100 scale-[1.02]' : 'border-gray-300 bg-white hover:border-slate-400 hover:bg-gray-50'}
             `}
           >
-            <UploadCloud size={64} className={`mb-4 ${isDraggingBulk ? 'text-slate-900' : 'text-gray-400'}`} />
+            <UploadCloud size={64} className={`mb-4 ${isDraggingBulk ? 'text-pink-600' : 'text-gray-400'}`} />
             <h3 className="text-2xl font-bold text-gray-800 mb-2">Drop multiple images here</h3>
             <p className="text-gray-500 font-medium">Or click to select files from your computer</p>
             <input type="file" ref={bulkFileInputRef} onChange={handleBulkFileChange} accept="image/*" multiple className="hidden" />
@@ -588,19 +588,19 @@ export default function AdminDashboard() {
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">BRAND *</label>
-                      <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. LEVIS" />
+                      <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. LEVIS" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">TITLE *</label>
-                      <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="e.g. Slim Fit Jeans" />
+                      <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. Slim Fit Jeans" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹) *</label>
-                      <input type="number" required value={item.price} onChange={(e) => updateBulkItem(index, "price", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" placeholder="999" />
+                      <input type="number" required value={item.price} onChange={(e) => updateBulkItem(index, "price", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">HOME SECTION</label>
-                      <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none">
+                      <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
                         <option value="Standard">Standard</option>
                         <option value="Flash Sale">Flash Sale</option>
                         <option value="New Arrivals">New Arrivals</option>
@@ -615,7 +615,7 @@ export default function AdminDashboard() {
                         required 
                         value={item.category} 
                         onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-slate-900 outline-none" 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
                         placeholder="e.g. Fashion"
                       />
                       <datalist id={`bulk-category-${index}`}>
@@ -632,7 +632,7 @@ export default function AdminDashboard() {
                 <button 
                   onClick={submitBulk} 
                   disabled={loading} 
-                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-xl hover:bg-slate-800 disabled:opacity-70 transition-colors text-lg flex items-center justify-center space-x-2"
+                  className="w-full bg-pink-500 text-white font-bold py-4 rounded-xl shadow-xl hover:bg-pink-600 disabled:opacity-70 transition-colors text-lg flex items-center justify-center space-x-2"
                 >
                   {loading ? (
                     <>

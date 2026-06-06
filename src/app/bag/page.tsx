@@ -33,7 +33,7 @@ export default function BagPage() {
           <p className="text-gray-500 text-sm mb-8">There is nothing in your bag. Let's add some items.</p>
           <button 
             onClick={() => router.push("/")}
-            className="border-2 border-slate-900 text-slate-900 font-bold py-3 px-8 rounded-md hover:bg-slate-50 transition-colors"
+            className="border-2 border-pink-500 text-pink-600 font-bold py-3 px-8 rounded-md hover:bg-slate-50 transition-colors"
           >
             ADD ITEMS FROM WISHLIST
           </button>
@@ -68,7 +68,7 @@ export default function BagPage() {
                     <span className="w-8 text-center text-sm font-medium text-gray-900">{item.quantity}</span>
                     <button 
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-slate-800 hover:bg-slate-50"
+                      className="w-8 h-8 flex items-center justify-center text-pink-600 hover:bg-slate-50"
                     >
                       <Plus size={14} />
                     </button>
@@ -124,11 +124,11 @@ export default function BagPage() {
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>
-              <a href="#" className="text-xs text-slate-800 font-bold uppercase tracking-wide">View Details</a>
+              <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">View Details</a>
             </div>
             <button 
               onClick={() => router.push("/checkout")}
-              className="bg-slate-900 text-white font-bold py-3.5 px-8 rounded-md hover:bg-slate-800 transition-colors w-1/2 flex justify-center items-center"
+              className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors w-1/2 flex justify-center items-center"
             >
               PLACE ORDER
             </button>
