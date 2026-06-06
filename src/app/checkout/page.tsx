@@ -8,7 +8,6 @@ import { ChevronLeft, MapPin } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useEffect } from "react";
-import Script from "next/script";
 
 export default function CheckoutPage() {
   const { cart, totalAmount, clearCart } = useCart();
@@ -22,7 +21,6 @@ export default function CheckoutPage() {
   const [pin, setPin] = useState("");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("Online"); // Default to Online Payment
 
   // Auto-fill from user profile
   useEffect(() => {
@@ -91,54 +89,12 @@ export default function CheckoutPage() {
         subtotal: Number(totalSubtotal.toFixed(2)),
         totalGst: Number(totalGstAmount.toFixed(2)),
         status: "Pending",
-        paymentMethod: paymentMethod,
+        paymentMethod: "COD",
         paymentId: "COD",
         createdAt: serverTimestamp(),
       };
 
-      if (paymentMethod === "Online") {
-        // Init Razorpay
-        const res = await fetch("/api/create-order", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: finalAmount }),
-        });
-        const data = await res.json();
-        
-        if (!data.success) {
-          throw new Error("Could not create Razorpay order");
-        }
-
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: data.order.amount,
-          currency: "INR",
-          name: "Neelamaa Enterprises",
-          description: "Purchase from NeelSutra",
-          order_id: data.order.id,
-          handler: async function (response: any) {
-            orderData.paymentId = response.razorpay_payment_id;
-            orderData.status = "Paid Online";
-            await finalizeOrder(orderData);
-          },
-          prefill: {
-            name: name,
-            email: user.email,
-            contact: phone,
-          },
-          theme: { color: "#ec4899" },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.on("payment.failed", function (response: any) {
-          alert("Payment Failed: " + response.error.description);
-          setPlacing(false);
-        });
-        rzp.open();
-      } else {
-        // COD Workflow
-        await finalizeOrder(orderData);
-      }
+      await finalizeOrder(orderData);
     } catch (err) {
       console.error(err);
       alert("Failed to place order.");
@@ -196,7 +152,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-md mx-auto relative pb-32">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       {/* Header */}
       <div className="bg-white p-4 flex items-center border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <button onClick={() => router.back()} className="mr-4">
@@ -241,24 +196,13 @@ export default function CheckoutPage() {
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
            <h2 className="font-bold text-sm uppercase tracking-wide mb-3 text-gray-800 border-b border-gray-100 pb-2">Payment Method</h2>
            <div className="space-y-3">
-             <label className="flex items-center space-x-3 p-3 border border-slate-200 bg-slate-50 rounded-md cursor-pointer">
-               <input 
-                 type="radio" 
-                 name="payment" 
-                 value="Online" 
-                 checked={paymentMethod === "Online"}
-                 onChange={(e) => setPaymentMethod(e.target.value)}
-                 className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
-               />
-               <span className="font-bold text-sm text-gray-900">Pay Online (Razorpay Test)</span>
-             </label>
              <label className="flex items-center space-x-3 p-3 border border-slate-200 bg-white rounded-md cursor-pointer">
                <input 
                  type="radio" 
                  name="payment" 
                  value="COD" 
-                 checked={paymentMethod === "COD"}
-                 onChange={(e) => setPaymentMethod(e.target.value)}
+                 checked={true}
+                 readOnly
                  className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
                />
                <span className="font-bold text-sm text-gray-900">Cash on Delivery (COD)</span>
