@@ -95,13 +95,15 @@ export default function HeroBanner() {
 
   const handleSave = async () => {
     try {
-      await setDoc(doc(db, "settings", "banners"), { data: editBanners });
+      // Sanitize data to remove any undefined values or non-serializable objects
+      const cleanData = JSON.parse(JSON.stringify(editBanners));
+      await setDoc(doc(db, "settings", "banners"), { data: cleanData });
       setBanners(editBanners);
       setIsEditing(false);
       alert("Banners updated successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save banners.");
+    } catch (err: any) {
+      console.error("Firebase Save Error:", err);
+      alert(`Failed to save banners: ${err.message || err}`);
     }
   };
 
