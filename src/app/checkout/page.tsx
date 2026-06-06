@@ -157,7 +157,7 @@ export default function CheckoutPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            email: user.email,
+            email: user?.email || "",
             phone,
             orderId: docRef.id.slice(-8).toUpperCase(),
             amount: finalAmount
