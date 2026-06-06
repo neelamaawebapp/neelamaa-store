@@ -202,11 +202,11 @@ export default function ProductFeed() {
   }
 
   // HOME MODE (Dynamic Dashboard)
-  // Safely partition products by homeSection tag
+  // Partition products, but make sure EVERY product shows up somewhere even if it has no homeSection
   const flashDeals = products.filter(p => p.homeSection === "Flash Sale");
   const newArrivals = products.filter(p => p.homeSection === "New Arrivals");
   const trending = products.filter(p => p.homeSection === "Trending");
-  const allOtherProducts = products.filter(p => p.homeSection === "Standard" || !p.homeSection);
+  const allOtherProducts = products.filter(p => p.homeSection !== "Flash Sale" && p.homeSection !== "New Arrivals" && p.homeSection !== "Trending");
 
   return (
     <div className="bg-gray-50 pb-24 space-y-2">
@@ -261,21 +261,12 @@ export default function ProductFeed() {
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {trending.length > 0 ? (
-            trending.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          ) : allOtherProducts.length > 0 ? (
-            // Fallback if there are no explicit trending products
-            allOtherProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          ) : (
-            // Absolute fallback
-             products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          )}
+          {trending.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+          {allOtherProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
       </div>
     </div>
