@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronRight, Edit2, UploadCloud, X, Save } from "lucide-react";
+import { ChevronRight, Edit2, UploadCloud, X, Save, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -105,6 +105,28 @@ export default function HeroBanner() {
     }
   };
 
+  const handleAddBanner = () => {
+    if (editBanners.length >= 3) return;
+    setEditBanners([
+      ...editBanners,
+      {
+        id: Date.now(),
+        image: "",
+        title: "New Banner",
+        subtitle: "",
+        brand1: "",
+        brand2: "",
+        link: "/categories"
+      }
+    ]);
+  };
+
+  const handleRemoveBanner = (idx: number) => {
+    const newBanners = [...editBanners];
+    newBanners.splice(idx, 1);
+    setEditBanners(newBanners);
+  };
+
   return (
     <div className="flex flex-col relative">
       {/* Magic Edit Button */}
@@ -190,9 +212,18 @@ export default function HeroBanner() {
             <div className="overflow-y-auto p-4 flex-1 space-y-8 bg-gray-50">
               {editBanners.map((banner, idx) => (
                 <div key={banner.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative">
-                  <div className="absolute -top-3 -left-3 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold border-4 border-gray-50">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold border-4 border-gray-50 z-10">
                     {idx + 1}
                   </div>
+                  {editBanners.length > 1 && (
+                    <button 
+                      onClick={() => handleRemoveBanner(idx)}
+                      className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center border-4 border-gray-50 hover:bg-red-600 transition-colors z-10 shadow-sm"
+                      title="Remove Banner"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                   
                   {/* Image Upload */}
                   <div className="mb-4 mt-2">
@@ -299,6 +330,17 @@ export default function HeroBanner() {
                   </div>
                 </div>
               ))}
+
+              {/* Add New Banner Button */}
+              {editBanners.length < 3 && (
+                <button 
+                  onClick={handleAddBanner}
+                  className="w-full border-2 border-dashed border-gray-300 bg-white text-gray-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:border-slate-400 hover:text-pink-600 hover:bg-slate-50 transition-colors"
+                >
+                  <Plus size={20} />
+                  ADD NEW BANNER ({editBanners.length}/3)
+                </button>
+              )}
             </div>
 
             {/* Modal Footer */}

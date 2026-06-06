@@ -211,7 +211,19 @@ export default function ProductFeed() {
   return (
     <div className="bg-gray-50 pb-24 space-y-2">
       
-      {/* 1. Flash Sale Section */}
+      {/* 1. Explore More / Main Grid (Trending) */}
+      <div className="bg-[#F9F9F9] p-4 pt-8 pb-4 relative">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
+        </div>
+        <div className="flex space-x-3 overflow-x-auto hide-scrollbar pb-2 pt-1 px-1 -mx-1">
+          {trending.map((product) => (
+            <ProductCard key={product.id} product={product} isHorizontal={true} />
+          ))}
+        </div>
+      </div>
+
+      {/* 2. Flash Sale Section */}
       {flashDeals.length > 0 && (
         <div className="bg-white/60 backdrop-blur-xl border-y border-white/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
           {/* Subtle background element for the glassmorphism to pop against */}
@@ -238,7 +250,7 @@ export default function ProductFeed() {
         </div>
       )}
 
-      {/* 2. New Arrivals Section */}
+      {/* 3. New Arrivals Section */}
       {newArrivals.length > 0 && (
         <div className="bg-[#F9F9F9] p-4 py-8 relative">
           <div className="flex justify-between items-center mb-6">
@@ -255,15 +267,12 @@ export default function ProductFeed() {
         </div>
       )}
 
-      {/* 3. Explore More / Main Grid */}
-      <div className="bg-[#F9F9F9] p-4 pt-8 min-h-screen">
+      {/* 4. All Other Products (Standard) */}
+      <div className="bg-[#F9F9F9] p-4 pt-4 min-h-screen">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
+          <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">More to Explore</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {trending.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
           {allOtherProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
