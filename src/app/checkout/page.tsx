@@ -11,7 +11,7 @@ import { useEffect } from "react";
 
 export default function CheckoutPage() {
   const { cart, totalAmount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -132,6 +132,14 @@ export default function CheckoutPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center w-full max-w-md mx-auto p-6">
+        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center">
@@ -145,6 +153,24 @@ export default function CheckoutPage() {
           className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors"
         >
           CONTINUE SHOPPING
+        </button>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center">
+        <div className="w-24 h-24 bg-pink-100 rounded-full flex items-center justify-center mb-6">
+          <MapPin className="text-pink-500" size={40} />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h1>
+        <p className="text-gray-500 mb-8">Please login or create an account to proceed with your checkout and place an order.</p>
+        <button 
+          onClick={() => router.push("/login?redirect=/checkout")}
+          className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors"
+        >
+          LOGIN / SIGNUP
         </button>
       </div>
     );
