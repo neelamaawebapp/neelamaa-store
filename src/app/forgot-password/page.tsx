@@ -37,11 +37,34 @@ export default function ForgotPassword() {
       const { collection, query, where, getDocs } = await import("firebase/firestore");
       const { db } = await import("@/lib/firebase");
       
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", normalizedEmail));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
+      let exists = false;
+
+      // 1. Check admin email whitelist
+      if (normalizedEmail === "neelsutra1@gmail.com" || normalizedEmail === "admin@neelsutra.com") {
+        exists = true;
+      }
+
+      // 2. Check users collection
+      if (!exists) {
+        const usersRef = collection(db, "users");
+        const qUsers = query(usersRef, where("email", "==", normalizedEmail));
+        const usersSnapshot = await getDocs(qUsers);
+        if (!usersSnapshot.empty) {
+          exists = true;
+        }
+      }
+
+      // 3. Check orders collection (fallback where customer details are stored)
+      if (!exists) {
+        const ordersRef = collection(db, "orders");
+        const qOrders = query(ordersRef, where("customerEmail", "==", normalizedEmail));
+        const ordersSnapshot = await getDocs(qOrders);
+        if (!ordersSnapshot.empty) {
+          exists = true;
+        }
+      }
+
+      if (!exists) {
         setError("No account found with this email. Please verify the spelling or sign up.");
         setLoading(false);
         return;

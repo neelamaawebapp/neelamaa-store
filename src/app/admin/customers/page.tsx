@@ -60,8 +60,8 @@ export default function AdminCustomers() {
         allOrders.forEach((order: any) => {
           if (!order.userId || order.userId === "guest") return;
           
-          const exists = mergedUsers.some(u => u.id === order.userId || u.email === order.customerEmail);
-          if (!exists) {
+          const userIndex = mergedUsers.findIndex(u => u.id === order.userId || (u.email && u.email.toLowerCase() === order.customerEmail?.toLowerCase()));
+          if (userIndex === -1) {
             mergedUsers.push({
               id: order.userId,
               name: order.customerName || "Guest Customer",
@@ -72,6 +72,22 @@ export default function AdminCustomers() {
               city: order.address?.split(",")[1] || "",
               pin: order.address?.split(",")[2] || ""
             });
+          } else {
+            // Update address/phone if missing in the profile doc
+            const u = mergedUsers[userIndex];
+            if (!u.phone && order.phone) {
+              u.phone = order.phone;
+            }
+            if (!u.address && order.address) {
+              u.address = order.address;
+              u.street = order.address.split(",")[0] || "";
+              u.city = order.address.split(",")[1] || "";
+              u.pin = order.address.split(",")[2] || "";
+            }
+            // Also ensure name is updated if profile has email but no name or default name
+            if ((!u.name || u.name === "Customer" || u.name === u.email?.split("@")[0]) && order.customerName) {
+              u.name = order.customerName;
+            }
           }
         });
 
