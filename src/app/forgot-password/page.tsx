@@ -19,12 +19,13 @@ export default function ForgotPassword() {
     setMessage("");
     setDemoResetLink("");
 
-    const isMockEmail = email.toLowerCase().endsWith("@example.com");
+    const normalizedEmail = email.toLowerCase().trim();
+    const isMockEmail = normalizedEmail.endsWith("@example.com");
 
     if (isMockEmail) {
       // Demo/Guest Mock User Sandbox Flow
       const mockCode = `mock_oob_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-      const mockLink = `${window.location.origin}/reset-password?oobCode=${mockCode}&email=${encodeURIComponent(email)}`;
+      const mockLink = `${window.location.origin}/reset-password?oobCode=${mockCode}&email=${encodeURIComponent(normalizedEmail)}`;
       setDemoResetLink(mockLink);
       setMessage("Demo Mode: Reset link generated successfully. Please click the button below.");
       setLoading(false);
@@ -33,9 +34,22 @@ export default function ForgotPassword() {
 
     // Real Firebase User Reset Flow
     try {
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", normalizedEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        setError("No account found with this email. Please verify the spelling or sign up.");
+        setLoading(false);
+        return;
+      }
+
       const { sendPasswordResetEmail } = await import("firebase/auth");
       const { auth } = await import("@/lib/firebase");
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, normalizedEmail);
       setMessage("A password reset link has been successfully sent to your email inbox.");
       setEmail("");
     } catch (err: any) {

@@ -43,7 +43,8 @@ function SignupContent() {
       }
 
       // 1. Create Auth User
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const normalizedEmail = email.toLowerCase().trim();
+      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const user = userCredential.user;
 
       // 2. Update Auth Profile with Name
@@ -54,7 +55,7 @@ function SignupContent() {
       // 3. Save Extended Profile to Firestore
       await setDoc(doc(db, "users", user.uid), {
         name,
-        email,
+        email: normalizedEmail,
         phone,
         street,
         city,

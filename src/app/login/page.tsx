@@ -25,7 +25,7 @@ function LoginContent() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
       router.push(redirect);
     } catch (err: any) {
       let errorMessage = "Failed to log in";
