@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex flex-row md:flex-col gap-2 overflow-x-auto hide-scrollbar">
           <a href="/admin" className="px-4 py-2 hover:bg-white/10 rounded-md text-slate-400 font-medium whitespace-nowrap">Products</a>
           <a href="/admin/orders" className="px-4 py-2 hover:bg-white/10 rounded-md text-gray-300 font-medium whitespace-nowrap">Orders</a>
-          <a href="#" className="px-4 py-2 hover:bg-white/10 rounded-md text-gray-300 font-medium whitespace-nowrap">Customers</a>
+          <a href="/admin/customers" className="px-4 py-2 hover:bg-white/10 rounded-md text-gray-300 font-medium whitespace-nowrap">Customers</a>
           <a href="/" className="px-4 py-2 hover:bg-white/10 rounded-md text-gray-400 font-medium mt-auto whitespace-nowrap">Exit to Store</a>
           <button 
             onClick={async () => {
