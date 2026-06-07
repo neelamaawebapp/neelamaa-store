@@ -120,7 +120,7 @@ export default function BagPage() {
 
       {/* Sticky Bottom Action */}
       {cart.length > 0 && (
-        <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 p-3 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>

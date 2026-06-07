@@ -9,7 +9,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { cart } = useCart();
   
-  if (pathname?.startsWith("/admin") || pathname?.startsWith("/checkout") || pathname?.startsWith("/product")) {
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/checkout") || pathname?.startsWith("/product") || pathname === "/bag") {
     return null;
   }
 
