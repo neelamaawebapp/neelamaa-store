@@ -34,29 +34,14 @@ export default function ForgotPassword() {
 
     // Real Firebase User Reset Flow
     try {
-      const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-      if (!firebaseApiKey) {
-        throw new Error("Firebase configuration is missing.");
-      }
-
-      const checkUrl = `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${firebaseApiKey}`;
-      const checkResponse = await fetch(checkUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          identifier: normalizedEmail,
-          continueUri: window.location.origin
-        }),
-      });
-
-      if (!checkResponse.ok) {
-        throw new Error("Failed to verify email registration.");
-      }
-
-      const checkData = await checkResponse.json();
-      if (!checkData.registered) {
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", normalizedEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
         setError("No account found with this email. Please verify the spelling or sign up.");
         setLoading(false);
         return;
