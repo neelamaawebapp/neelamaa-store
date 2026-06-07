@@ -14,6 +14,25 @@ export default function InvoicePage() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const formatOrderDate = (createdAt: any) => {
+    if (!createdAt) return "Recently";
+    
+    if (typeof createdAt.toDate === "function") {
+      return createdAt.toDate().toLocaleDateString();
+    }
+    
+    if (createdAt.seconds) {
+      return new Date(createdAt.seconds * 1000).toLocaleDateString();
+    }
+    
+    const dateParsed = new Date(createdAt);
+    if (!isNaN(dateParsed.getTime())) {
+      return dateParsed.toLocaleDateString();
+    }
+
+    return "Recently";
+  };
+
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       router.push("/");
@@ -111,7 +130,7 @@ export default function InvoicePage() {
             <table className="w-full text-left">
               <tbody>
                 <tr><th className="py-1 font-medium text-gray-600">Order ID:</th><td className="font-mono">{order.id}</td></tr>
-                <tr><th className="py-1 font-medium text-gray-600">Order Date:</th><td>{order.createdAt?.toDate().toLocaleDateString()}</td></tr>
+                <tr><th className="py-1 font-medium text-gray-600">Order Date:</th><td>{formatOrderDate(order.createdAt)}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Payment Mode:</th><td>{order.paymentMethod || 'Cash on Delivery'}</td></tr>
                 {order.paymentId && order.paymentId !== "COD" && (
                   <tr><th className="py-1 font-medium text-gray-600">Transaction ID:</th><td className="font-mono text-xs">{order.paymentId}</td></tr>

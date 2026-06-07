@@ -18,23 +18,63 @@ export default function CustomerOrdersPage() {
 
     const fetchOrders = async () => {
       try {
-        // Query orders by userId. We sort in memory to avoid needing a composite index initially.
-        const q = query(collection(db, "orders"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const ordersData: any[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        // 1. Get local storage orders
+        let localOrdersData: any[] = [];
+        try {
+          const localOrders = localStorage.getItem("neelsutra_local_orders");
+          if (localOrders) {
+            const parsed = JSON.parse(localOrders);
+            localOrdersData = parsed.filter((o: any) => o.userId === user.uid);
+          }
+        } catch (e) {
+          console.error("Failed to parse local orders", e);
+        }
 
-        // Sort by createdAt descending
-        ordersData.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis() || 0;
-          const timeB = b.createdAt?.toMillis() || 0;
+        // 2. Fetch from Firestore
+        let remoteOrdersData: any[] = [];
+        try {
+          const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+          const querySnapshot = await getDocs(q);
+          
+          remoteOrdersData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        } catch (err) {
+          console.error("Error fetching remote orders:", err);
+        }
+
+        // 3. Combine and sort
+        const allOrders = [...localOrdersData, ...remoteOrdersData];
+        
+        allOrders.sort((a, b) => {
+          let timeA = 0;
+          let timeB = 0;
+
+          if (a.createdAt) {
+            if (typeof a.createdAt.toMillis === "function") {
+              timeA = a.createdAt.toMillis();
+            } else if (a.createdAt.seconds) {
+              timeA = a.createdAt.seconds * 1000;
+            } else {
+              const parsedDate = new Date(a.createdAt);
+              timeA = isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+            }
+          }
+          if (b.createdAt) {
+            if (typeof b.createdAt.toMillis === "function") {
+              timeB = b.createdAt.toMillis();
+            } else if (b.createdAt.seconds) {
+              timeB = b.createdAt.seconds * 1000;
+            } else {
+              const parsedDate = new Date(b.createdAt);
+              timeB = isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+            }
+          }
           return timeB - timeA;
         });
 
-        setOrders(ordersData);
+        setOrders(allOrders);
       } catch (err) {
         console.error("Error fetching orders:", err);
       } finally {
@@ -44,6 +84,25 @@ export default function CustomerOrdersPage() {
 
     fetchOrders();
   }, [user]);
+
+  const formatOrderDate = (createdAt: any) => {
+    if (!createdAt) return "Recently";
+    
+    if (typeof createdAt.toDate === "function") {
+      return createdAt.toDate().toLocaleDateString();
+    }
+    
+    if (createdAt.seconds) {
+      return new Date(createdAt.seconds * 1000).toLocaleDateString();
+    }
+    
+    const dateParsed = new Date(createdAt);
+    if (!isNaN(dateParsed.getTime())) {
+      return dateParsed.toLocaleDateString();
+    }
+
+    return "Recently";
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -132,7 +191,7 @@ export default function CustomerOrdersPage() {
 
                   {/* Totals */}
                   <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Ordered on: {order.createdAt?.toDate().toLocaleDateString() || "Recently"}</span>
+                    <span className="text-sm text-gray-500">Ordered on: {formatOrderDate(order.createdAt)}</span>
                     <div className="text-right">
                       <span className="text-xs text-gray-500 mr-2">Total Amount:</span>
                       <span className="font-bold text-gray-900">₹{order.totalAmount}</span>

@@ -48,6 +48,25 @@ export default function CheckoutPage() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
+
+      // 1. Try local storage mock fallback first
+      const localAddr = localStorage.getItem("neelsutra_mock_user_address");
+      if (localAddr) {
+        try {
+          const parsed = JSON.parse(localAddr);
+          const namePart = user.displayName || user.email?.split("@")[0] || "Customer";
+          if (namePart) setName(namePart);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.street) setStreet(parsed.street);
+          if (parsed.city) setCity(parsed.city);
+          if (parsed.pin) setPin(parsed.pin);
+          return;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // 2. Fall back to Firestore
       try {
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
@@ -154,10 +173,7 @@ export default function CheckoutPage() {
         localOrders.push({ 
           ...orderData, 
           id: orderId, 
-          createdAt: { 
-            toDate: () => new Date(), 
-            toLocaleString: () => new Date().toLocaleString() 
-          } 
+          createdAt: new Date().toISOString()
         });
         localStorage.setItem("neelsutra_local_orders", JSON.stringify(localOrders));
       }

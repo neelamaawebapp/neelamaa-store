@@ -10,6 +10,25 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [shippingData, setShippingData] = useState<Record<string, { company: string, tracking: string }>>({});
 
+  const formatOrderDate = (createdAt: any) => {
+    if (!createdAt) return "Just now";
+    
+    if (typeof createdAt.toDate === "function") {
+      return createdAt.toDate().toLocaleString();
+    }
+    
+    if (createdAt.seconds) {
+      return new Date(createdAt.seconds * 1000).toLocaleString();
+    }
+    
+    const dateParsed = new Date(createdAt);
+    if (!isNaN(dateParsed.getTime())) {
+      return dateParsed.toLocaleString();
+    }
+
+    return "Just now";
+  };
+
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -164,7 +183,7 @@ export default function AdminOrders() {
                     <span className="text-sm font-mono font-medium text-gray-900">{order.id}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Placed on: {order.createdAt?.toDate().toLocaleString() || "Just now"}
+                    Placed on: {formatOrderDate(order.createdAt)}
                   </div>
                 </div>
 
