@@ -19,29 +19,34 @@ export default function ForgotPassword() {
     setMessage("");
     setDemoResetLink("");
 
+    const isMockEmail = email.toLowerCase().endsWith("@example.com");
+
+    if (isMockEmail) {
+      // Demo/Guest Mock User Sandbox Flow
+      const mockCode = `mock_oob_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+      const mockLink = `${window.location.origin}/reset-password?oobCode=${mockCode}&email=${encodeURIComponent(email)}`;
+      setDemoResetLink(mockLink);
+      setMessage("Demo Mode: Reset link generated successfully. Please click the button below.");
+      setLoading(false);
+      return;
+    }
+
+    // Real Firebase User Reset Flow
     try {
-      const res = await fetch("/api/send-reset-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, origin: window.location.origin })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate password reset request.");
-      }
-
-      if (data.demoMode && data.resetLink) {
-        setDemoResetLink(data.resetLink);
-        setMessage("Demo Mode: Reset link generated successfully. Please click the button below.");
-      } else {
-        setMessage("A reset link has been successfully sent to your email inbox.");
-      }
+      const { sendPasswordResetEmail } = await import("firebase/auth");
+      const { auth } = await import("@/lib/firebase");
+      await sendPasswordResetEmail(auth, email);
+      setMessage("A password reset link has been successfully sent to your email inbox.");
       setEmail("");
     } catch (err: any) {
-      let errMsg = err.message || "Failed to send reset email.";
-      if (errMsg.includes("EMAIL_NOT_FOUND") || errMsg.includes("No account found")) {
+      console.error(err);
+      let errMsg = "Failed to send reset email.";
+      if (err.code === "auth/user-not-found" || (err.message && err.message.includes("EMAIL_NOT_FOUND"))) {
         errMsg = "No account found with this email.";
+      } else if (err.code === "auth/invalid-email") {
+        errMsg = "Invalid email format.";
+      } else if (err.message) {
+        errMsg = err.message;
       }
       setError(errMsg);
     } finally {
