@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-export default function Login() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loginAsMockUser } = useAuth();
+
+  const redirect = searchParams.get("redirect") || "/";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +26,7 @@ export default function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/");
+      router.push(redirect);
     } catch (err: any) {
       let errorMessage = "Failed to log in";
       if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
@@ -35,6 +40,11 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    loginAsMockUser("demo.customer@example.com", "Demo Customer");
+    window.location.href = redirect;
   };
 
   return (
@@ -92,15 +102,29 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center"
+                className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center animate-pulse-subtle"
               >
                 {loading ? "LOGGING IN..." : "LOGIN"}
               </button>
               
+              <div className="relative flex py-4 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">or</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors flex justify-center items-center gap-2 shadow-md hover:shadow-lg"
+              >
+                <span>🚀 DEMO / GUEST LOGIN</span>
+              </button>
+
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
                   New to NeelSutra?{" "}
-                  <Link href="/signup" className="text-pink-600 font-bold hover:underline">
+                  <Link href={`/signup?redirect=${encodeURIComponent(redirect)}`} className="text-pink-600 font-bold hover:underline">
                     Create an account
                   </Link>
                 </p>
@@ -110,5 +134,13 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Login...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

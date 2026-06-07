@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-export default function Signup() {
+function SignupContent() {
   // Auth Fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +24,10 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loginAsMockUser } = useAuth();
+
+  const redirect = searchParams.get("redirect") || "/";
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +63,7 @@ export default function Signup() {
         createdAt: serverTimestamp(),
       });
 
-      router.push("/");
+      router.push(redirect);
     } catch (err: any) {
       console.error(err);
       let errorMessage = "Failed to create account";
@@ -75,6 +80,11 @@ export default function Signup() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    loginAsMockUser("demo.customer@example.com", "Demo Customer");
+    window.location.href = redirect;
   };
 
   return (
@@ -148,11 +158,25 @@ export default function Signup() {
               >
                 {loading ? "CREATING PROFILE..." : "CREATE ACCOUNT"}
               </button>
+
+              <div className="relative flex py-4 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">or</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-md hover:bg-slate-800 transition-colors flex justify-center items-center gap-2 shadow-md hover:shadow-lg"
+              >
+                <span>🚀 DEMO / GUEST LOGIN</span>
+              </button>
               
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
                   Already have an account?{" "}
-                  <Link href="/login" className="text-pink-600 font-bold hover:underline">
+                  <Link href={`/login?redirect=${encodeURIComponent(redirect)}`} className="text-pink-600 font-bold hover:underline">
                     Login here
                   </Link>
                 </p>
@@ -162,5 +186,13 @@ export default function Signup() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Signup() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Signup...</div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

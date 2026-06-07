@@ -17,7 +17,51 @@ export default function AdminOrders() {
         id: doc.id,
         ...doc.data()
       }));
-      setOrders(ordersData);
+
+      let allOrders = [...ordersData];
+      if (typeof window !== "undefined") {
+        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        if (localOrdersStr) {
+          try {
+            const localOrders = JSON.parse(localOrdersStr);
+            const formattedLocal = localOrders.map((o: any) => ({
+              ...o,
+              createdAt: {
+                toDate: () => new Date(),
+                toLocaleString: () => new Date().toLocaleString()
+              }
+            }));
+            allOrders = [...formattedLocal, ...allOrders];
+          } catch (e) {
+            console.error("Failed to parse local orders", e);
+          }
+        }
+      }
+
+      setOrders(allOrders);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore orders failed, falling back to localStorage", error);
+      if (typeof window !== "undefined") {
+        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        if (localOrdersStr) {
+          try {
+            const localOrders = JSON.parse(localOrdersStr);
+            const formattedLocal = localOrders.map((o: any) => ({
+              ...o,
+              createdAt: {
+                toDate: () => new Date(),
+                toLocaleString: () => new Date().toLocaleString()
+              }
+            }));
+            setOrders(formattedLocal);
+          } catch (e) {
+            setOrders([]);
+          }
+        } else {
+          setOrders([]);
+        }
+      }
       setLoading(false);
     });
 

@@ -16,6 +16,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState("");
+  const [showAddedModal, setShowAddedModal] = useState(false);
 
   const [selectedSize, setSelectedSize] = useState("");
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -104,8 +105,7 @@ export default function ProductDetailPage() {
       gstRate: product.gstRate || 0,
     });
     setAdding(false);
-    setToast("Added to Bag!");
-    setTimeout(() => setToast(""), 3000);
+    setShowAddedModal(true);
   };
 
   const handleBuyNow = async () => {
@@ -297,6 +297,64 @@ export default function ProductDetailPage() {
             <button onClick={() => setShowSizeGuide(false)} className="w-full bg-pink-500 text-white font-bold py-3 mt-6 rounded-md">
               CLOSE
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Added to Bag Slide-Up Modal */}
+      {showAddedModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-6 shadow-2xl transform transition-transform duration-300 translate-y-0 animate-slide-up relative">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 text-xs font-bold">✓</span>
+                </div>
+                <h3 className="font-bold text-gray-900 text-base">Added to Shopping Bag</h3>
+              </div>
+              <button onClick={() => setShowAddedModal(false)} className="text-gray-400 hover:text-gray-600 font-bold p-1 text-xl">&times;</button>
+            </div>
+
+            <div className="flex space-x-4 mb-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="w-16 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                <img src={product.image} alt={product.brand} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-sm text-gray-900 truncate">{product.brand}</h4>
+                <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
+                {selectedSize && (
+                  <p className="text-xs text-gray-500 mt-1">Size: <span className="font-bold text-gray-800">{selectedSize}</span></p>
+                )}
+                <p className="text-sm font-bold text-pink-600 mt-1">₹{product.price}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button 
+                onClick={() => {
+                  setShowAddedModal(false);
+                  router.push("/checkout");
+                }}
+                className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-xl hover:bg-pink-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 text-sm cursor-pointer"
+              >
+                <span>PROCEED TO CHECKOUT</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setShowAddedModal(false);
+                  router.push("/bag");
+                }}
+                className="w-full border border-pink-500 text-pink-600 font-bold py-3.5 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center space-x-2 text-sm cursor-pointer bg-white"
+              >
+                <span>GO TO BAG</span>
+              </button>
+              <button 
+                onClick={() => setShowAddedModal(false)}
+                className="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-all text-xs cursor-pointer"
+              >
+                CONTINUE SHOPPING
+              </button>
+            </div>
           </div>
         </div>
       )}

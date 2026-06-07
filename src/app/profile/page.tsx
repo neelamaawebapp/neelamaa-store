@@ -8,7 +8,7 @@ import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle } from "lucid
 import { useEffect } from "react";
 
 export default function ProfilePage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logout();
       router.push("/");
     } catch (err) {
       console.error("Failed to log out", err);

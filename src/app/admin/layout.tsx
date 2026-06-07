@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -43,9 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <a href="/" className="px-4 py-2 hover:bg-white/10 rounded-md text-gray-400 font-medium mt-auto whitespace-nowrap">Exit to Store</a>
           <button 
             onClick={async () => {
-              const { signOut } = await import("firebase/auth");
-              const { auth } = await import("@/lib/firebase");
-              await signOut(auth);
+              await logout();
               router.push("/");
             }} 
             className="px-4 py-2 hover:bg-red-500/20 rounded-md text-red-400 font-medium whitespace-nowrap text-left"

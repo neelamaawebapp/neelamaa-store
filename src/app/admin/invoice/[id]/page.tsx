@@ -28,12 +28,35 @@ export default function InvoicePage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setOrder({ id: docSnap.id, ...docSnap.data() });
+          setLoading(false);
+          return;
         }
       } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        console.error("Firestore invoice fetch failed, falling back to local storage", err);
       }
+
+      // Check localStorage fallback
+      if (typeof window !== "undefined") {
+        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        if (localOrdersStr) {
+          try {
+            const localOrders = JSON.parse(localOrdersStr);
+            const found = localOrders.find((o: any) => o.id === id);
+            if (found) {
+              setOrder({
+                ...found,
+                createdAt: {
+                  toDate: () => new Date(),
+                  toLocaleDateString: () => new Date().toLocaleDateString()
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse local orders in invoice", e);
+          }
+        }
+      }
+      setLoading(false);
     };
     fetchOrder();
   }, [id, isAdmin]);
