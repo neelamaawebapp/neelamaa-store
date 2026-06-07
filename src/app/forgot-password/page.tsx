@@ -33,6 +33,20 @@ export default function ForgotPassword() {
 
     // Real Firebase User Reset Flow
     try {
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      
+      // Query Firestore to verify the user actually exists
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        setError("No account found with this email. Please verify the spelling or sign up.");
+        setLoading(false);
+        return;
+      }
+
       const { sendPasswordResetEmail } = await import("firebase/auth");
       const { auth } = await import("@/lib/firebase");
       await sendPasswordResetEmail(auth, email);
