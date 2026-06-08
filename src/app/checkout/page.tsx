@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Script from "next/script";
 
 export default function CheckoutPage() {
   const { cart, totalAmount, clearCart } = useCart();
@@ -95,7 +96,66 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (payMethod === "Online") {
+    if (payMethod === "COD") {
+      setPlacing(true);
+      await completeOrder("COD", "COD");
+      return;
+    }
+
+    // Pay Online Flow
+    setPlacing(true);
+    try {
+      const res = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: finalAmount }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.order) {
+        // Launch real Razorpay checkout
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: data.order.amount,
+          currency: "INR",
+          name: "Neelamaa Enterprises",
+          description: "Purchase from NeelSutra",
+          order_id: data.order.id,
+          handler: async function (response: any) {
+            await completeOrder("Online", response.razorpay_payment_id);
+          },
+          prefill: {
+            name: name,
+            email: user.email || "",
+            contact: phone,
+          },
+          theme: { color: "#ec4899" },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on("payment.failed", function (response: any) {
+          alert("Payment Failed: " + response.error.description);
+          setPlacing(false);
+        });
+        rzp.open();
+      } else {
+        // Fallback to Simulated Payment Modal if keys are not configured or creation fails
+        console.warn("Razorpay API bypassed/unconfigured, falling back to sandbox simulator.");
+        setPlacing(false);
+        setShowPayModal(true);
+        setPaymentStatus("idle");
+        setOtpSent(false);
+        setCardOtp("");
+        setCardNumber("");
+        setCardName("");
+        setCardExpiry("");
+        setCardCvv("");
+        setUpiId("");
+        setSelectedBank("");
+      }
+    } catch (err) {
+      console.error("Razorpay init error, falling back to simulator", err);
+      setPlacing(false);
       setShowPayModal(true);
       setPaymentStatus("idle");
       setOtpSent(false);
@@ -106,11 +166,7 @@ export default function CheckoutPage() {
       setCardCvv("");
       setUpiId("");
       setSelectedBank("");
-      return;
     }
-
-    setPlacing(true);
-    await completeOrder("COD", "COD");
   };
 
   const completeOrder = async (method: string, paymentId: string) => {
@@ -303,6 +359,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-md mx-auto relative pb-32">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       {/* Header */}
       <div className="bg-white p-4 flex items-center border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <button onClick={() => router.back()} className="mr-4">
