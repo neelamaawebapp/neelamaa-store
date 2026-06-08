@@ -28,9 +28,49 @@ export async function POST(req: Request) {
       `,
     };
 
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "neelsutra1@gmail.com";
+    const adminMailOptions = {
+      from: `"NeelSutra Notifications" <${process.env.EMAIL_USER}>`,
+      to: adminEmail,
+      subject: `New Order Received - #${orderId}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #ec4899; margin-top: 0;">New Order Placed!</h2>
+          <p>Order <strong>#${orderId}</strong> has been successfully placed by a customer.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
+          <h3 style="color: #1e293b; margin-top: 0;">Order Details:</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; width: 130px; color: #475569;">Customer Name:</td>
+              <td style="padding: 6px 0; color: #0f172a;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #475569;">Customer Email:</td>
+              <td style="padding: 6px 0; color: #0f172a;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #475569;">Customer Phone:</td>
+              <td style="padding: 6px 0; color: #0f172a;">${phone || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #475569;">Order Total:</td>
+              <td style="padding: 6px 0; color: #db2777; font-weight: bold; font-size: 16px;">₹${amount}</td>
+            </tr>
+          </table>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
+          <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Log in to the Admin Dashboard to process this order and view the complete invoice details.</p>
+        </div>
+      `,
+    };
+
     // Attempt to send email, but don't crash if credentials aren't set yet
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       await transporter.sendMail(mailOptions);
+      try {
+        await transporter.sendMail(adminMailOptions);
+      } catch (adminMailErr) {
+        console.error("Admin order notification email failed:", adminMailErr);
+      }
     } else {
       console.log("Email skipped: EMAIL_USER or EMAIL_PASS not configured.");
     }
