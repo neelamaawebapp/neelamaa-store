@@ -198,7 +198,7 @@ export default function HeroBanner() {
 
       {/* Editor Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center">
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center">
           <div className="bg-white w-full max-w-md h-[85dvh] sm:h-auto sm:max-h-[85dvh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in-up">
             {/* Modal Header */}
             <div className="bg-gray-900 p-4 flex justify-between items-center sticky top-0 z-10">
