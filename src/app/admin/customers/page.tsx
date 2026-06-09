@@ -38,7 +38,7 @@ export default function AdminCustomers() {
           console.error("Failed to fetch remote orders", e);
         }
 
-        // 3. Load local storage fallback (for mock/demo sessions)
+        // 3. Load local storage fallback
         let localOrders: any[] = [];
         if (typeof window !== "undefined") {
           try {
@@ -54,7 +54,6 @@ export default function AdminCustomers() {
         const allOrders = [...localOrders, ...remoteOrders];
 
         // 4. Synthesize users from orders if they don't exist in the users list
-        // This ensures mock/demo users or guests who placed orders also appear in the customer dashboard
         const mergedUsers = [...remoteUsers];
         
         allOrders.forEach((order: any) => {
@@ -84,14 +83,13 @@ export default function AdminCustomers() {
               u.city = order.address.split(",")[1] || "";
               u.pin = order.address.split(",")[2] || "";
             }
-            // Also ensure name is updated if profile has email but no name or default name
             if ((!u.name || u.name === "Customer" || u.name === u.email?.split("@")[0]) && order.customerName) {
               u.name = order.customerName;
             }
           }
         });
 
-        // Also add the default mock user if they have saved an address locally
+        // Also add mock user
         if (typeof window !== "undefined") {
           const mockAddr = localStorage.getItem("neelsutra_mock_user_address");
           const mockUser = localStorage.getItem("neelsutra_mock_user");
@@ -165,40 +163,40 @@ export default function AdminCustomers() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Customer Directory</h1>
+    <div className="max-w-6xl mx-auto text-slate-100 font-sans">
+      <h1 className="text-2xl font-black text-white mb-8">Customer Directory</h1>
 
       {customers.length === 0 ? (
-        <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500 shadow-sm">
-          No customers registered yet.
+        <div className="bg-slate-900/40 p-12 rounded-2xl border border-slate-900 text-center text-slate-500 shadow-md">
+          No registered customer accounts found.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4.5">
           {customers.map((customer) => {
             const customerOrders = getCustomerOrders(customer.id, customer.email);
             const isExpanded = expandedUser === customer.id;
             
             return (
-              <div key={customer.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all">
-                {/* Customer Info Row */}
+              <div key={customer.id} className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-lg hover:border-slate-800 transition-all">
+                {/* Customer Row */}
                 <div 
                   onClick={() => toggleExpand(customer.id)}
-                  className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-slate-950/20 transition-all"
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-lg">
-                      {customer.name ? customer.name.charAt(0).toUpperCase() : <User size={20} />}
+                    <div className="w-12 h-12 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center justify-center text-pink-400 font-extrabold text-base">
+                      {customer.name ? customer.name.charAt(0).toUpperCase() : <User size={18} />}
                     </div>
                     <div>
-                      <h2 className="text-base font-bold text-gray-900">{customer.name || "Customer"}</h2>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Mail size={14} className="text-gray-400" />
+                      <h2 className="text-sm font-extrabold text-white">{customer.name || "Customer Account"}</h2>
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1 text-xs text-slate-400 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <Mail size={13} className="text-slate-500" />
                           {customer.email}
                         </span>
                         {customer.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone size={14} className="text-gray-400" />
+                          <span className="flex items-center gap-1.5">
+                            <Phone size={13} className="text-slate-500" />
                             {customer.phone}
                           </span>
                         )}
@@ -206,73 +204,73 @@ export default function AdminCustomers() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-full border border-slate-200">
+                  <div className="flex items-center gap-4.5 w-full md:w-auto justify-between md:justify-end">
+                    <span className="bg-slate-950 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-xl border border-slate-850">
                       {customerOrders.length} {customerOrders.length === 1 ? "Order" : "Orders"}
                     </span>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    <button className="text-slate-400 hover:text-slate-200 transition-colors">
+                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
                   </div>
                 </div>
 
-                {/* Expanded Details Panel */}
+                {/* Expanded details */}
                 {isExpanded && (
-                  <div className="border-t border-gray-150 bg-slate-50/50 p-6 space-y-6">
-                    {/* Saved Billing / Delivery Address */}
+                  <div className="border-t border-slate-900/60 bg-slate-950/35 p-6 space-y-6">
+                    {/* Address block */}
                     <div>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <MapPin size={14} /> Saved Address & Contact Details
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
+                        <MapPin size={13} /> Contact Address Info
                       </h3>
                       {customer.address ? (
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm max-w-xl text-sm text-gray-800 space-y-1">
-                          <p className="font-semibold text-gray-900">{customer.name}</p>
+                        <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 shadow-inner max-w-xl text-xs text-slate-300 space-y-1">
+                          <p className="font-extrabold text-slate-100">{customer.name}</p>
                           <p>{customer.address}</p>
-                          {customer.phone && <p className="pt-1"><span className="font-semibold text-gray-700">Phone:</span> {customer.phone}</p>}
+                          {customer.phone && <p className="pt-1.5"><span className="font-bold text-slate-400">Phone:</span> {customer.phone}</p>}
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500 italic">No saved delivery address details for this profile yet.</p>
+                        <p className="text-xs text-slate-500 italic">No saved delivery address details for this profile yet.</p>
                       )}
                     </div>
 
-                    {/* Order History */}
+                    {/* Order history */}
                     <div>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <Package size={14} /> Order History ({customerOrders.length})
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
+                        <Package size={13} /> Order History ({customerOrders.length})
                       </h3>
                       {customerOrders.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">This customer has not placed any orders yet.</p>
+                        <p className="text-xs text-slate-500 italic">This customer profile has no placement history yet.</p>
                       ) : (
                         <div className="space-y-3">
                           {customerOrders.map((order) => (
-                            <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-sm">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono font-bold text-gray-800 uppercase text-xs">ORDER ID: {order.id.slice(-8).toUpperCase()}</span>
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border
-                                    ${order.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-200' : 
-                                      order.status === 'Shipped' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                      order.status === 'Delivered' ? 'bg-green-50 text-green-700 border-green-200' :
-                                      'bg-red-50 text-red-700 border-red-200'}
+                            <div key={order.id} className="bg-slate-950/60 rounded-xl border border-slate-900 p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2.5">
+                                  <span className="font-mono font-bold text-slate-300 uppercase">ORDER ID: {order.id.slice(-8).toUpperCase()}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border
+                                    ${order.status === 'Pending' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 
+                                      order.status === 'Shipped' ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' :
+                                      order.status === 'Delivered' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                      'bg-rose-500/10 text-rose-400 border-rose-500/20'}
                                   `}>
                                     {order.status}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-x-4 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1"><Calendar size={12} /> {formatOrderDate(order.createdAt)}</span>
-                                  <span className="flex items-center gap-1"><Tag size={12} /> {order.paymentMethod || "COD"}</span>
+                                <div className="flex items-center gap-x-4 text-[10px] text-slate-500">
+                                  <span className="flex items-center gap-1"><Calendar size={11} /> {formatOrderDate(order.createdAt)}</span>
+                                  <span className="flex items-center gap-1"><Tag size={11} /> {order.paymentMethod || "COD"}</span>
                                 </div>
                               </div>
 
                               <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto">
                                 <div className="text-left md:text-right">
-                                  <p className="text-xs text-gray-500">Grand Total</p>
-                                  <p className="font-bold text-pink-600 text-base">₹{order.totalAmount}</p>
+                                  <p className="text-[10px] text-slate-500">Grand Total</p>
+                                  <p className="font-bold text-pink-500 text-sm">₹{order.totalAmount}</p>
                                 </div>
                                 <a 
                                   href={`/admin/invoice/${order.id}`} 
                                   target="_blank" 
-                                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold px-3.5 py-1.5 rounded text-xs transition-colors shadow-sm"
+                                  className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white font-bold px-3.5 py-1.5 rounded-lg transition-all shadow-sm"
                                 >
                                   View Invoice
                                 </a>

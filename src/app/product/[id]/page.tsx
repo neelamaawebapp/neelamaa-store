@@ -87,6 +87,13 @@ export default function ProductDetailPage() {
 
   const handleAdd = async () => {
     if (!product) return;
+
+    if (product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0) {
+      setToast("This item is currently out of stock.");
+      setTimeout(() => setToast(""), 3000);
+      return;
+    }
+
     const isFashion = product.category?.toLowerCase() === "fashion";
     if (isFashion && !selectedSize) {
       setToast("Please select a size first!");
@@ -110,6 +117,13 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     if (!product) return;
+
+    if (product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0) {
+      setToast("This item is currently out of stock.");
+      setTimeout(() => setToast(""), 3000);
+      return;
+    }
+
     const isFashion = product.category?.toLowerCase() === "fashion";
     if (isFashion && !selectedSize) {
       setToast("Please select a size first!");
@@ -184,6 +198,24 @@ export default function ProductDetailPage() {
           <span className="text-sm text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
         </div>
         <p className="text-[10px] text-green-700 font-bold tracking-widest uppercase mt-2">inclusive of all taxes</p>
+        
+        {product.quantity !== undefined && product.quantity !== null && (
+          <div className="mt-3.5">
+            {Number(product.quantity) <= 0 ? (
+              <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
+                🚫 Out of Stock
+              </span>
+            ) : Number(product.quantity) <= 5 ? (
+              <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
+                ⚡ Only {product.quantity} left in stock!
+              </span>
+            ) : (
+              <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
+                ✓ In Stock ({product.quantity} units)
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Size Selection */}
@@ -249,20 +281,31 @@ export default function ProductDetailPage() {
         <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-600 bg-slate-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
           <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
         </button>
-        <button 
-          onClick={handleAdd}
-          disabled={adding}
-          className="flex-1 py-3.5 border border-pink-500 text-pink-600 bg-white rounded-md font-bold flex items-center justify-center hover:bg-slate-50 disabled:opacity-70 transition-colors text-sm"
-        >
-          ADD TO BAG
-        </button>
-        <button 
-          onClick={handleBuyNow}
-          disabled={adding}
-          className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center hover:bg-pink-600 disabled:opacity-70 transition-colors text-sm"
-        >
-          {adding ? "PROCESSING..." : "BUY NOW"}
-        </button>
+        {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0 ? (
+          <button 
+            disabled
+            className="flex-1 py-3.5 bg-gray-250 text-gray-400 border border-gray-300 rounded-md font-bold flex items-center justify-center transition-colors text-sm cursor-not-allowed"
+          >
+            OUT OF STOCK
+          </button>
+        ) : (
+          <>
+            <button 
+              onClick={handleAdd}
+              disabled={adding}
+              className="flex-1 py-3.5 border border-pink-500 text-pink-600 bg-white rounded-md font-bold flex items-center justify-center hover:bg-slate-50 disabled:opacity-70 transition-colors text-sm cursor-pointer"
+            >
+              ADD TO BAG
+            </button>
+            <button 
+              onClick={handleBuyNow}
+              disabled={adding}
+              className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center hover:bg-pink-600 disabled:opacity-70 transition-colors text-sm cursor-pointer"
+            >
+              {adding ? "PROCESSING..." : "BUY NOW"}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Size Guide Modal */}

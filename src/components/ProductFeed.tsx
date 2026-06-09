@@ -99,36 +99,49 @@ export default function ProductFeed() {
   }
 
   // Reusable Product Card Component
-  const ProductCard = ({ product, isHorizontal = false }: { product: any, isHorizontal?: boolean }) => (
-    <Link 
-      href={`/product/${product.id}`} 
-      className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none
-        ${isHorizontal ? 'w-44 flex-shrink-0' : 'w-full'}`}
-    >
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
-        <img
-          src={product.image}
-          alt={product.brand}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <button className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-400 hover:text-pink-600 hover:bg-white transition-all z-10" onClick={(e) => { e.preventDefault(); /* Wishlist logic if needed */ }}>
-          <Heart size={16} />
-        </button>
-        <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-800 flex items-center space-x-1">
-          <Star size={10} className="text-yellow-500 fill-yellow-500" />
-          <span>4.5</span>
+  const ProductCard = ({ product, isHorizontal = false }: { product: any, isHorizontal?: boolean }) => {
+    const isOutOfStock = product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0;
+
+    return (
+      <Link 
+        href={`/product/${product.id}`} 
+        className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none
+          ${isHorizontal ? 'w-44 flex-shrink-0' : 'w-full'}`}
+      >
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
+          <img
+            src={product.image}
+            alt={product.brand}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'opacity-40 grayscale' : ''}`}
+          />
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center z-10">
+              <span className="bg-rose-600 text-white text-[9px] font-black px-2.5 py-1.5 rounded-full uppercase tracking-widest shadow-md">
+                Out of Stock
+              </span>
+            </div>
+          )}
+          <button className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-400 hover:text-pink-600 hover:bg-white transition-all z-20" onClick={(e) => { e.preventDefault(); /* Wishlist logic if needed */ }}>
+            <Heart size={16} />
+          </button>
+          {!isOutOfStock && (
+            <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-800 flex items-center space-x-1 z-10">
+              <Star size={10} className="text-yellow-500 fill-yellow-500" />
+              <span>4.5</span>
+            </div>
+          )}
         </div>
-      </div>
-      <div className="p-3">
-        <h3 className="font-bold text-sm text-gray-900 truncate tracking-tight">{product.brand}</h3>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
-        <div className="mt-2 flex items-baseline space-x-2 flex-wrap">
-          <span className="font-extrabold text-[15px] text-pink-600">₹{product.price}</span>
-          <span className="text-[10px] text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
+        <div className="p-3">
+          <h3 className="font-bold text-sm text-gray-900 truncate tracking-tight">{product.brand}</h3>
+          <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
+          <div className="mt-2 flex items-baseline space-x-2 flex-wrap">
+            <span className="font-extrabold text-[15px] text-pink-600">₹{product.price}</span>
+            <span className="text-[10px] text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
+          </div>
         </div>
-      </div>
-    </Link>
-  );
+      </Link>
+    );
+  };
 
   // SEARCH MODE (Grid View)
   if (searchQuery) {

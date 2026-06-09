@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { UploadCloud, Edit2, Trash2, Image as ImageIcon, X, Layers } from "lucide-react";
+import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 
 export default function AdminDashboard() {
@@ -20,11 +20,22 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [brand, setBrand] = useState("");
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
   const [homeSection, setHomeSection] = useState("Standard");
   const [gstRate, setGstRate] = useState("18");
   
+  // Pricing & Stock Fields
+  const [quantity, setQuantity] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [packingCharges, setPackingCharges] = useState("");
+  const [courierCharges, setCourierCharges] = useState("");
+  const [otherExpenses, setOtherExpenses] = useState("");
+  const [profit, setProfit] = useState("");
+  
+  // Search and Filters for product table
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tableFilter, setTableFilter] = useState<"all" | "lowStock" | "incomplete">("all");
+
   // Flash Sale State
   const [flashSaleEnd, setFlashSaleEnd] = useState("");
   const [flashSaleLoading, setFlashSaleLoading] = useState(false);
@@ -42,7 +53,21 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
 
   // BULK UPLOAD STATE
-  const [bulkFiles, setBulkFiles] = useState<{file: File, preview: string, brand: string, title: string, price: string, category: string, homeSection: string, gstRate: string}[]>([]);
+  const [bulkFiles, setBulkFiles] = useState<{
+    file: File;
+    preview: string;
+    brand: string;
+    title: string;
+    quantity: string;
+    purchasePrice: string;
+    packingCharges: string;
+    courierCharges: string;
+    otherExpenses: string;
+    profit: string;
+    category: string;
+    homeSection: string;
+    gstRate: string;
+  }[]>([]);
   const [isDraggingBulk, setIsDraggingBulk] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +102,29 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  // Pricing checking helpers
+  const getMissingPricingFields = (product: any) => {
+    const missing = [];
+    if (product.purchasePrice === undefined || product.purchasePrice === null || product.purchasePrice === "") missing.push("Purchase Price");
+    if (product.packingCharges === undefined || product.packingCharges === null || product.packingCharges === "") missing.push("Packing Cost");
+    if (product.courierCharges === undefined || product.courierCharges === null || product.courierCharges === "") missing.push("Courier Cost");
+    if (product.otherExpenses === undefined || product.otherExpenses === null || product.otherExpenses === "") missing.push("Other Expenses");
+    if (product.profit === undefined || product.profit === null || product.profit === "") missing.push("Profit Margin");
+    return missing;
+  };
+
+  const isPricingIncomplete = (product: any) => {
+    return getMissingPricingFields(product).length > 0;
+  };
+
+  // Form calculated values
+  const calculatedPrice = 
+    Number(purchasePrice || 0) + 
+    Number(packingCharges || 0) + 
+    Number(courierCharges || 0) + 
+    Number(otherExpenses || 0) + 
+    Number(profit || 0);
 
   const saveFlashSaleTimer = async () => {
     if (!flashSaleEnd) return;
@@ -143,8 +191,13 @@ export default function AdminDashboard() {
     setEditingId(null);
     setBrand("");
     setTitle("");
-    setPrice("");
-    setCategory("Fashion");
+    setQuantity("");
+    setPurchasePrice("");
+    setPackingCharges("");
+    setCourierCharges("");
+    setOtherExpenses("");
+    setProfit("");
+    setCategory(STORE_CATEGORIES[0].name);
     setHomeSection("Standard");
     setGstRate("18");
     setImageUrl("");
@@ -154,15 +207,23 @@ export default function AdminDashboard() {
   const handleEditClick = (product: any) => {
     setViewMode("single");
     setEditingId(product.id);
-    setBrand(product.brand);
-    setTitle(product.title);
-    setPrice(product.price.toString());
-    setCategory(product.category);
+    setBrand(product.brand || "");
+    setTitle(product.title || "");
+    setCategory(product.category || STORE_CATEGORIES[0].name);
     setHomeSection(product.homeSection || "Standard");
     setGstRate(product.gstRate?.toString() || "18");
-    setImageUrl(product.image);
+    setImageUrl(product.image || "");
+    
+    // Cost breakdown fields
+    setQuantity(product.quantity !== undefined && product.quantity !== null ? product.quantity.toString() : "");
+    setPurchasePrice(product.purchasePrice !== undefined && product.purchasePrice !== null ? product.purchasePrice.toString() : "");
+    setPackingCharges(product.packingCharges !== undefined && product.packingCharges !== null ? product.packingCharges.toString() : "");
+    setCourierCharges(product.courierCharges !== undefined && product.courierCharges !== null ? product.courierCharges.toString() : "");
+    setOtherExpenses(product.otherExpenses !== undefined && product.otherExpenses !== null ? product.otherExpenses.toString() : "");
+    setProfit(product.profit !== undefined && product.profit !== null ? product.profit.toString() : "");
+    
     clearImageSelection();
-    setImagePreview(product.image);
+    setImagePreview(product.image || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -213,7 +274,13 @@ export default function AdminDashboard() {
       const productData = {
         brand,
         title,
-        price: Number(price),
+        price: calculatedPrice,
+        purchasePrice: purchasePrice !== "" ? Number(purchasePrice) : null,
+        packingCharges: packingCharges !== "" ? Number(packingCharges) : null,
+        courierCharges: courierCharges !== "" ? Number(courierCharges) : null,
+        otherExpenses: otherExpenses !== "" ? Number(otherExpenses) : null,
+        profit: profit !== "" ? Number(profit) : null,
+        quantity: quantity !== "" ? Number(quantity) : 0,
         category,
         homeSection,
         gstRate: Number(gstRate),
@@ -262,7 +329,12 @@ export default function AdminDashboard() {
       preview: URL.createObjectURL(file),
       brand: "",
       title: "",
-      price: "",
+      quantity: "10",
+      purchasePrice: "",
+      packingCharges: "",
+      courierCharges: "",
+      otherExpenses: "",
+      profit: "",
       category: STORE_CATEGORIES[0].name,
       homeSection: "Standard",
       gstRate: "18"
@@ -288,7 +360,7 @@ export default function AdminDashboard() {
 
     try {
       for (const item of bulkFiles) {
-        if (!item.brand || !item.title || !item.price || !item.category) {
+        if (!item.brand || !item.title || !item.purchasePrice || !item.packingCharges || !item.courierCharges || !item.otherExpenses || !item.profit || !item.category) {
           throw new Error("Please fill out all fields for all images before saving.");
         }
       }
@@ -306,10 +378,23 @@ export default function AdminDashboard() {
         
         const finalUrl = data.data.url;
 
+        const calculatedBulkPrice = 
+          Number(item.purchasePrice || 0) + 
+          Number(item.packingCharges || 0) + 
+          Number(item.courierCharges || 0) + 
+          Number(item.otherExpenses || 0) + 
+          Number(item.profit || 0);
+
         await addDoc(collection(db, "products"), {
           brand: item.brand,
           title: item.title,
-          price: Number(item.price),
+          price: calculatedBulkPrice,
+          purchasePrice: Number(item.purchasePrice),
+          packingCharges: Number(item.packingCharges),
+          courierCharges: Number(item.courierCharges),
+          otherExpenses: Number(item.otherExpenses),
+          profit: Number(item.profit),
+          quantity: Number(item.quantity || 0),
           category: item.category,
           homeSection: item.homeSection,
           gstRate: Number(item.gstRate),
@@ -329,61 +414,134 @@ export default function AdminDashboard() {
     }
   };
 
+  // Stats derivations
+  const totalProducts = products.length;
+  const totalStock = products.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+  const incompletePricingCount = products.filter(p => isPricingIncomplete(p)).length;
+  const outOfStockCount = products.filter(p => p.quantity !== undefined && p.quantity !== null && Number(p.quantity) <= 0).length;
+
+  // Filter products for the table
+  const filteredProducts = products.filter((product) => {
+    // Search query matching
+    const matchesSearch = 
+      product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    // Category / status filtering
+    if (tableFilter === "lowStock") {
+      return product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0;
+    }
+    if (tableFilter === "incomplete") {
+      return isPricingIncomplete(product);
+    }
+    return true;
+  });
+
   return (
-    <div className="max-w-6xl mx-auto pb-20">
+    <div className="max-w-7xl mx-auto pb-20 text-slate-100 font-sans">
       
+      {/* Dynamic Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-slate-900/40 backdrop-blur border border-slate-900 p-5 rounded-2xl flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-800 transition-all">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl group-hover:bg-pink-500/10 transition-colors"></div>
+          <div>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Catalog</span>
+            <span className="text-3xl font-extrabold text-white mt-1 block">{totalProducts}</span>
+          </div>
+          <div className="w-11 h-11 bg-pink-500/10 rounded-xl flex items-center justify-center text-pink-500 border border-pink-500/20">
+            <Package size={20} />
+          </div>
+        </div>
+
+        <div className="bg-slate-900/40 backdrop-blur border border-slate-900 p-5 rounded-2xl flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-800 transition-all">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+          <div>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Inventory</span>
+            <span className="text-3xl font-extrabold text-indigo-400 mt-1 block">{totalStock} units</span>
+          </div>
+          <div className="w-11 h-11 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+            <BarChart3 size={20} />
+          </div>
+        </div>
+
+        <div className="bg-slate-900/40 backdrop-blur border border-slate-900 p-5 rounded-2xl flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-800 transition-all">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors"></div>
+          <div>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block font-bold">Incomplete Pricing</span>
+            <span className={`text-3xl font-extrabold mt-1 block ${incompletePricingCount > 0 ? 'text-amber-500 animate-pulse' : 'text-slate-300'}`}>{incompletePricingCount}</span>
+          </div>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${incompletePricingCount > 0 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 'bg-slate-850 text-slate-500 border-slate-800'}`}>
+            <AlertTriangle size={20} />
+          </div>
+        </div>
+
+        <div className="bg-slate-900/40 backdrop-blur border border-slate-900 p-5 rounded-2xl flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-slate-800 transition-all">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-colors"></div>
+          <div>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block font-bold">Out of Stock</span>
+            <span className={`text-3xl font-extrabold mt-1 block ${outOfStockCount > 0 ? 'text-rose-500' : 'text-slate-300'}`}>{outOfStockCount}</span>
+          </div>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${outOfStockCount > 0 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 'bg-slate-850 text-slate-500 border-slate-800'}`}>
+            <Coins size={20} />
+          </div>
+        </div>
+      </div>
+
       {/* Top Toggle Bar */}
       <div className="flex justify-center mb-8">
-        <div className="bg-gray-100 p-1 rounded-lg flex space-x-1 shadow-inner border border-gray-200">
+        <div className="bg-slate-900/60 p-1 rounded-xl flex space-x-1 shadow-inner border border-slate-800">
           <button 
             onClick={() => setViewMode("single")}
-            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${viewMode === "single" ? "bg-white shadow text-pink-600" : "text-gray-500 hover:text-pink-600"}`}
+            className={`px-6 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "single" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
           >
             Inventory & Single Upload
           </button>
           <button 
             onClick={() => { setViewMode("bulk"); resetForm(); }}
-            className={`px-6 py-2 rounded-md text-sm font-bold flex items-center space-x-2 transition-all ${viewMode === "bulk" ? "bg-pink-500 shadow text-white" : "text-gray-500 hover:text-pink-600"}`}
+            className={`px-6 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "bulk" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
           >
-            <Layers size={16} />
+            <Layers size={14} />
             <span>Bulk Upload Mode</span>
           </button>
         </div>
       </div>
 
-      {success && <div className="mb-6 max-w-2xl mx-auto bg-green-50 text-green-700 p-4 rounded-md border border-green-200 text-center font-medium shadow-sm animate-pulse">{success}</div>}
-      {error && <div className="mb-6 max-w-2xl mx-auto bg-red-50 text-red-600 p-4 rounded-md border border-red-200 text-center font-medium shadow-sm">{error}</div>}
+      {success && <div className="mb-6 max-w-2xl mx-auto bg-emerald-500/10 text-emerald-400 p-4 rounded-xl border border-emerald-500/20 text-center font-bold shadow-md shadow-emerald-500/5 animate-pulse">{success}</div>}
+      {error && <div className="mb-6 max-w-2xl mx-auto bg-rose-500/10 text-rose-400 p-4 rounded-xl border border-rose-500/20 text-center font-bold shadow-md shadow-rose-500/5">{error}</div>}
 
       {viewMode === "single" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left Column: Add/Edit Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  {editingId ? "Edit Product" : "Add New Product"}
+          <div className="lg:col-span-4">
+            <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 shadow-xl sticky top-6">
+              <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-3">
+                <h2 className="text-base font-extrabold text-white">
+                  {editingId ? "Edit Store Item" : "Create Store Item"}
                 </h2>
                 {editingId && (
-                  <button onClick={resetForm} className="text-xs text-pink-600 font-bold hover:underline">Cancel Edit</button>
+                  <button onClick={resetForm} className="text-xs text-pink-500 font-bold hover:underline cursor-pointer">Cancel Edit</button>
                 )}
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">BRAND</label>
-                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. LEVIS" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">BRAND</label>
+                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" placeholder="e.g. LEVIS" />
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">TITLE</label>
-                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. Men Slim Fit Jeans" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">TITLE</label>
+                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" placeholder="e.g. Men Slim Fit Jeans" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">HOME SECTION</label>
-                    <select value={homeSection} onChange={(e) => setHomeSection(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">HOME SECTION</label>
+                    <select value={homeSection} onChange={(e) => setHomeSection(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all">
                       <option value="Standard">Standard</option>
                       <option value="Flash Sale">Flash Sale</option>
                       <option value="New Arrivals">New Arrivals</option>
@@ -391,14 +549,14 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">CATEGORY</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CATEGORY</label>
                     <input 
                       type="text" 
                       list="category-options"
                       required 
                       value={category} 
                       onChange={(e) => setCategory(e.target.value)} 
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
                       placeholder="e.g. Fashion"
                     />
                     <datalist id="category-options">
@@ -409,25 +567,119 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹)</label>
-                    <input type="number" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
+                {/* Stock Quantity */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Stock Quantity</label>
+                  <input 
+                    type="number" 
+                    required 
+                    min="0"
+                    value={quantity} 
+                    onChange={(e) => setQuantity(e.target.value)} 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
+                    placeholder="e.g. 50" 
+                  />
+                </div>
+
+                {/* Costs details breakdown */}
+                <div className="bg-slate-950/30 p-4 border border-slate-900 rounded-xl space-y-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pricing Breakdown Details</span>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Purchase Cost (₹)</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={purchasePrice} 
+                        onChange={(e) => setPurchasePrice(e.target.value)} 
+                        className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                          ${purchasePrice === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                        placeholder="0" 
+                      />
+                      {purchasePrice === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Packing Fee (₹)</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={packingCharges} 
+                        onChange={(e) => setPackingCharges(e.target.value)} 
+                        className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                          ${packingCharges === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                        placeholder="0" 
+                      />
+                      {packingCharges === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                    </div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Courier Fee (₹)</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={courierCharges} 
+                        onChange={(e) => setCourierCharges(e.target.value)} 
+                        className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                          ${courierCharges === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                        placeholder="0" 
+                      />
+                      {courierCharges === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Other Expense (₹)</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={otherExpenses} 
+                        onChange={(e) => setOtherExpenses(e.target.value)} 
+                        className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                          ${otherExpenses === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                        placeholder="0" 
+                      />
+                      {otherExpenses === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">GST RATE (%)</label>
-                    <select value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
-                      <option value="0">0% (No GST)</option>
-                      <option value="5">5%</option>
-                      <option value="12">12%</option>
-                      <option value="18">18%</option>
-                      <option value="28">28%</option>
-                    </select>
+                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Expected Profit (₹)</label>
+                    <input 
+                      type="number" 
+                      required
+                      value={profit} 
+                      onChange={(e) => setProfit(e.target.value)} 
+                      className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                        ${profit === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                      placeholder="0" 
+                    />
+                    {profit === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5 pt-2 border-t border-slate-900">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">GST rate (%)</label>
+                      <select value={gstRate} onChange={(e) => setGstRate(e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1.5 text-xs focus:border-pink-500 outline-none text-white">
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
+                    </div>
+                    {/* Live Pricing Calculator Indicator Widget */}
+                    <div className="flex flex-col justify-center text-right bg-[#e11d48]/5 border border-pink-500/20 p-2 rounded-lg">
+                      <span className="text-[8px] font-bold text-pink-500 uppercase block tracking-wider">Selling Price</span>
+                      <span className="text-sm font-extrabold text-white block mt-0.5">₹{calculatedPrice}</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <label className="block text-xs font-bold text-gray-700 mb-2">PRODUCT IMAGE</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">PRODUCT IMAGE</label>
                   
                   {/* Drag & Drop Zone */}
                   {!imagePreview ? (
@@ -436,30 +688,30 @@ export default function AdminDashboard() {
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors
-                        ${isDragging ? 'border-pink-500 bg-slate-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
+                      className={`border border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all duration-300
+                        ${isDragging ? 'border-pink-500 bg-pink-500/5' : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/60'}
                       `}
                     >
-                      <UploadCloud size={32} className={`mb-2 ${isDragging ? 'text-pink-600' : 'text-gray-400'}`} />
-                      <p className="text-xs text-center text-gray-600 font-medium">Click or drag image to upload</p>
+                      <UploadCloud size={28} className={`mb-2 ${isDragging ? 'text-pink-500' : 'text-slate-500'}`} />
+                      <p className="text-[11px] text-center text-slate-400 font-medium">Click or drag image file</p>
                       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                     </div>
                   ) : (
-                    <div className="relative border rounded-lg overflow-hidden h-48 bg-gray-100 flex items-center justify-center group">
+                    <div className="relative border border-slate-800 rounded-xl overflow-hidden h-44 bg-slate-950 flex items-center justify-center group">
                       <img src={imagePreview} alt="Preview" className="h-full object-contain" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button type="button" onClick={clearImageSelection} className="bg-white text-red-500 px-3 py-1.5 rounded-full text-xs font-bold flex items-center space-x-1 hover:bg-red-50">
-                          <Trash2 size={14} />
+                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button type="button" onClick={clearImageSelection} className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 hover:bg-rose-700 transition-all cursor-pointer">
+                          <Trash2 size={12} />
                           <span>REMOVE</span>
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex items-center my-3">
-                    <div className="flex-1 border-t border-gray-200"></div>
-                    <span className="px-3 text-xs text-gray-400 font-bold uppercase">OR PASTE URL</span>
-                    <div className="flex-1 border-t border-gray-200"></div>
+                  <div className="flex items-center my-3.5">
+                    <div className="flex-1 border-t border-slate-900"></div>
+                    <span className="px-3 text-[9px] text-slate-500 font-bold uppercase tracking-wider">OR PASTE URL</span>
+                    <div className="flex-1 border-t border-slate-900"></div>
                   </div>
 
                   <input 
@@ -469,34 +721,34 @@ export default function AdminDashboard() {
                       setImageUrl(e.target.value);
                       if (e.target.value) clearImageSelection();
                     }} 
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
                     placeholder="https://..." 
                   />
                 </div>
 
-                <div className="pt-4">
-                  <button type="submit" disabled={loading} className="w-full bg-pink-500 text-white font-bold py-3 rounded-md hover:bg-pink-600 disabled:opacity-70 transition-colors">
-                    {loading ? "SAVING..." : editingId ? "UPDATE PRODUCT" : "ADD PRODUCT"}
+                <div className="pt-4 border-t border-slate-900">
+                  <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-3 rounded-xl hover:opacity-90 disabled:opacity-75 transition-all shadow-md shadow-pink-500/10 cursor-pointer text-xs uppercase tracking-wider">
+                    {loading ? "SAVING..." : editingId ? "UPDATE ITEM" : "CREATE ITEM"}
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Flash Sale Timer Settings Panel */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Flash Sale Settings</h2>
+            {/* Flash Sale Settings Panel */}
+            <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 mt-6 shadow-xl">
+              <h2 className="text-base font-extrabold text-white mb-4">Flash Sale Settings</h2>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">END TIME</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">END TIME</label>
                 <input 
                   type="datetime-local" 
                   value={flashSaleEnd} 
                   onChange={(e) => setFlashSaleEnd(e.target.value)} 
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none mb-4" 
+                  className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all mb-4" 
                 />
                 <button 
                   onClick={saveFlashSaleTimer} 
                   disabled={flashSaleLoading} 
-                  className="w-full bg-pink-500 text-white font-bold py-2 rounded-md hover:bg-pink-600 disabled:opacity-70 transition-colors"
+                  className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800"
                 >
                   {flashSaleLoading ? "SAVING..." : "SET TIMER"}
                 </button>
@@ -505,55 +757,139 @@ export default function AdminDashboard() {
           </div>
 
           {/* Right Column: Product List */}
-          <div className="lg:col-span-2">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Store Inventory ({products.length})</h2>
+          <div className="lg:col-span-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <h2 className="text-xl font-black text-white">Catalog Inventory ({filteredProducts.length})</h2>
+              
+              {/* Filters toolbar */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Search catalog..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-slate-900/60 border border-slate-800/80 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-pink-500/50 w-44 md:w-56 transition-all"
+                  />
+                </div>
+                
+                {/* Status Filtering tabs */}
+                <div className="bg-slate-900/60 p-0.5 rounded-lg border border-slate-800 flex text-[10px] font-bold uppercase tracking-wider">
+                  <button 
+                    onClick={() => setTableFilter("all")}
+                    className={`px-3 py-1.5 rounded cursor-pointer transition-all ${tableFilter === "all" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    All
+                  </button>
+                  <button 
+                    onClick={() => setTableFilter("incomplete")}
+                    className={`px-3 py-1.5 rounded cursor-pointer transition-all flex items-center gap-1 ${tableFilter === "incomplete" ? "bg-amber-500/20 text-amber-400 border border-amber-500/20" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    Incomplete
+                  </button>
+                  <button 
+                    onClick={() => setTableFilter("lowStock")}
+                    className={`px-3 py-1.5 rounded cursor-pointer transition-all flex items-center gap-1 ${tableFilter === "lowStock" ? "bg-rose-500/20 text-rose-400 border border-rose-500/20" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    Out Of Stock
+                  </button>
+                </div>
+              </div>
+            </div>
             
             {fetching ? (
-              <div className="flex justify-center items-center py-20">
+              <div className="flex justify-center items-center py-24 bg-slate-900/20 border border-slate-900 rounded-2xl">
                 <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ) : products.length === 0 ? (
-              <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">
-                No products in inventory yet.
+            ) : filteredProducts.length === 0 ? (
+              <div className="bg-slate-900/20 p-12 rounded-2xl border border-slate-900 text-center text-slate-500">
+                No items found matching the selected filters.
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-600 font-bold">
-                      <tr>
-                        <th className="px-4 py-3">Product</th>
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3">Price</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                        <th className="px-5 py-4">Item Details</th>
+                        <th className="px-5 py-4">Category</th>
+                        <th className="px-5 py-4">Quantity (Stock)</th>
+                        <th className="px-5 py-4">Pricing Breakdown</th>
+                        <th className="px-5 py-4">Selling Price</th>
+                        <th className="px-5 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {products.map((product) => (
-                        <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center space-x-3">
-                              <img src={product.image} alt={product.brand} className="w-10 h-12 object-cover rounded bg-gray-100" />
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-gray-900 truncate w-32 sm:w-48">{product.brand}</span>
-                                <span className="text-xs text-gray-500 truncate w-32 sm:w-48">{product.title}</span>
+                    <tbody className="divide-y divide-slate-900/50">
+                      {filteredProducts.map((product) => {
+                        const missingPricingFields = getMissingPricingFields(product);
+                        const isPricingIncompleteStatus = missingPricingFields.length > 0;
+                        const stockQuantity = Number(product.quantity || 0);
+
+                        return (
+                          <tr key={product.id} className="hover:bg-slate-900/30 transition-all group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center space-x-3.5">
+                                <img src={product.image} alt={product.brand} className="w-9 h-11 object-cover rounded bg-slate-950 border border-slate-900 group-hover:border-slate-800 transition-all flex-shrink-0" />
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-extrabold text-slate-100 truncate w-32 sm:w-44">{product.brand}</span>
+                                  <span className="text-[10px] text-slate-400 truncate w-32 sm:w-44 mt-0.5">{product.title}</span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">{product.category}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900">₹{product.price}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex justify-end space-x-2">
-                              <button onClick={() => handleEditClick(product)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit">
-                                <Edit2 size={16} />
-                              </button>
-                              <button onClick={() => handleDelete(product.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-5 py-4 text-slate-400 font-medium">{product.category}</td>
+                            <td className="px-5 py-4">
+                              {stockQuantity <= 0 ? (
+                                <span className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                                  Out of Stock
+                                </span>
+                              ) : stockQuantity <= 5 ? (
+                                <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-1 rounded-full">
+                                  {stockQuantity} Low Stock
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                  {stockQuantity} available
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4">
+                              {isPricingIncompleteStatus ? (
+                                <div className="flex flex-col gap-1">
+                                  <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full w-max flex items-center gap-1 uppercase tracking-wide animate-pulse">
+                                    <AlertTriangle size={10} />
+                                    Incomplete Costs
+                                  </span>
+                                  <span className="text-[9px] text-slate-500 font-medium">
+                                    Missing: {missingPricingFields.join(", ")}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-slate-400 font-medium space-y-0.5">
+                                  <div className="flex items-center gap-1.5 text-emerald-400 text-[9px] font-bold uppercase">
+                                    <CheckCircle2 size={10} /> Complete Cost Setup
+                                  </div>
+                                  <div className="text-[9px] text-slate-500">
+                                    Buy: ₹{product.purchasePrice} | Expenses: ₹{Number(product.packingCharges || 0) + Number(product.courierCharges || 0) + Number(product.otherExpenses || 0)} | Profit: ₹{product.profit}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 font-black text-white text-sm">₹{product.price}</td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex justify-end space-x-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleEditClick(product)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-pink-500 rounded-lg transition-all cursor-pointer" title="Edit Item">
+                                  <Edit2 size={13} />
+                                </button>
+                                <button onClick={() => handleDelete(product.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer" title="Delete Item">
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -571,13 +907,13 @@ export default function AdminDashboard() {
             onDragLeave={(e) => { e.preventDefault(); setIsDraggingBulk(false); }}
             onDrop={handleBulkDrop}
             onClick={() => bulkFileInputRef.current?.click()}
-            className={`border-4 border-dashed rounded-2xl p-16 flex flex-col items-center justify-center cursor-pointer transition-all mb-8
-              ${isDraggingBulk ? 'border-pink-500 bg-slate-100 scale-[1.02]' : 'border-gray-300 bg-white hover:border-slate-400 hover:bg-gray-50'}
+            className={`border-2 border-dashed rounded-2xl p-14 flex flex-col items-center justify-center cursor-pointer transition-all mb-8
+              ${isDraggingBulk ? 'border-pink-500 bg-pink-500/5 scale-[1.01]' : 'border-slate-800 bg-slate-900/20 hover:border-slate-700 hover:bg-slate-900/40'}
             `}
           >
-            <UploadCloud size={64} className={`mb-4 ${isDraggingBulk ? 'text-pink-600' : 'text-gray-400'}`} />
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">Drop multiple images here</h3>
-            <p className="text-gray-500 font-medium">Or click to select files from your computer</p>
+            <UploadCloud size={52} className={`mb-3 ${isDraggingBulk ? 'text-pink-500' : 'text-slate-500'}`} />
+            <h3 className="text-lg font-extrabold text-white mb-1">Drop multiple images here</h3>
+            <p className="text-slate-400 text-xs font-semibold">Or click to select files from your computer</p>
             <input type="file" ref={bulkFileInputRef} onChange={handleBulkFileChange} accept="image/*" multiple className="hidden" />
           </div>
 
@@ -585,84 +921,134 @@ export default function AdminDashboard() {
           {bulkFiles.length > 0 && (
             <div className="space-y-6 mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Pending Uploads ({bulkFiles.length})</h3>
-                <button onClick={() => setBulkFiles([])} className="text-sm font-bold text-red-500 hover:text-red-700">Clear All</button>
+                <h3 className="text-base font-extrabold text-white">Pending Upload Items ({bulkFiles.length})</h3>
+                <button onClick={() => setBulkFiles([])} className="text-xs font-bold text-rose-500 hover:text-rose-400 cursor-pointer">Clear All</button>
               </div>
               
-              {bulkFiles.map((item, index) => (
-                <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-6 relative">
-                  <button onClick={() => removeBulkItem(index)} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 rounded-full shadow hover:bg-red-600 transition-colors z-10">
-                    <X size={16} />
-                  </button>
-                  
-                  {/* Image Preview */}
-                  <div className="w-full sm:w-48 h-48 sm:h-auto bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    <img src={item.preview} alt={`Upload ${index}`} className="w-full h-full object-contain" />
+              {bulkFiles.map((item, index) => {
+                const calculatedBulkPrice = 
+                  Number(item.purchasePrice || 0) + 
+                  Number(item.packingCharges || 0) + 
+                  Number(item.courierCharges || 0) + 
+                  Number(item.otherExpenses || 0) + 
+                  Number(item.profit || 0);
+
+                return (
+                  <div key={index} className="bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col sm:flex-row gap-6 relative">
+                    <button onClick={() => removeBulkItem(index)} className="absolute -top-2.5 -right-2.5 bg-rose-600 text-white p-1 rounded-full shadow hover:bg-rose-700 transition-colors z-10 cursor-pointer">
+                      <X size={14} />
+                    </button>
+                    
+                    {/* Image Preview */}
+                    <div className="w-full sm:w-40 h-40 sm:h-auto bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-850">
+                      <img src={item.preview} alt={`Upload ${index}`} className="w-full h-full object-contain" />
+                    </div>
+                    
+                    {/* Form Fields */}
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">BRAND *</label>
+                        <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. LEVIS" />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">TITLE *</label>
+                        <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. Slim Fit Jeans" />
+                      </div>
+                      
+                      {/* Quantity */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Quantity *</label>
+                        <input type="number" required min="0" value={item.quantity} onChange={(e) => updateBulkItem(index, "quantity", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="10" />
+                      </div>
+
+                      {/* Purchase Cost */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Purchase Cost (₹) *</label>
+                        <input type="number" required value={item.purchasePrice} onChange={(e) => updateBulkItem(index, "purchasePrice", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      {/* Packing Cost */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Packing charges (₹) *</label>
+                        <input type="number" required value={item.packingCharges} onChange={(e) => updateBulkItem(index, "packingCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      {/* Courier Cost */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Courier charges (₹) *</label>
+                        <input type="number" required value={item.courierCharges} onChange={(e) => updateBulkItem(index, "courierCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      {/* Other expenses */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Other expenses (₹) *</label>
+                        <input type="number" required value={item.otherExpenses} onChange={(e) => updateBulkItem(index, "otherExpenses", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      {/* Profit */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Profit margin (₹) *</label>
+                        <input type="number" required value={item.profit} onChange={(e) => updateBulkItem(index, "profit", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">HOME SECTION</label>
+                        <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                          <option value="Standard">Standard</option>
+                          <option value="Flash Sale">Flash Sale</option>
+                          <option value="New Arrivals">New Arrivals</option>
+                          <option value="Trending">Trending</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">GST RATE (%)</label>
+                        <select value={item.gstRate} onChange={(e) => updateBulkItem(index, "gstRate", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="12">12%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">CATEGORY *</label>
+                        <input 
+                          type="text" 
+                          list={`bulk-category-${index}`}
+                          required 
+                          value={item.category} 
+                          onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" 
+                          placeholder="e.g. Fashion"
+                        />
+                        <datalist id={`bulk-category-${index}`}>
+                          {availableCategories.map(c => (
+                            <option key={c} value={c} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      {/* Display calculated price for bulk item */}
+                      <div className="flex flex-col justify-center text-right bg-pink-500/5 border border-pink-500/10 p-2.5 rounded-xl">
+                        <span className="text-[8px] font-bold text-pink-500 uppercase tracking-wider block">Calculated Price</span>
+                        <span className="text-sm font-black text-white block mt-0.5">₹{calculatedBulkPrice}</span>
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Form Fields */}
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">BRAND *</label>
-                      <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. LEVIS" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">TITLE *</label>
-                      <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="e.g. Slim Fit Jeans" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">PRICE (₹) *</label>
-                      <input type="number" required value={item.price} onChange={(e) => updateBulkItem(index, "price", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" placeholder="999" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">HOME SECTION</label>
-                      <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
-                        <option value="Standard">Standard</option>
-                        <option value="Flash Sale">Flash Sale</option>
-                        <option value="New Arrivals">New Arrivals</option>
-                        <option value="Trending">Trending</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">GST RATE (%)</label>
-                      <select value={item.gstRate} onChange={(e) => updateBulkItem(index, "gstRate", e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none">
-                        <option value="0">0%</option>
-                        <option value="5">5%</option>
-                        <option value="12">12%</option>
-                        <option value="18">18%</option>
-                        <option value="28">28%</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 mb-1">CATEGORY *</label>
-                      <input 
-                        type="text" 
-                        list={`bulk-category-${index}`}
-                        required 
-                        value={item.category} 
-                        onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none" 
-                        placeholder="e.g. Fashion"
-                      />
-                      <datalist id={`bulk-category-${index}`}>
-                        {availableCategories.map(c => (
-                          <option key={c} value={c} />
-                        ))}
-                      </datalist>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               <div className="pt-4 sticky bottom-6 z-20">
                 <button 
                   onClick={submitBulk} 
                   disabled={loading} 
-                  className="w-full bg-pink-500 text-white font-bold py-4 rounded-xl shadow-xl hover:bg-pink-600 disabled:opacity-70 transition-colors text-lg flex items-center justify-center space-x-2"
+                  className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-4 rounded-xl shadow-xl hover:opacity-95 disabled:opacity-75 transition-all text-xs uppercase tracking-wider flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   {loading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>UPLOADING IMAGES & SAVING...</span>
                     </>
                   ) : (
