@@ -164,7 +164,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white w-full max-w-md mx-auto relative pb-28">
+    <div className="min-h-screen bg-white w-full max-w-md mx-auto relative pb-36">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10">
         <button onClick={() => router.back()} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
@@ -325,7 +325,10 @@ export default function ProductDetailPage() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+      <div 
+        className="fixed w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
+        style={{ bottom: "calc(70px + env(safe-area-inset-bottom, 0px))" }}
+      >
         <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-600 bg-slate-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
           <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
         </button>
