@@ -21,6 +21,7 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState("");
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const sizes = ["S", "M", "L", "XL", "XXL"];
 
   // Check local wishlist on load
@@ -179,13 +180,60 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Product Image */}
-      <div className="w-full aspect-[3/4] bg-gray-100 relative">
-        <img
-          src={product.image}
-          alt={product.brand}
-          className="w-full h-full object-cover"
-        />
+      {/* Product Image / Carousel */}
+      <div className="relative bg-gray-150">
+        <div className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden">
+          <img
+            src={product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image}
+            alt={product.brand}
+            className="w-full h-full object-cover transition-all duration-305"
+          />
+          
+          {/* Navigation Arrows for Carousel */}
+          {product.images && product.images.length > 1 && (
+            <>
+              <button 
+                onClick={() => setActiveImageIdx(prev => (prev - 1 + product.images.length) % product.images.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
+              >
+                &lsaquo;
+              </button>
+              <button 
+                onClick={() => setActiveImageIdx(prev => (prev + 1) % product.images.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
+              >
+                &rsaquo;
+              </button>
+              
+              {/* Pagination Dots */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
+                {product.images.map((_: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIdx(idx)}
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeImageIdx === idx ? 'bg-pink-600 w-3' : 'bg-gray-300/80'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Thumbnail strip */}
+        {product.images && product.images.length > 1 && (
+          <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 overflow-x-auto hide-scrollbar">
+            {product.images.map((imgUrl: string, idx: number) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImageIdx(idx)}
+                className={`w-10 h-14 rounded-md overflow-hidden bg-gray-100 border-2 transition-all flex-shrink-0 cursor-pointer
+                  ${activeImageIdx === idx ? 'border-pink-500 scale-95 shadow-sm' : 'border-transparent'}`}
+              >
+                <img src={imgUrl} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Product Info */}

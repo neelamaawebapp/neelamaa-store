@@ -40,10 +40,14 @@ export default function AdminDashboard() {
   const [flashSaleEnd, setFlashSaleEnd] = useState("");
   const [flashSaleLoading, setFlashSaleLoading] = useState(false);
   
-  // Image Upload State
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  // Product Images States (Multiple)
+  const [productImages, setProductImages] = useState<{
+    id: string;
+    file: File | null;
+    url: string;
+    preview: string;
+  }[]>([]);
+  const [pastedUrl, setPastedUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,37 +158,50 @@ export default function AdminDashboard() {
     setIsDragging(false);
   };
 
+  const handleMultipleFileSelection = (files: File[]) => {
+    const newItems = files.map(file => ({
+      id: `img_${Date.now()}_${Math.random()}`,
+      file,
+      url: "",
+      preview: URL.createObjectURL(file)
+    }));
+    setProductImages(prev => [...prev, ...newItems]);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      handleFileSelection(file);
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = files.filter(f => f.type.startsWith("image/"));
+    if (validFiles.length > 0) {
+      handleMultipleFileSelection(validFiles);
     } else {
-      setError("Please drop a valid image file.");
+      setError("Please drop valid image files.");
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelection(e.target.files[0]);
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const validFiles = files.filter(f => f.type.startsWith("image/"));
+      handleMultipleFileSelection(validFiles);
     }
   };
 
-  const handleFileSelection = (file: File) => {
-    setImageFile(file);
-    setImageUrl(""); // Clear manual URL if file selected
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+  const removeProductImage = (idToRemove: string) => {
+    setProductImages(prev => prev.filter(img => img.id !== idToRemove));
   };
 
-  const clearImageSelection = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const addPastedUrl = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!pastedUrl.trim()) return;
+    setProductImages(prev => [...prev, {
+      id: `img_${Date.now()}_${Math.random()}`,
+      file: null,
+      url: pastedUrl.trim(),
+      preview: pastedUrl.trim()
+    }]);
+    setPastedUrl("");
   };
 
   const resetForm = () => {
@@ -200,8 +217,8 @@ export default function AdminDashboard() {
     setCategory(STORE_CATEGORIES[0].name);
     setHomeSection("Standard");
     setGstRate("18");
-    setImageUrl("");
-    clearImageSelection();
+    setProductImages([]);
+    setPastedUrl("");
   };
 
   const handleEditClick = (product: any) => {
@@ -212,8 +229,27 @@ export default function AdminDashboard() {
     setCategory(product.category || STORE_CATEGORIES[0].name);
     setHomeSection(product.homeSection || "Standard");
     setGstRate(product.gstRate?.toString() || "18");
-    setImageUrl(product.image || "");
     
+    // Set photos list (support images array fallback to single image string)
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      setProductImages(product.images.map((url, index) => ({
+        id: `img_${Date.now()}_${index}_${Math.random()}`,
+        file: null,
+        url,
+        preview: url
+      })));
+    } else if (product.image) {
+      setProductImages([{
+        id: `img_${Date.now()}_0_${Math.random()}`,
+        file: null,
+        url: product.image,
+        preview: product.image
+      }]);
+    } else {
+      setProductImages([]);
+    }
+    setPastedUrl("");
+
     // Cost breakdown fields
     setQuantity(product.quantity !== undefined && product.quantity !== null ? product.quantity.toString() : "");
     setPurchasePrice(product.purchasePrice !== undefined && product.purchasePrice !== null ? product.purchasePrice.toString() : "");
@@ -222,8 +258,6 @@ export default function AdminDashboard() {
     setOtherExpenses(product.otherExpenses !== undefined && product.otherExpenses !== null ? product.otherExpenses.toString() : "");
     setProfit(product.profit !== undefined && product.profit !== null ? product.profit.toString() : "");
     
-    clearImageSelection();
-    setImagePreview(product.image || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -245,31 +279,38 @@ export default function AdminDashboard() {
     setError("");
 
     try {
-      if (!imageUrl && !imageFile && !imagePreview) {
-        throw new Error("Please provide an image URL or upload an image file.");
+      if (productImages.length === 0) {
+        throw new Error("Please add at least one product photo.");
       }
 
-      let finalImageUrl = imageUrl;
-
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
-        
-        const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
-          method: "POST",
-          body: formData
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-          finalImageUrl = data.data.url;
-        } else {
-          throw new Error(data.error?.message || "Failed to upload image.");
+      // Upload all queued image files sequentially
+      const uploadedUrls: string[] = [];
+      for (const img of productImages) {
+        if (img.file) {
+          const formData = new FormData();
+          formData.append("image", img.file);
+          
+          const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+            method: "POST",
+            body: formData
+          });
+          
+          const data = await res.json();
+          if (data.success) {
+            uploadedUrls.push(data.data.url);
+          } else {
+            throw new Error(data.error?.message || "Failed to upload one of the images.");
+          }
+        } else if (img.url) {
+          uploadedUrls.push(img.url);
         }
-      } else if (!finalImageUrl && imagePreview) {
-        finalImageUrl = imagePreview; 
       }
+
+      if (uploadedUrls.length === 0) {
+        throw new Error("Failed to resolve product photos.");
+      }
+
+      const primaryImage = uploadedUrls[0];
 
       const productData = {
         brand,
@@ -284,7 +325,8 @@ export default function AdminDashboard() {
         category,
         homeSection,
         gstRate: Number(gstRate),
-        image: finalImageUrl,
+        image: primaryImage, // For backwards compatibility
+        images: uploadedUrls, // The full array of angles!
       };
 
       if (editingId) {
@@ -528,6 +570,67 @@ export default function AdminDashboard() {
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Product Photos Section at the Top */}
+                <div className="border-b border-slate-900 pb-5">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Product Photos (Multiple Angles)</label>
+                  
+                  {/* Previews Grid */}
+                  {productImages.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {productImages.map((img, idx) => (
+                        <div key={img.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center group">
+                          <img src={img.preview} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => removeProductImage(img.id)}
+                            className="absolute -top-1 -right-1 bg-rose-650 text-white p-0.5 rounded-full hover:bg-rose-700 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                          >
+                            <X size={10} />
+                          </button>
+                          {idx === 0 && (
+                            <span className="absolute bottom-1 left-1 bg-pink-650 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Drag & Drop Zone */}
+                  <div 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3
+                      ${isDragging ? 'border-pink-500 bg-pink-500/5' : 'border-slate-850 bg-slate-950/40 hover:bg-slate-950/60'}
+                    `}
+                  >
+                    <UploadCloud size={24} className={`mb-1 ${isDragging ? 'text-pink-500' : 'text-slate-500'}`} />
+                    <p className="text-[10px] text-center text-slate-400 font-medium">Click or drag images to add photo angles</p>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
+                  </div>
+
+                  {/* Paste URL */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={pastedUrl} 
+                      onChange={(e) => setPastedUrl(e.target.value)} 
+                      className="flex-1 bg-slate-950/60 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 transition-all placeholder-slate-700" 
+                      placeholder="Or paste photo URL..." 
+                    />
+                    <button 
+                      type="button"
+                      onClick={addPastedUrl}
+                      className="bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-350 hover:text-white transition-all cursor-pointer flex-shrink-0"
+                    >
+                      Add URL
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">BRAND</label>
                   <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" placeholder="e.g. LEVIS" />
@@ -676,54 +779,6 @@ export default function AdminDashboard() {
                       <span className="text-sm font-extrabold text-white block mt-0.5">₹{calculatedPrice}</span>
                     </div>
                   </div>
-                </div>
-
-                <div className="pt-2">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">PRODUCT IMAGE</label>
-                  
-                  {/* Drag & Drop Zone */}
-                  {!imagePreview ? (
-                    <div 
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`border border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all duration-300
-                        ${isDragging ? 'border-pink-500 bg-pink-500/5' : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/60'}
-                      `}
-                    >
-                      <UploadCloud size={28} className={`mb-2 ${isDragging ? 'text-pink-500' : 'text-slate-500'}`} />
-                      <p className="text-[11px] text-center text-slate-400 font-medium">Click or drag image file</p>
-                      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                    </div>
-                  ) : (
-                    <div className="relative border border-slate-800 rounded-xl overflow-hidden h-44 bg-slate-950 flex items-center justify-center group">
-                      <img src={imagePreview} alt="Preview" className="h-full object-contain" />
-                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button type="button" onClick={clearImageSelection} className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 hover:bg-rose-700 transition-all cursor-pointer">
-                          <Trash2 size={12} />
-                          <span>REMOVE</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center my-3.5">
-                    <div className="flex-1 border-t border-slate-900"></div>
-                    <span className="px-3 text-[9px] text-slate-500 font-bold uppercase tracking-wider">OR PASTE URL</span>
-                    <div className="flex-1 border-t border-slate-900"></div>
-                  </div>
-
-                  <input 
-                    type="text" 
-                    value={imageUrl} 
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      if (e.target.value) clearImageSelection();
-                    }} 
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
-                    placeholder="https://..." 
-                  />
                 </div>
 
                 <div className="pt-4 border-t border-slate-900">
