@@ -34,12 +34,16 @@ export default function WhatsAppButton() {
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
   };
 
+  const isProductPage = pathname?.startsWith("/product/");
+  const isCartOrCheckout = pathname === "/bag" || pathname === "/checkout";
+
   return (
     <a
       href={getWhatsAppLink()}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-20 right-4 z-50 bg-[#25D366] text-white p-3.5 rounded-full shadow-lg shadow-green-500/30 hover:bg-green-600 hover:scale-110 transition-all duration-300 flex items-center justify-center"
+      className={`fixed right-4 z-50 bg-[#25D366] text-white p-3.5 rounded-full shadow-lg shadow-green-500/30 hover:bg-green-600 hover:scale-110 transition-all duration-300 flex items-center justify-center
+        ${isProductPage ? 'bottom-36' : isCartOrCheckout ? 'bottom-24' : 'bottom-20'}`}
       style={{
         // On desktop, keep it bound near the max-w-md container
         transform: "translateX(calc(min(0px, 50vw - 224px - 16px)))"
