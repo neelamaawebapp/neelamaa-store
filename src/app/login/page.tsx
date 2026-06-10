@@ -2,14 +2,15 @@
 
 import { useState, Suspense } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
 function LoginContent() {
-  const [email, setEmail] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,13 +25,31 @@ function LoginContent() {
     setLoading(true);
     setError("");
 
+    const input = emailOrPhone.trim();
+    const isPhone = /^\d{10}$/.test(input);
+
     try {
-      await signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
+      let loginEmail = input;
+
+      if (isPhone) {
+        // Query Firestore to find the email associated with this phone number
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("phone", "==", input));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error("No account found with this mobile number.");
+        }
+        
+        loginEmail = querySnapshot.docs[0].data().email;
+      }
+
+      await signInWithEmailAndPassword(auth, loginEmail.toLowerCase().trim(), password);
       router.push(redirect);
     } catch (err: any) {
       let errorMessage = "Failed to log in";
       if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
-        errorMessage = "Invalid email or password.";
+        errorMessage = "Invalid credentials.";
       } else if (err.code === "auth/invalid-email") {
         errorMessage = "Invalid email format.";
       } else if (err.message) {
@@ -71,13 +90,13 @@ function LoginContent() {
             )}
             
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Email</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Email or Mobile Number</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
                 className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900"
-                placeholder="you@example.com"
+                placeholder="you@example.com or 10-digit mobile"
                 required
               />
             </div>

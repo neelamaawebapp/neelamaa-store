@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -40,6 +40,14 @@ function SignupContent() {
       }
       if (phone.length < 10) {
         throw new Error("Please enter a valid 10-digit mobile number.");
+      }
+
+      // Check if mobile number is already registered in Firestore
+      const usersRef = collection(db, "users");
+      const qPhone = query(usersRef, where("phone", "==", phone.trim()));
+      const phoneSnapshot = await getDocs(qPhone);
+      if (!phoneSnapshot.empty) {
+        throw new Error("This mobile number is already in use by another account.");
       }
 
       // 1. Create Auth User
