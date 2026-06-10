@@ -45,13 +45,16 @@ export async function POST(req: Request) {
 
     const resetLink = `${origin}/reset-password?oobCode=${oobCode}&email=${encodeURIComponent(email)}`;
 
-    // Prepare Nodemailer transport
+    // Prepare Nodemailer transport with timeouts to prevent hangs
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      connectionTimeout: 3000, // 3 seconds timeout
+      greetingTimeout: 3000,
+      socketTimeout: 3000,
     });
 
     const mailOptions = {
@@ -89,8 +92,13 @@ export async function POST(req: Request) {
 
     let emailSent = false;
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      await transporter.sendMail(mailOptions);
-      emailSent = true;
+      try {
+        await transporter.sendMail(mailOptions);
+        emailSent = true;
+      } catch (mailErr) {
+        console.error("Nodemailer sendMail failed for password reset link:", mailErr);
+        emailSent = false;
+      }
     } else {
       console.warn("SMTP credentials (EMAIL_USER/EMAIL_PASS) not configured. Email sending skipped.");
       console.log(`DEMO PASSWORD RESET LINK: ${resetLink}`);

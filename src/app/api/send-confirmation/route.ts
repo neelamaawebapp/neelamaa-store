@@ -12,6 +12,9 @@ export async function POST(req: Request) {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS, // "App Password" from Google Account
       },
+      connectionTimeout: 3000, // 3 seconds timeout
+      greetingTimeout: 3000,
+      socketTimeout: 3000,
     });
 
     const mailOptions = {
@@ -63,13 +66,17 @@ export async function POST(req: Request) {
       `,
     };
 
-    // Attempt to send email, but don't crash if credentials aren't set yet
+    // Attempt to send email, but don't crash if credentials aren't set yet or fail to connect
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      await transporter.sendMail(mailOptions);
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (mailErr) {
+        console.error("Customer order confirmation email failed to send:", mailErr);
+      }
       try {
         await transporter.sendMail(adminMailOptions);
       } catch (adminMailErr) {
-        console.error("Admin order notification email failed:", adminMailErr);
+        console.error("Admin order notification email failed to send:", adminMailErr);
       }
     } else {
       console.log("Email skipped: EMAIL_USER or EMAIL_PASS not configured.");
