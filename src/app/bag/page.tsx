@@ -2,6 +2,7 @@
 
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck } from "lucide-react";
 
 export default function BagPage() {
@@ -43,12 +44,17 @@ export default function BagPage() {
           {/* Cart Items */}
           {cart.map((item) => (
             <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex space-x-4 relative">
-              <div className="w-24 h-32 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+              <Link 
+                href={`/product/${item.productId}`}
+                className="w-24 h-32 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity"
+              >
                 <img src={item.image} alt={item.brand} className="w-full h-full object-cover" />
-              </div>
+              </Link>
               <div className="flex-1 flex flex-col pt-1">
-                <h3 className="font-bold text-sm text-gray-900">{item.brand}</h3>
-                <p className="text-xs text-gray-500 truncate mb-1">{item.title}</p>
+                <Link href={`/product/${item.productId}`} className="group cursor-pointer block">
+                  <h3 className="font-bold text-sm text-gray-900 group-hover:text-pink-600 transition-colors">{item.brand}</h3>
+                  <p className="text-xs text-gray-500 truncate mb-1 group-hover:text-pink-500 transition-colors">{item.title}</p>
+                </Link>
                 {item.size && (
                   <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>
                 )}

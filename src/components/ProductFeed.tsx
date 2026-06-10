@@ -7,6 +7,33 @@ import { Heart, SlidersHorizontal, ChevronRight, Zap, Star } from "lucide-react"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+// Seeded pseudo-random number generator (Mulberry32 or similar)
+function seededRandom(seedStr: string) {
+  let h = 1779033703 ^ seedStr.length;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function() {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+// Seeded shuffle algorithm (Fisher-Yates with seeded random)
+function seededShuffle<T>(array: T[], seed: string): T[] {
+  const rand = seededRandom(seed);
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const temp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = temp;
+  }
+  return shuffled;
+}
+
 export default function ProductFeed() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,11 +242,30 @@ export default function ProductFeed() {
   }
 
   // HOME MODE (Dynamic Dashboard)
-  // Partition products, but make sure EVERY product shows up somewhere even if it has no homeSection
+  // Partition products, keeping Flash Sale and New Arrivals fixed
   const flashDeals = products.filter(p => p.homeSection === "Flash Sale");
   const newArrivals = products.filter(p => p.homeSection === "New Arrivals");
-  const trending = products.filter(p => p.homeSection === "Trending");
-  const allOtherProducts = products.filter(p => p.homeSection !== "Flash Sale" && p.homeSection !== "New Arrivals" && p.homeSection !== "Trending");
+  
+  // Dynamic daily shuffle for Trending and More to Explore
+  // Get date seed (YYYY-MM-DD local date format)
+  const today = new Date();
+  const dateSeed = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  
+  // All products not in Flash Sale or New Arrivals are candidates for Trending and More to Explore
+  const candidates = products.filter(p => p.homeSection !== "Flash Sale" && p.homeSection !== "New Arrivals");
+  
+  // Deterministically shuffle candidates based on today's seed
+  const shuffledCandidates = seededShuffle(candidates, dateSeed);
+  
+  // We want to dynamically select Trending and More to Explore every day.
+  // We'll show up to 6 trending items, and the rest will go to "More to Explore".
+  let trendingLimit = 0;
+  if (shuffledCandidates.length > 0) {
+    trendingLimit = Math.max(1, Math.min(6, Math.floor(shuffledCandidates.length / 2)));
+  }
+  
+  const trending = shuffledCandidates.slice(0, trendingLimit);
+  const allOtherProducts = shuffledCandidates.slice(trendingLimit);
 
   return (
     <div className="bg-gray-50 pb-24 space-y-2">
