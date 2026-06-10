@@ -34,11 +34,16 @@ export default function ForgotPassword() {
       });
       const data = await res.json();
       
+      if (data.otp) {
+        setSandboxOtp(data.otp);
+      } else {
+        setSandboxOtp("");
+      }
+      
       if (!res.ok) {
         throw new Error(data.error || "Failed to send OTP.");
       }
 
-      setSandboxOtp(data.otp);
       if (resetMethod === "email" && data.emailSent) {
         setMessage("A 6-digit OTP code has been successfully sent to your email inbox.");
       } else if (resetMethod === "email") {

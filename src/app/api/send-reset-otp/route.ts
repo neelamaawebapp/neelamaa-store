@@ -204,11 +204,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const demoMode = method === "mobile" || !emailSent;
+
     return NextResponse.json({
       success: true,
-      otp, // Always return the OTP so the UI can display it in sandbox/development mode
+      ...(demoMode ? { otp } : {}), // Only return OTP in response when in demo/sandbox mode
       emailSent,
-      demoMode: method === "mobile" || !emailSent,
+      demoMode,
       message: method === "email" && emailSent 
         ? "Verification code sent to your email inbox." 
         : "Verification code generated successfully."
