@@ -12,8 +12,9 @@ export async function POST(req: Request) {
     const trimmedOtp = otp.trim();
 
     // 1. Initialize Firebase references
-    const { doc, getDoc, deleteDoc } = await import("firebase/firestore");
-    const { db } = await import("@/lib/firebase");
+    const { getFirestore, doc, getDoc, deleteDoc } = await import("firebase/firestore/lite");
+    const { app } = await import("@/lib/firebase");
+    const db = getFirestore(app);
 
     // 2. Fetch reset document from generalized 'passwordResets' collection
     const resetDocRef = doc(db, "passwordResets", trimmedIdentifier);

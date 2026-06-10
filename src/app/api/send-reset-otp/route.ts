@@ -14,8 +14,9 @@ export async function POST(req: Request) {
     let phone = "";
 
     // 1. Initialize Firebase client references
-    const { collection, query, where, getDocs, doc, setDoc } = await import("firebase/firestore");
-    const { db } = await import("@/lib/firebase");
+    const { getFirestore, collection, query, where, getDocs, doc, setDoc } = await import("firebase/firestore/lite");
+    const { app } = await import("@/lib/firebase");
+    const db = getFirestore(app);
 
     if (method === "mobile") {
       if (!/^\d{10}$/.test(trimmedValue)) {
