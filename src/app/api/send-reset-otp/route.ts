@@ -22,20 +22,44 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Please enter a valid 10-digit mobile number." }, { status: 400 });
       }
       phone = trimmedValue;
+      const possiblePhones = [
+        phone,
+        `+91${phone}`,
+        `+91 ${phone}`,
+        `+91-${phone}`,
+        `0${phone}`,
+        `${phone.slice(0, 5)} ${phone.slice(5)}`
+      ];
 
-      // Query user by phone number
+      // 1. Query users collection
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where("phone", "==", phone));
-      const snapshot = await getDocs(q);
+      const qUsers = query(usersRef, where("phone", "in", possiblePhones));
+      const usersSnapshot = await getDocs(qUsers);
 
-      if (snapshot.empty) {
-        return NextResponse.json({ error: "No account found with this mobile number." }, { status: 404 });
+      if (!usersSnapshot.empty) {
+        const userData = usersSnapshot.docs[0].data();
+        email = userData.email;
+      } else {
+        // 2. Query orders collection fallback
+        const ordersRef = collection(db, "orders");
+        const qOrders = query(ordersRef, where("phone", "in", possiblePhones));
+        const ordersSnapshot = await getDocs(qOrders);
+        if (!ordersSnapshot.empty) {
+          // Find first order that has a customerEmail
+          const orderDoc = ordersSnapshot.docs.find(doc => doc.data().customerEmail);
+          if (orderDoc) {
+            email = orderDoc.data().customerEmail;
+          }
+        }
       }
 
-      const userData = snapshot.docs[0].data();
-      email = userData.email;
+      if (!email) {
+        return NextResponse.json({ error: "No account found with this mobile number." }, { status: 404 });
+      }
     } else if (method === "email") {
       email = trimmedValue.toLowerCase();
+      const emailOriginal = trimmedValue;
+      const possibleEmails = Array.from(new Set([email, emailOriginal]));
 
       let exists = false;
       // Check admin email whitelist
@@ -46,7 +70,7 @@ export async function POST(req: Request) {
       // Check users collection
       if (!exists) {
         const usersRef = collection(db, "users");
-        const qUsers = query(usersRef, where("email", "==", email));
+        const qUsers = query(usersRef, where("email", "in", possibleEmails));
         const usersSnapshot = await getDocs(qUsers);
         if (!usersSnapshot.empty) {
           exists = true;
@@ -56,15 +80,11 @@ export async function POST(req: Request) {
       // Check orders collection (fallback where customer details are stored)
       if (!exists) {
         const ordersRef = collection(db, "orders");
-        const qOrders = query(ordersRef, where("customerEmail", "==", email));
+        const qOrders = query(ordersRef, where("customerEmail", "in", possibleEmails));
         const ordersSnapshot = await getDocs(qOrders);
         if (!ordersSnapshot.empty) {
           exists = true;
         }
-      }
-
-      if (!exists) {
-        return NextResponse.json({ error: "No account found with this email. Please verify spelling." }, { status: 404 });
       }
     } else {
       return NextResponse.json({ error: "Invalid reset method." }, { status: 400 });
@@ -99,7 +119,10 @@ export async function POST(req: Request) {
     if (response.ok) {
       oobCode = data.oobCode || new URL(data.oobLink).searchParams.get("oobCode") || "";
     } else {
-      console.warn("Firebase sendOobCode API failed, creating mock code. Error:", data.error?.message);
+      console.warn("Firebase sendOobCode API failed. Error:", data.error?.message);
+      if (data.error?.message === "EMAIL_NOT_FOUND") {
+        return NextResponse.json({ error: "No account found with this email. Please verify spelling." }, { status: 404 });
+      }
       oobCode = `mock_oob_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
     }
 
