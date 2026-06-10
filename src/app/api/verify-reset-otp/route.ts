@@ -5,22 +5,22 @@ export async function POST(req: Request) {
     const { phone, otp } = await req.json();
 
     if (!phone || !otp) {
-      return NextResponse.json({ error: "Mobile number and OTP are required." }, { status: 400 });
+      return NextResponse.json({ error: "Identifier and OTP are required." }, { status: 400 });
     }
 
-    const trimmedPhone = phone.trim();
+    const trimmedIdentifier = phone.trim(); // The parameter was named 'phone' in the previous API, we'll keep the key name for client compatibility or accept it as 'phone'
     const trimmedOtp = otp.trim();
 
     // 1. Initialize Firebase references
     const { doc, getDoc, deleteDoc } = await import("firebase/firestore");
     const { db } = await import("@/lib/firebase");
 
-    // 2. Fetch reset document
-    const resetDocRef = doc(db, "phoneResets", trimmedPhone);
+    // 2. Fetch reset document from generalized 'passwordResets' collection
+    const resetDocRef = doc(db, "passwordResets", trimmedIdentifier);
     const resetSnapshot = await getDoc(resetDocRef);
 
     if (!resetSnapshot.exists()) {
-      return NextResponse.json({ error: "No active password reset request found for this mobile number." }, { status: 400 });
+      return NextResponse.json({ error: "No active password reset request found." }, { status: 400 });
     }
 
     const resetData = resetSnapshot.data();

@@ -120,8 +120,16 @@ function SignupContent() {
             )}
             
             {/* Account Details */}
-            <div className="space-y-3 pb-4 border-b border-gray-100">
+            <div className="space-y-3 pb-4">
               <h3 className="font-bold text-sm text-pink-600 uppercase tracking-wider">Account Details</h3>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Full Name *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="John Doe" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number *</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="10-digit number" required minLength={10} />
+              </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Email *</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="you@example.com" required />
@@ -132,17 +140,9 @@ function SignupContent() {
               </div>
             </div>
 
-            {/* Personal Details */}
+            {/* Shipping Details */}
             <div className="space-y-3 pb-4">
-              <h3 className="font-bold text-sm text-pink-600 uppercase tracking-wider">Contact & Shipping</h3>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Full Name *</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="John Doe" required />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number *</label>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="10-digit number" required minLength={10} />
-              </div>
+              <h3 className="font-bold text-sm text-pink-600 uppercase tracking-wider">Shipping Details</h3>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Street Address *</label>
                 <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="House/Flat No., Building Name, Street" required />

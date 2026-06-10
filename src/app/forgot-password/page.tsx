@@ -13,89 +13,9 @@ export default function ForgotPassword() {
   const [sandboxOtp, setSandboxOtp] = useState("");
   
   const [message, setMessage] = useState("");
-  const [demoResetLink, setDemoResetLink] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setMessage("");
-    setDemoResetLink("");
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const isMockEmail = normalizedEmail.endsWith("@example.com");
-
-    if (isMockEmail) {
-      // Demo/Guest Mock User Sandbox Flow
-      const mockCode = `mock_oob_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-      const mockLink = `${window.location.origin}/reset-password?oobCode=${mockCode}&email=${encodeURIComponent(normalizedEmail)}`;
-      setDemoResetLink(mockLink);
-      setMessage("Demo Mode: Reset link generated successfully. Please click the button below.");
-      setLoading(false);
-      return;
-    }
-
-    // Real Firebase User Reset Flow
-    try {
-      const { collection, query, where, getDocs } = await import("firebase/firestore");
-      const { db } = await import("@/lib/firebase");
-      
-      let exists = false;
-
-      // 1. Check admin email whitelist
-      if (normalizedEmail === "neelsutra1@gmail.com" || normalizedEmail === "admin@neelsutra.com") {
-        exists = true;
-      }
-
-      // 2. Check users collection
-      if (!exists) {
-        const usersRef = collection(db, "users");
-        const qUsers = query(usersRef, where("email", "==", normalizedEmail));
-        const usersSnapshot = await getDocs(qUsers);
-        if (!usersSnapshot.empty) {
-          exists = true;
-        }
-      }
-
-      // 3. Check orders collection (fallback where customer details are stored)
-      if (!exists) {
-        const ordersRef = collection(db, "orders");
-        const qOrders = query(ordersRef, where("customerEmail", "==", normalizedEmail));
-        const ordersSnapshot = await getDocs(qOrders);
-        if (!ordersSnapshot.empty) {
-          exists = true;
-        }
-      }
-
-      if (!exists) {
-        setError("No account found with this email. Please verify the spelling or sign up.");
-        setLoading(false);
-        return;
-      }
-
-      const { sendPasswordResetEmail } = await import("firebase/auth");
-      const { auth } = await import("@/lib/firebase");
-      await sendPasswordResetEmail(auth, normalizedEmail);
-      setMessage("A password reset link has been successfully sent to your email inbox.");
-      setEmail("");
-    } catch (err: any) {
-      console.error(err);
-      let errMsg = "Failed to send reset email.";
-      if (err.code === "auth/user-not-found" || (err.message && err.message.includes("EMAIL_NOT_FOUND"))) {
-        errMsg = "No account found with this email.";
-      } else if (err.code === "auth/invalid-email") {
-        errMsg = "Invalid email format.";
-      } else if (err.message) {
-        errMsg = err.message;
-      }
-      setError(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,11 +24,13 @@ export default function ForgotPassword() {
     setMessage("");
     setSandboxOtp("");
 
+    const value = resetMethod === "email" ? email : phone;
+
     try {
       const res = await fetch("/api/send-reset-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ method: resetMethod, value }),
       });
       const data = await res.json();
       
@@ -117,7 +39,13 @@ export default function ForgotPassword() {
       }
 
       setSandboxOtp(data.otp);
-      setMessage("A 6-digit OTP has been sent to your registered mobile number (Demo Mode: See sandbox below).");
+      if (resetMethod === "email" && data.emailSent) {
+        setMessage("A 6-digit OTP code has been successfully sent to your email inbox.");
+      } else if (resetMethod === "email") {
+        setMessage("OTP code generated (Demo Mode: See sandbox below).");
+      } else {
+        setMessage("A 6-digit OTP has been sent to your registered mobile number (Demo Mode: See sandbox below).");
+      }
       setStep("verify");
     } catch (err: any) {
       setError(err.message || "Failed to request reset OTP.");
@@ -131,11 +59,13 @@ export default function ForgotPassword() {
     setLoading(true);
     setError("");
 
+    const value = resetMethod === "email" ? email : phone;
+
     try {
       const res = await fetch("/api/verify-reset-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp }),
+        body: JSON.stringify({ phone: value, otp }),
       });
       const data = await res.json();
 
@@ -152,9 +82,7 @@ export default function ForgotPassword() {
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    if (resetMethod === "email") {
-      handleReset(e);
-    } else if (step === "request") {
+    if (step === "request") {
       handleSendOtp(e);
     } else {
       handleVerifyOtp(e);
@@ -176,7 +104,9 @@ export default function ForgotPassword() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h2>
             <p className="text-gray-500 text-sm">
               {resetMethod === "email" 
-                ? "Enter the email associated with your account and we'll send you a link to reset your password."
+                ? step === "request" 
+                  ? "Enter the email associated with your account and we'll send a 6-digit OTP code to reset your password."
+                  : "Enter the 6-digit verification code sent to your email inbox."
                 : step === "request"
                   ? "Enter the mobile number associated with your account and we'll send a 6-digit OTP to reset your password."
                   : "Enter the 6-digit verification code sent to your registered mobile number."
@@ -185,7 +115,7 @@ export default function ForgotPassword() {
           </div>
 
           {/* Reset Method Toggle */}
-          {step === "request" && !demoResetLink && (
+          {step === "request" && (
             <div className="flex bg-gray-100 p-1.5 rounded-lg mb-8">
               <button
                 type="button"
@@ -218,20 +148,8 @@ export default function ForgotPassword() {
                 {message}
               </div>
             )}
-
-            {demoResetLink && (
-              <div className="bg-pink-50 border border-pink-100 p-4 rounded-xl text-center shadow-sm">
-                <p className="text-[10px] text-pink-700 font-bold mb-2 uppercase tracking-wide">Developer Sandbox Reset Action</p>
-                <a 
-                  href={demoResetLink}
-                  className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2.5 px-6 rounded-md text-xs inline-block shadow transition-all cursor-pointer"
-                >
-                  RESET PASSWORD DIRECTLY
-                </a>
-              </div>
-            )}
             
-            {!demoResetLink && (
+            {step === "request" ? (
               resetMethod === "email" ? (
                 <>
                   <div>
@@ -252,86 +170,84 @@ export default function ForgotPassword() {
                       disabled={loading}
                       className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center text-sm cursor-pointer shadow-md"
                     >
-                      {loading ? "SENDING..." : "SEND RESET LINK"}
+                      {loading ? "SENDING OTP..." : "SEND OTP CODE"}
                     </button>
                   </div>
                 </>
               ) : (
-                step === "request" ? (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number</label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900 font-mono text-sm"
-                        placeholder="10-digit registered number"
-                        required
-                        minLength={10}
-                        maxLength={10}
-                      />
-                    </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900 font-mono text-sm"
+                      placeholder="10-digit registered number"
+                      required
+                      minLength={10}
+                      maxLength={10}
+                    />
+                  </div>
 
-                    <div className="pt-4">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center text-sm cursor-pointer shadow-md"
-                      >
-                        {loading ? "SENDING OTP..." : "SEND OTP CODE"}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Verification OTP Code</label>
-                      <input
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900 tracking-widest text-center text-lg font-black"
-                        placeholder="••••••"
-                        required
-                        minLength={6}
-                        maxLength={6}
-                      />
-                    </div>
-
-                    {sandboxOtp && (
-                      <div className="bg-pink-50 border border-pink-100 p-4 rounded-xl text-center shadow-sm animate-pulse-subtle">
-                        <p className="text-[10px] text-pink-700 font-bold mb-2 uppercase tracking-wide">Developer Sandbox SMS Simulation</p>
-                        <p className="text-gray-800 text-sm mb-2">
-                          SMS sent to <span className="font-bold">+91 {phone}</span>: 
-                        </p>
-                        <p className="bg-white border border-pink-150 rounded py-2 px-4 font-mono font-bold text-lg text-pink-600 tracking-widest inline-block select-all cursor-pointer shadow-inner" title="Click to select">
-                          {sandboxOtp}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-2">Copy and enter the 6-digit OTP code above.</p>
-                      </div>
-                    )}
-
-                    <div className="pt-4 space-y-2">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center text-sm cursor-pointer shadow-md"
-                      >
-                        {loading ? "VERIFYING..." : "VERIFY OTP & CONTINUE"}
-                      </button>
-                      
-                      <button
-                        type="button"
-                        onClick={() => { setStep("request"); setOtp(""); setSandboxOtp(""); setMessage(""); setError(""); }}
-                        className="w-full text-center text-xs font-bold text-gray-500 hover:text-pink-600 py-2 hover:underline transition-all cursor-pointer"
-                      >
-                        Change Mobile Number
-                      </button>
-                    </div>
-                  </>
-                )
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center text-sm cursor-pointer shadow-md"
+                    >
+                      {loading ? "SENDING OTP..." : "SEND OTP CODE"}
+                    </button>
+                  </div>
+                </>
               )
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Verification OTP Code</label>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className="w-full border border-gray-300 px-4 py-3 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900 tracking-widest text-center text-lg font-black"
+                    placeholder="••••••"
+                    required
+                    minLength={6}
+                    maxLength={6}
+                  />
+                </div>
+
+                {sandboxOtp && (
+                  <div className="bg-pink-50 border border-pink-100 p-4 rounded-xl text-center shadow-sm animate-pulse-subtle">
+                    <p className="text-[10px] text-pink-700 font-bold mb-2 uppercase tracking-wide">Developer Sandbox Simulation</p>
+                    <p className="text-gray-800 text-sm mb-2">
+                      Verification code generated for <span className="font-bold">{resetMethod === "email" ? email : `+91 ${phone}`}</span>: 
+                    </p>
+                    <p className="bg-white border border-pink-150 rounded py-2 px-4 font-mono font-bold text-lg text-pink-600 tracking-widest inline-block select-all cursor-pointer shadow-inner" title="Click to select">
+                      {sandboxOtp}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-2">Copy and enter the 6-digit OTP code above.</p>
+                  </div>
+                )}
+
+                <div className="pt-4 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center text-sm cursor-pointer shadow-md"
+                  >
+                    {loading ? "VERIFYING..." : "VERIFY OTP & CONTINUE"}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => { setStep("request"); setOtp(""); setSandboxOtp(""); setMessage(""); setError(""); }}
+                    className="w-full text-center text-xs font-bold text-gray-500 hover:text-pink-600 py-2 hover:underline transition-all cursor-pointer"
+                  >
+                    Back to Selection
+                  </button>
+                </div>
+              </>
             )}
           </form>
         </div>
