@@ -3,13 +3,46 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  // Search & Sorting States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("name-asc");
+
+  const filteredAndSortedCustomers = customers
+    .filter(customer => {
+      const q = searchQuery.toLowerCase();
+      return (
+        (customer.name && customer.name.toLowerCase().includes(q)) ||
+        (customer.email && customer.email.toLowerCase().includes(q)) ||
+        (customer.phone && customer.phone.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "name-asc") {
+        return (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "name-desc") {
+        return (b.name || "").localeCompare(a.name || "");
+      }
+      
+      const ordersA = orders.filter(o => o.userId === a.id || (o.customerEmail && o.customerEmail === a.email)).length;
+      const ordersB = orders.filter(o => o.userId === b.id || (o.customerEmail && o.customerEmail === b.email)).length;
+      
+      if (sortBy === "orders-desc") {
+        return ordersB - ordersA;
+      }
+      if (sortBy === "orders-asc") {
+        return ordersA - ordersB;
+      }
+      return 0;
+    });
 
   useEffect(() => {
     const fetchCustomersAndOrders = async () => {
@@ -166,13 +199,56 @@ export default function AdminCustomers() {
     <div className="max-w-6xl mx-auto text-slate-100 font-sans">
       <h1 className="text-2xl font-black text-white mb-8">Customer Directory</h1>
 
+      {/* Search & Sort Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 bg-slate-900/20 p-4 rounded-2xl border border-slate-900">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            placeholder="Search by name, email or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 pl-10 text-xs text-white focus:border-pink-500 outline-none font-medium placeholder-slate-500"
+          />
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+            <Search size={15} />
+          </div>
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")} 
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Sort By:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-slate-950 border border-slate-850 text-slate-200 rounded-xl px-3 py-2.5 text-xs focus:border-pink-500 outline-none font-semibold cursor-pointer min-w-[150px]"
+          >
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="orders-desc">Orders (High to Low)</option>
+            <option value="orders-asc">Orders (Low to High)</option>
+          </select>
+        </div>
+      </div>
+
       {customers.length === 0 ? (
         <div className="bg-slate-900/40 p-12 rounded-2xl border border-slate-900 text-center text-slate-500 shadow-md">
           No registered customer accounts found.
         </div>
       ) : (
-        <div className="space-y-4.5">
-          {customers.map((customer) => {
+        <>
+          {filteredAndSortedCustomers.length === 0 ? (
+            <div className="bg-slate-900/40 p-12 rounded-2xl border border-slate-900 text-center text-slate-500 shadow-md">
+              No customers found matching your search.
+            </div>
+          ) : (
+            <div className="space-y-4.5">
+              {filteredAndSortedCustomers.map((customer) => {
             const customerOrders = getCustomerOrders(customer.id, customer.email);
             const isExpanded = expandedUser === customer.id;
             
@@ -284,8 +360,10 @@ export default function AdminCustomers() {
                 )}
               </div>
             );
-          })}
-        </div>
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

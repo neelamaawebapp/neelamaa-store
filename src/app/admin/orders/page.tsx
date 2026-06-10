@@ -3,13 +3,69 @@
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Package, Truck, CheckCircle, XCircle, Clock, FileText, AlertTriangle, HelpCircle } from "lucide-react";
+import { Package, Truck, CheckCircle, XCircle, Clock, FileText, AlertTriangle, HelpCircle, Search, X } from "lucide-react";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [shippingData, setShippingData] = useState<Record<string, { company: string, tracking: string }>>({});
+
+  // Search & Sorting States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("date-desc");
+
+  const getOrderTime = (order: any) => {
+    if (!order.createdAt) return 0;
+    if (typeof order.createdAt.toMillis === "function") return order.createdAt.toMillis();
+    if (order.createdAt.seconds) return order.createdAt.seconds * 1000;
+    const parsed = new Date(order.createdAt).getTime();
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const statusPriority: Record<string, number> = {
+    "Pending": 1,
+    "Shipped": 2,
+    "Delivered": 3,
+    "Cancelled": 4
+  };
+
+  const filteredAndSortedOrders = orders
+    .filter(order => {
+      const q = searchQuery.toLowerCase();
+      return (
+        order.id.toLowerCase().includes(q) ||
+        (order.customerName && order.customerName.toLowerCase().includes(q)) ||
+        (order.customerEmail && order.customerEmail.toLowerCase().includes(q)) ||
+        (order.phone && order.phone.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "date-desc") {
+        return getOrderTime(b) - getOrderTime(a);
+      }
+      if (sortBy === "date-asc") {
+        return getOrderTime(a) - getOrderTime(b);
+      }
+      if (sortBy === "name-asc") {
+        return (a.customerName || "").localeCompare(b.customerName || "");
+      }
+      if (sortBy === "name-desc") {
+        return (b.customerName || "").localeCompare(a.customerName || "");
+      }
+      if (sortBy === "amount-desc") {
+        return b.totalAmount - a.totalAmount;
+      }
+      if (sortBy === "amount-asc") {
+        return a.totalAmount - b.totalAmount;
+      }
+      if (sortBy === "status-asc") {
+        const priorityA = statusPriority[a.status] || 5;
+        const priorityB = statusPriority[b.status] || 5;
+        return priorityA - priorityB;
+      }
+      return 0;
+    });
 
   const formatOrderDate = (createdAt: any) => {
     if (!createdAt) return "Just now";
@@ -222,13 +278,59 @@ export default function AdminOrders() {
     <div className="max-w-6xl mx-auto text-slate-100 font-sans">
       <h1 className="text-2xl font-black text-white mb-8">Order Workspace</h1>
 
+      {/* Search & Sort Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 bg-slate-900/20 p-4 rounded-2xl border border-slate-900">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            placeholder="Search by order ID, name, email or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 pl-10 text-xs text-white focus:border-pink-500 outline-none font-medium placeholder-slate-500"
+          />
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+            <Search size={15} />
+          </div>
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")} 
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Sort By:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-slate-950 border border-slate-850 text-slate-200 rounded-xl px-3 py-2.5 text-xs focus:border-pink-500 outline-none font-semibold cursor-pointer min-w-[150px]"
+          >
+            <option value="date-desc">Order Date (Newest)</option>
+            <option value="date-asc">Order Date (Oldest)</option>
+            <option value="name-asc">Customer Name (A-Z)</option>
+            <option value="name-desc">Customer Name (Z-A)</option>
+            <option value="amount-desc">Total Amount (High to Low)</option>
+            <option value="amount-asc">Total Amount (Low to High)</option>
+            <option value="status-asc">Status</option>
+          </select>
+        </div>
+      </div>
+
       {orders.length === 0 ? (
         <div className="bg-slate-900/40 p-12 rounded-2xl border border-slate-900 text-center text-slate-500 shadow-md">
           No customer orders found in the database.
         </div>
       ) : (
-        <div className="grid gap-6">
-          {orders.map((order) => (
+        <>
+          {filteredAndSortedOrders.length === 0 ? (
+            <div className="bg-slate-900/40 p-12 rounded-2xl border border-slate-900 text-center text-slate-500 shadow-md">
+              No orders found matching your search.
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              {filteredAndSortedOrders.map((order) => (
             <div key={order.id} className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-lg hover:border-slate-800 transition-all">
               {/* Order Header */}
               <div className="bg-slate-950/60 p-4.5 border-b border-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -397,8 +499,10 @@ export default function AdminOrders() {
                 </div>
               )}
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
