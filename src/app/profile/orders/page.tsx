@@ -59,14 +59,32 @@ export default function CustomerOrdersPage() {
     setShowReturnModal(true);
   };
 
-  const handleSimulateUpload = (e: any) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     setUploadingProof(true);
-    setTimeout(() => {
-      // Set a premium mock proof image url
-      setProofUrl("https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=500&auto=format&fit=crop");
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setProofUrl(data.data.url);
+      } else {
+        alert("Image upload failed: " + (data.error?.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading image");
+    } finally {
       setUploadingProof(false);
-    }, 1200);
+    }
   };
 
   const handleSubmitReturn = async (e: React.FormEvent) => {
@@ -130,6 +148,25 @@ export default function CustomerOrdersPage() {
             return o;
           });
           localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+
+          // Also save a mock return request in localStorage for Admin Returns Workspace
+          const localReturns = JSON.parse(localStorage.getItem("neelsutra_local_return_requests") || "[]");
+          const newLocalReturn = {
+            id: `mock_return_${Date.now()}`,
+            orderId: selectedOrder.id,
+            itemIndex: selectedItemIndex,
+            userId: user.uid,
+            customerName: selectedOrder.customerName || user.displayName || user.email?.split("@")[0] || "Customer",
+            customerEmail: selectedOrder.customerEmail || user.email || "",
+            requestType: returnType,
+            reason: returnReason,
+            comments,
+            proofUrl,
+            status: "Pending",
+            createdAt: new Date().toISOString(),
+            itemDetails: selectedItem
+          };
+          localStorage.setItem("neelsutra_local_return_requests", JSON.stringify([newLocalReturn, ...localReturns]));
         } catch (e) {
           console.error("Failed to update local orders in localStorage", e);
         }
@@ -460,7 +497,7 @@ export default function CustomerOrdersPage() {
                     <input 
                       type="file" 
                       accept="image/*" 
-                      onChange={handleSimulateUpload} 
+                      onChange={handleImageUpload} 
                       className="hidden" 
                       required={returnReason === "Damaged/Defective" && !proofUrl}
                       disabled={uploadingProof || submittingReturn}

@@ -24,7 +24,23 @@ export async function POST(req: Request) {
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
 
-    // 2. Create the return request document
+    // 2. Fetch the order and get item details first
+    let itemDetails: any = null;
+    try {
+      const orderRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (orderSnap.exists()) {
+        const orderData = orderSnap.data();
+        if (orderData.items && orderData.items[itemIndex]) {
+          itemDetails = orderData.items[itemIndex];
+        }
+      }
+    } catch (orderErr) {
+      console.error("Failed to retrieve order details for return request:", orderErr);
+    }
+
+    // 3. Create the return request document with embedded itemDetails
     const returnRequestsRef = collection(db, "returnRequests");
     const newRequest = {
       orderId,
@@ -37,42 +53,42 @@ export async function POST(req: Request) {
       comments: comments || "",
       proofUrl: proofUrl || "",
       status: "Pending", // Pending, Approved, Rejected
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      itemDetails: itemDetails || null
     };
     
     const docRef = await addDoc(returnRequestsRef, newRequest);
     const returnRequestId = docRef.id;
 
-    // 3. Fetch the order and update the returnStatus of the specific item
+    // 4. Update the returnStatus of the specific item in the order
     let orderUpdated = false;
-    let itemDetails: any = null;
-    
-    try {
-      const orderRef = doc(db, "orders", orderId);
-      const orderSnap = await getDoc(orderRef);
-      
-      if (orderSnap.exists()) {
-        const orderData = orderSnap.data();
-        const updatedItems = [...(orderData.items || [])];
+    if (itemDetails) {
+      try {
+        const orderRef = doc(db, "orders", orderId);
+        const orderSnap = await getDoc(orderRef);
         
-        if (updatedItems[itemIndex]) {
-          itemDetails = updatedItems[itemIndex];
-          updatedItems[itemIndex] = {
-            ...updatedItems[itemIndex],
-            returnStatus: "Requested",
-            returnRequestId: returnRequestId,
-            returnRequestType: requestType
-          };
+        if (orderSnap.exists()) {
+          const orderData = orderSnap.data();
+          const updatedItems = [...(orderData.items || [])];
           
-          await updateDoc(orderRef, { items: updatedItems });
-          orderUpdated = true;
+          if (updatedItems[itemIndex]) {
+            updatedItems[itemIndex] = {
+              ...updatedItems[itemIndex],
+              returnStatus: "Requested",
+              returnRequestId: returnRequestId,
+              returnRequestType: requestType
+            };
+            
+            await updateDoc(orderRef, { items: updatedItems });
+            orderUpdated = true;
+          }
         }
+      } catch (orderErr) {
+        console.error("Failed to update order return status in Firestore:", orderErr);
       }
-    } catch (orderErr) {
-      console.error("Failed to update order return status in Firestore:", orderErr);
     }
 
-    // 4. Send Email Notification to Admin using Nodemailer
+    // 5. Send Email Notification to Admin using Nodemailer
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -177,5 +193,68 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Return refund API error:", error);
     return NextResponse.json({ error: error.message || "Failed to process return request." }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { returnRequestId, status } = await req.json();
+
+    if (!returnRequestId || !status || !["Approved", "Rejected"].includes(status)) {
+      return NextResponse.json({ error: "Missing or invalid fields for return status update." }, { status: 400 });
+    }
+
+    // Initialize Firestore Lite
+    const { getFirestore, doc, getDoc, updateDoc } = await import("firebase/firestore/lite");
+    const { app } = await import("@/lib/firebase");
+    const db = getFirestore(app);
+
+    // Get return request details
+    const returnRequestRef = doc(db, "returnRequests", returnRequestId);
+    const returnRequestSnap = await getDoc(returnRequestRef);
+
+    if (!returnRequestSnap.exists()) {
+      return NextResponse.json({ error: "Return request not found." }, { status: 404 });
+    }
+
+    const returnRequestData = returnRequestSnap.data();
+    const { orderId, itemIndex } = returnRequestData;
+
+    // Update return request status
+    await updateDoc(returnRequestRef, { status });
+
+    // Update the corresponding order item status
+    let orderUpdated = false;
+    try {
+      const orderRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderRef);
+
+      if (orderSnap.exists()) {
+        const orderData = orderSnap.data();
+        const updatedItems = [...(orderData.items || [])];
+
+        if (updatedItems[itemIndex]) {
+          updatedItems[itemIndex] = {
+            ...updatedItems[itemIndex],
+            returnStatus: status // Approved or Rejected
+          };
+
+          await updateDoc(orderRef, { items: updatedItems });
+          orderUpdated = true;
+        }
+      }
+    } catch (orderErr) {
+      console.error("Failed to update order status during admin review:", orderErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      status,
+      orderUpdated,
+      message: `Return request ${status.toLowerCase()} successfully.`
+    });
+  } catch (error: any) {
+    console.error("Return status update error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update return request status." }, { status: 500 });
   }
 }

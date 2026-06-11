@@ -232,7 +232,7 @@ export default function AdminDashboard() {
     
     // Set photos list (support images array fallback to single image string)
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      setProductImages(product.images.map((url, index) => ({
+      setProductImages(product.images.map((url: string, index: number) => ({
         id: `img_${Date.now()}_${index}_${Math.random()}`,
         file: null,
         url,

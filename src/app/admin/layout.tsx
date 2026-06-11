@@ -2,14 +2,50 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
-import { Package, ShoppingCart, Users, LogOut, Store } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Package, ShoppingCart, Users, LogOut, Store, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let remotePendingCount = 0;
+
+    const updateCount = () => {
+      let localPending = 0;
+      if (typeof window !== "undefined") {
+        try {
+          const localReturns = JSON.parse(localStorage.getItem("neelsutra_local_return_requests") || "[]");
+          localPending = localReturns.filter((r: any) => r.status === "Pending").length;
+        } catch (e) {}
+      }
+      setPendingCount(remotePendingCount + localPending);
+    };
+
+    const q = query(collection(db, "returnRequests"), where("status", "==", "Pending"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      remotePendingCount = snapshot.docs.length;
+      updateCount();
+    }, (err) => {
+      console.warn("Firestore count failed, falling back to local storage", err);
+      updateCount();
+    });
+
+    const interval = setInterval(updateCount, 1500);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -32,6 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { name: "Products", href: "/admin", icon: Package },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+    { name: "Returns", href: "/admin/returns", icon: RotateCcw },
     { name: "Customers", href: "/admin/customers", icon: Users },
   ];
 
@@ -79,7 +116,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       ${isActive ? 'text-pink-500' : 'text-slate-500 group-hover:text-slate-300'}`} 
                   />
                   <span>{item.name}</span>
-                  {isActive && (
+                  {item.name === "Returns" && pendingCount > 0 ? (
+                    <span className="ml-auto bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[20px] h-5 shadow-[0_0_8px_rgba(244,63,94,0.4)] animate-pulse">
+                      {pendingCount}
+                    </span>
+                  ) : isActive && (
                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]"></span>
                   )}
                 </Link>
