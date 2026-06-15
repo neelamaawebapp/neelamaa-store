@@ -165,6 +165,11 @@ export default function ProductFeed() {
             <span className="font-extrabold text-[15px] text-pink-600">₹{product.price}</span>
             <span className="text-[10px] text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
           </div>
+          {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) > 0 && Number(product.quantity) <= 5 && (
+            <div className="mt-1.5 text-[10px] font-bold text-amber-600 uppercase tracking-wide">
+              ⚡ Only {product.quantity} pieces available!
+            </div>
+          )}
         </div>
       </Link>
     );

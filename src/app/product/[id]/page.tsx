@@ -357,7 +357,7 @@ export default function ProductDetailPage() {
               </span>
             ) : Number(product.quantity) <= 5 ? (
               <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
-                ⚡ Only {product.quantity} left in stock!
+                ⚡ Only {product.quantity} pieces available!
               </span>
             ) : (
               <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
