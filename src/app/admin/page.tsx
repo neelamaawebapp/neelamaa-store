@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter } from "lucide-react";
+import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 
 export default function AdminDashboard() {
-  const [viewMode, setViewMode] = useState<"single" | "bulk">("single");
+  const [viewMode, setViewMode] = useState<"single" | "bulk" | "alerts">("single");
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [fetchingSubs, setFetchingSubs] = useState(true);
 
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
@@ -106,6 +108,103 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  // Fetch Restock Alert Subscriptions
+  useEffect(() => {
+    const q = collection(db, "back_in_stock_subscriptions");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Sort in JS memory to avoid custom index errors in Firestore
+      subs.sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      // Combine with local mock subscriptions if they exist in localStorage
+      let localSubs: any[] = [];
+      try {
+        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        if (stored) {
+          localSubs = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      // Deduplicate by combining remote and local (remote takes precedence)
+      const combined = [...subs];
+      localSubs.forEach((lSub: any) => {
+        const isMatched = combined.some((rSub: any) => rSub.productId === lSub.productId && rSub.email === lSub.email);
+        if (!isMatched) {
+          combined.push({
+            id: `local_${lSub.productId}_${lSub.email}`,
+            isLocal: true,
+            ...lSub
+          });
+        }
+      });
+
+      // Also sort combined list again in case local items were added
+      combined.sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      setSubscriptions(combined);
+      setFetchingSubs(false);
+    }, (err) => {
+      console.warn("Firestore subscriptions sub failed, falling back to local storage", err);
+      try {
+        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        if (stored) {
+          const localSubs = JSON.parse(stored).map((s: any) => ({
+            id: `local_${s.productId}_${s.email}`,
+            isLocal: true,
+            ...s
+          }));
+          localSubs.sort((a: any, b: any) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+          setSubscriptions(localSubs);
+        }
+      } catch (e) {
+        setSubscriptions([]);
+      }
+      setFetchingSubs(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleDeleteSubscription = async (sub: any) => {
+    if (!confirm("Are you sure you want to remove this stock alert request?")) return;
+    
+    if (sub.isLocal) {
+      try {
+        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        if (stored) {
+          const localSubs = JSON.parse(stored);
+          const filtered = localSubs.filter((s: any) => !(s.productId === sub.productId && s.email === sub.email));
+          localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(filtered));
+          setSubscriptions(prev => prev.filter(s => s.id !== sub.id));
+        }
+      } catch (e) {
+        console.error("Failed to delete local subscription:", e);
+      }
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "back_in_stock_subscriptions", sub.id));
+      setSuccess("Subscription removed successfully.");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to remove subscription.");
+    }
+  };
 
   // Pricing checking helpers
   const getMissingPricingFields = (product: any) => {
@@ -653,6 +752,13 @@ export default function AdminDashboard() {
             <Layers size={14} />
             <span>Bulk Upload Mode</span>
           </button>
+          <button 
+            onClick={() => { setViewMode("alerts"); resetForm(); }}
+            className={`px-6 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "alerts" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <Bell size={14} />
+            <span>Restock Alerts</span>
+          </button>
         </div>
       </div>
 
@@ -1054,11 +1160,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            )}
-          </div>
-
-        </div>
-      ) : (
+               </div>
+      ) : viewMode === "bulk" ? (
         /* BULK UPLOAD VIEW */
         <div className="max-w-4xl mx-auto">
           {/* Main Dropzone */}
@@ -1082,7 +1185,7 @@ export default function AdminDashboard() {
             <div className="space-y-6 mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-extrabold text-white">Pending Upload Items ({bulkFiles.length})</h3>
-                <button onClick={() => setBulkFiles([])} className="text-xs font-bold text-rose-500 hover:text-rose-400 cursor-pointer">Clear All</button>
+                <button onClick={() => setBulkFiles([])} className="text-xs font-bold text-rose-500 hover:text-rose-450 cursor-pointer">Clear All</button>
               </div>
               
               {bulkFiles.map((item, index) => {
@@ -1216,6 +1319,94 @@ export default function AdminDashboard() {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* RESTOCK ALERTS VIEW */
+        <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <Bell className="text-pink-500" size={20} />
+              <span>Restock Notification Requests ({subscriptions.length})</span>
+            </h2>
+          </div>
+
+          {fetchingSubs ? (
+            <div className="flex justify-center items-center py-24">
+              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : subscriptions.length === 0 ? (
+            <div className="p-12 text-center text-slate-550 border border-dashed border-slate-800 rounded-xl bg-slate-950/20">
+              No back-in-stock notification requests found.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                    <th className="px-5 py-4">Product Details</th>
+                    <th className="px-5 py-4">Customer Contact</th>
+                    <th className="px-5 py-4">Date Registered</th>
+                    <th className="px-5 py-4">Status</th>
+                    <th className="px-5 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900/50">
+                  {subscriptions.map((sub) => {
+                    const formattedDate = sub.createdAt ? new Date(sub.createdAt).toLocaleString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    }) : "-";
+
+                    return (
+                      <tr key={sub.id} className="hover:bg-slate-900/30 transition-all group">
+                        <td className="px-5 py-4 font-bold text-white">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-extrabold text-slate-100">{sub.productBrand}</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">{sub.productName}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col text-slate-350">
+                            <span className="font-semibold">{sub.email}</span>
+                            {sub.phone && <span className="text-[10px] text-slate-500 mt-0.5">{sub.phone}</span>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-slate-450">{formattedDate}</td>
+                        <td className="px-5 py-4">
+                          {sub.status === "Pending" ? (
+                            <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                              Pending Alert
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                              ✓ Notified
+                            </span>
+                          )}
+                          {sub.isLocal && (
+                            <span className="ml-2 bg-slate-800 text-slate-400 text-[8px] font-bold px-1.5 py-0.5 rounded">
+                              LOCAL TEST
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button 
+                            onClick={() => handleDeleteSubscription(sub)} 
+                            className="p-1.5 bg-slate-850 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer inline-flex" 
+                            title="Remove Request"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
