@@ -1160,7 +1160,9 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-               </div>
+            )}
+          </div>
+        </div>
       ) : viewMode === "bulk" ? (
         /* BULK UPLOAD VIEW */
         <div className="max-w-4xl mx-auto">
