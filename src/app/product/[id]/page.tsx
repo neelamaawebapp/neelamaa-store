@@ -46,12 +46,18 @@ export default function ProductDetailPage() {
       if (!id) return;
 
       // Check local storage first
-      const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
-      const localMatched = localSubs.some((s: any) => s.productId === id && s.status === "Pending");
-      
-      if (localMatched) {
-        setIsSubscribed(true);
-        return;
+      try {
+        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        if (stored) {
+          const localSubs = JSON.parse(stored);
+          const localMatched = localSubs.some((s: any) => s.productId === id && s.status === "Pending");
+          if (localMatched) {
+            setIsSubscribed(true);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse local subscriptions:", e);
       }
 
       // Check Firestore if logged in
@@ -107,11 +113,16 @@ export default function ProductDetailPage() {
       }
 
       // Prepend or add to localStorage
-      const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
-      const exists = localSubs.some((s: any) => s.productId === id && s.email === subscriptionData.email && s.status === "Pending");
-      if (!exists) {
-        localSubs.push(subscriptionData);
-        localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(localSubs));
+      try {
+        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const localSubs = stored ? JSON.parse(stored) : [];
+        const exists = localSubs.some((s: any) => s.productId === id && s.email === subscriptionData.email && s.status === "Pending");
+        if (!exists) {
+          localSubs.push(subscriptionData);
+          localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(localSubs));
+        }
+      } catch (e) {
+        console.error("Failed to write local stock subscription:", e);
       }
 
       setIsSubscribed(true);
@@ -129,23 +140,35 @@ export default function ProductDetailPage() {
   // Check local wishlist on load
   useEffect(() => {
     if (!id) return;
-    const localWishlist = JSON.parse(localStorage.getItem("neelsutra_wishlist") || "[]");
-    setIsWishlisted(localWishlist.includes(id));
+    try {
+      const stored = localStorage.getItem("neelsutra_wishlist");
+      if (stored) {
+        const localWishlist = JSON.parse(stored);
+        setIsWishlisted(localWishlist.includes(id));
+      }
+    } catch (e) {
+      console.error("Failed to parse wishlist:", e);
+    }
   }, [id]);
 
   const toggleWishlist = () => {
     if (!id) return;
-    const localWishlist = JSON.parse(localStorage.getItem("neelsutra_wishlist") || "[]");
-    let newWishlist;
-    if (isWishlisted) {
-      newWishlist = localWishlist.filter((itemId: string) => itemId !== id);
-      setToast("Removed from Wishlist");
-    } else {
-      newWishlist = [...localWishlist, id];
-      setToast("Added to Wishlist!");
+    try {
+      const stored = localStorage.getItem("neelsutra_wishlist");
+      const localWishlist = stored ? JSON.parse(stored) : [];
+      let newWishlist;
+      if (isWishlisted) {
+        newWishlist = localWishlist.filter((itemId: string) => itemId !== id);
+        setToast("Removed from Wishlist");
+      } else {
+        newWishlist = [...localWishlist, id];
+        setToast("Added to Wishlist!");
+      }
+      localStorage.setItem("neelsutra_wishlist", JSON.stringify(newWishlist));
+      setIsWishlisted(!isWishlisted);
+    } catch (e) {
+      console.error("Failed to toggle wishlist:", e);
     }
-    localStorage.setItem("neelsutra_wishlist", JSON.stringify(newWishlist));
-    setIsWishlisted(!isWishlisted);
     setTimeout(() => setToast(""), 2000);
   };
 
@@ -426,8 +449,7 @@ export default function ProductDetailPage() {
 
       {/* Bottom Action Bar */}
       <div 
-        className="fixed w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
-        style={{ bottom: "calc(70px + env(safe-area-inset-bottom, 0px))" }}
+        className="fixed w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] bottom-0 pb-safe"
       >
         <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-600 bg-slate-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
           <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
