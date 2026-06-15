@@ -49,8 +49,22 @@ export default function NotificationsPage() {
           }
         }
 
+        // 2b. Fetch broadcast notifications from Firestore (available to all users)
+        let broadcastNotifs: any[] = [];
+        try {
+          const bQuery = collection(db, "broadcast_notifications");
+          const bSnapshot = await getDocs(bQuery);
+          broadcastNotifs = bSnapshot.docs.map(doc => ({
+            id: doc.id,
+            isBroadcast: true,
+            ...doc.data()
+          }));
+        } catch (bErr) {
+          console.error("Failed to fetch Firestore broadcast notifications:", bErr);
+        }
+
         // 3. Combine and sort by createdAt descending
-        const combined = [...localNotifs, ...remoteNotifs];
+        const combined = [...localNotifs, ...remoteNotifs, ...broadcastNotifs];
         combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setNotifications(combined);
       } catch (err) {
@@ -160,8 +174,12 @@ export default function NotificationsPage() {
                 className={`bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-start gap-3 transition-all hover:border-pink-200/60
                   ${notif.productId ? 'cursor-pointer hover:shadow-md' : ''}`}
               >
-                <div className="w-9 h-9 bg-pink-50 rounded-full flex items-center justify-center text-pink-500 border border-pink-100 flex-shrink-0">
-                  <Bell size={16} className="fill-pink-500/10" />
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border
+                  ${notif.isBroadcast 
+                    ? 'bg-amber-50 text-amber-500 border-amber-100' 
+                    : 'bg-pink-50 text-pink-500 border-pink-100'}`}
+                >
+                  <Bell size={16} className={notif.isBroadcast ? "fill-amber-500/10" : "fill-pink-500/10"} />
                 </div>
                 
                 <div className="flex-1 min-w-0">

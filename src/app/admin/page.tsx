@@ -10,6 +10,9 @@ export default function AdminDashboard() {
   const [viewMode, setViewMode] = useState<"single" | "bulk" | "alerts">("single");
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [fetchingSubs, setFetchingSubs] = useState(true);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
@@ -203,6 +206,58 @@ export default function AdminDashboard() {
       setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to remove subscription.");
+    }
+  };
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      alert("Please enter a title and message for the broadcast.");
+      return;
+    }
+
+    setSendingBroadcast(true);
+    setSuccess("");
+    setError("");
+
+    try {
+      const broadcastData = {
+        title: broadcastTitle.trim(),
+        message: broadcastMessage.trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      // 1. Add to Firestore
+      try {
+        await addDoc(collection(db, "broadcast_notifications"), broadcastData);
+      } catch (firestoreErr) {
+        console.warn("Failed to save broadcast to Firestore, falling back to localStorage", firestoreErr);
+      }
+
+      // 2. Add to Local Storage (so guest/local administrators can test it)
+      try {
+        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const localNotifs = stored ? JSON.parse(stored) : [];
+        localNotifs.unshift({
+          id: `broadcast_${Date.now()}_${Math.random()}`,
+          title: broadcastData.title,
+          message: broadcastData.message,
+          createdAt: broadcastData.createdAt,
+          read: false
+        });
+        localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifs));
+      } catch (e) {
+        console.error("Failed to write local broadcast notification:", e);
+      }
+
+      setBroadcastTitle("");
+      setBroadcastMessage("");
+      setSuccess("Broadcast notification sent to all users successfully!");
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err: any) {
+      setError(err.message || "Failed to send broadcast.");
+    } finally {
+      setSendingBroadcast(false);
     }
   };
 
@@ -1326,7 +1381,59 @@ export default function AdminDashboard() {
         </div>
       ) : (
         /* RESTOCK ALERTS VIEW */
-        <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column: Broadcast Composer */}
+          <div className="lg:col-span-4">
+            <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 shadow-xl sticky top-6">
+              <div className="flex items-center gap-2 mb-6 border-b border-slate-800 pb-3">
+                <Bell size={18} className="text-pink-500" />
+                <h2 className="text-base font-extrabold text-white">
+                  Send App Broadcast
+                </h2>
+              </div>
+              
+              <form onSubmit={handleSendBroadcast} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Broadcast Title *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={broadcastTitle} 
+                    onChange={(e) => setBroadcastTitle(e.target.value)} 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 font-semibold" 
+                    placeholder="e.g. ⚡ FLASH SALE LIVE!" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notification Message *</label>
+                  <textarea 
+                    required 
+                    rows={4}
+                    value={broadcastMessage} 
+                    onChange={(e) => setBroadcastMessage(e.target.value)} 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 leading-relaxed" 
+                    placeholder="e.g. Get 40% off on all new arrivals! Use code FLASH40 at checkout."
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={sendingBroadcast} 
+                    className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-3 rounded-xl hover:opacity-90 disabled:opacity-75 transition-all shadow-md shadow-pink-500/10 cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
+                  >
+                    <Bell size={14} />
+                    <span>{sendingBroadcast ? "BROADCASTING..." : "SEND BROADCAST"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Right Column: Restock Notification Requests */}
+          <div className="lg:col-span-8">
+            <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-black text-white flex items-center gap-2">
               <Bell className="text-pink-500" size={20} />
@@ -1411,6 +1518,8 @@ export default function AdminDashboard() {
               </table>
             </div>
           )}
+            </div>
+          </div>
         </div>
       )}
     </div>

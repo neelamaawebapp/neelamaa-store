@@ -6,6 +6,7 @@ import { CartProvider } from "@/context/CartContext";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
+import NotificationListener from "@/components/NotificationListener";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             {children}
+            <NotificationListener />
             <Footer />
             <BottomNav />
             <WhatsAppButton />
