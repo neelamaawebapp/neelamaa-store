@@ -127,7 +127,7 @@ export default function ProductFeed() {
 
   // Reusable Product Card Component
   const ProductCard = ({ product, isHorizontal = false }: { product: any, isHorizontal?: boolean }) => {
-    const isOutOfStock = product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0;
+    const isOutOfStock = product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0;
 
     return (
       <Link 
