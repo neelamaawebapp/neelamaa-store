@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle, Camera, Image as ImageIcon } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -90,6 +90,11 @@ export default function CustomerOrdersPage() {
   const handleSubmitReturn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder || !selectedItem || selectedItemIndex === null || !user) return;
+    
+    if (returnReason === "Damaged/Defective" && !proofUrl) {
+      alert("Please upload a photo proof for Damaged or Defective items.");
+      return;
+    }
     
     setSubmittingReturn(true);
     try {
@@ -491,15 +496,29 @@ export default function CustomerOrdersPage() {
                   Attach Photo Proof {returnReason === "Damaged/Defective" ? "*" : "(Optional)"}
                 </label>
                 <div className="flex items-center space-x-3">
-                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-pink-500 rounded-xl p-3 w-28 h-20 cursor-pointer transition-all bg-slate-50 text-gray-500">
-                    <Upload size={16} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Choose File</span>
+                  {/* Gallery Button */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-pink-500 rounded-xl p-3 w-24 h-20 cursor-pointer transition-all bg-slate-50 text-gray-500 hover:text-pink-500">
+                    <ImageIcon size={18} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider mt-1.5 text-center">Gallery</span>
                     <input 
                       type="file" 
                       accept="image/*" 
                       onChange={handleImageUpload} 
                       className="hidden" 
-                      required={returnReason === "Damaged/Defective" && !proofUrl}
+                      disabled={uploadingProof || submittingReturn}
+                    />
+                  </label>
+
+                  {/* Camera Button */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-pink-500 rounded-xl p-3 w-24 h-20 cursor-pointer transition-all bg-slate-50 text-gray-500 hover:text-pink-500">
+                    <Camera size={18} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider mt-1.5 text-center">Camera</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handleImageUpload} 
+                      className="hidden" 
                       disabled={uploadingProof || submittingReturn}
                     />
                   </label>
@@ -512,7 +531,7 @@ export default function CustomerOrdersPage() {
                   )}
 
                   {proofUrl && !uploadingProof && (
-                    <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm group bg-white">
+                    <div className="relative w-24 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm group bg-white">
                       <img src={proofUrl} alt="Upload preview" className="w-full h-full object-cover" />
                       <button 
                         type="button" 

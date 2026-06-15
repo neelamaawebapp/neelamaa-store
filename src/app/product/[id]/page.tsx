@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
-import { ChevronLeft, Share2, Heart, ShoppingBag, Info, Truck, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { ChevronLeft, Share2, Heart, ShoppingBag, Info, Truck, ShieldCheck, Bell, X } from "lucide-react";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { addToBag } = useCart();
+  const { user } = useAuth();
   
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,106 @@ export default function ProductDetailPage() {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const sizes = ["S", "M", "L", "XL", "XXL"];
+
+  // Stock Subscription States
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [submittingNotify, setSubmittingNotify] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyPhone, setNotifyPhone] = useState("");
+
+  // Prefill email if logged in
+  useEffect(() => {
+    if (user) {
+      setNotifyEmail(user.email || "");
+    }
+  }, [user]);
+
+  // Check if already subscribed to notifications for this item
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!id) return;
+
+      // Check local storage first
+      const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+      const localMatched = localSubs.some((s: any) => s.productId === id && s.status === "Pending");
+      
+      if (localMatched) {
+        setIsSubscribed(true);
+        return;
+      }
+
+      // Check Firestore if logged in
+      if (user) {
+        try {
+          const subsRef = collection(db, "back_in_stock_subscriptions");
+          const q = query(
+            subsRef, 
+            where("productId", "==", id), 
+            where("userId", "==", user.uid),
+            where("status", "==", "Pending")
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setIsSubscribed(true);
+          }
+        } catch (err) {
+          console.error("Error checking stock subscription:", err);
+        }
+      }
+    };
+    
+    checkSubscription();
+  }, [id, user]);
+
+  const handleNotifyMe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product || !id) return;
+    if (!notifyEmail.trim()) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    setSubmittingNotify(true);
+    try {
+      const subscriptionData = {
+        productId: id,
+        productBrand: product.brand,
+        productName: product.title,
+        userId: user ? user.uid : null,
+        email: notifyEmail.trim().toLowerCase(),
+        phone: notifyPhone.trim(),
+        createdAt: new Date().toISOString(),
+        status: "Pending"
+      };
+
+      // Save to Firestore
+      try {
+        const subsRef = collection(db, "back_in_stock_subscriptions");
+        await addDoc(subsRef, subscriptionData);
+      } catch (firestoreErr) {
+        console.warn("Firestore save failed, falling back to localStorage", firestoreErr);
+      }
+
+      // Prepend or add to localStorage
+      const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+      const exists = localSubs.some((s: any) => s.productId === id && s.email === subscriptionData.email && s.status === "Pending");
+      if (!exists) {
+        localSubs.push(subscriptionData);
+        localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(localSubs));
+      }
+
+      setIsSubscribed(true);
+      setShowNotifyModal(false);
+      setToast("Alert registered! We'll notify you.");
+      setTimeout(() => setToast(""), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to register alert. Please try again.");
+    } finally {
+      setSubmittingNotify(false);
+    }
+  };
 
   // Check local wishlist on load
   useEffect(() => {
@@ -333,12 +435,23 @@ export default function ProductDetailPage() {
           <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
         </button>
         {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) <= 0 ? (
-          <button 
-            disabled
-            className="flex-1 py-3.5 bg-gray-250 text-gray-400 border border-gray-300 rounded-md font-bold flex items-center justify-center transition-colors text-sm cursor-not-allowed"
-          >
-            OUT OF STOCK
-          </button>
+          isSubscribed ? (
+            <button 
+              disabled
+              className="flex-1 py-3.5 bg-emerald-50 text-emerald-600 border border-emerald-250 rounded-md font-bold flex items-center justify-center gap-1.5 text-sm uppercase cursor-not-allowed"
+            >
+              <Bell size={16} className="fill-emerald-600" />
+              <span>✓ ON THE LIST</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => setShowNotifyModal(true)}
+              className="flex-1 py-3.5 bg-slate-900 text-white rounded-md font-bold flex items-center justify-center gap-1.5 hover:bg-slate-800 transition-colors text-sm cursor-pointer uppercase tracking-wider shadow-md hover:shadow-lg"
+            >
+              <Bell size={16} />
+              <span>Notify Me</span>
+            </button>
+          )
         ) : (
           <>
             <button 
@@ -449,6 +562,67 @@ export default function ProductDetailPage() {
                 CONTINUE SHOPPING
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notify Me Modal */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-gray-150 p-6 relative animate-scale-in">
+            <button 
+              type="button"
+              onClick={() => setShowNotifyModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+              disabled={submittingNotify}
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex flex-col items-center text-center mt-2">
+              <div className="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center text-pink-500 mb-4 border border-pink-100 shadow-inner">
+                <Bell size={22} className="animate-bounce" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide">Get Notified</h3>
+              <p className="text-xs text-gray-500 mt-2 px-1">
+                We'll email you a notification as soon as <strong>{product.brand} - {product.title}</strong> is back in stock!
+              </p>
+            </div>
+
+            <form onSubmit={handleNotifyMe} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">Email Address *</label>
+                <input 
+                  type="email" 
+                  required
+                  value={notifyEmail}
+                  onChange={e => setNotifyEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-xs focus:ring-1 focus:ring-pink-500 focus:border-pink-500 outline-none text-gray-800 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-700 uppercase tracking-wider mb-1">Mobile Number (Optional)</label>
+                <input 
+                  type="tel"
+                  value={notifyPhone}
+                  onChange={e => setNotifyPhone(e.target.value)}
+                  placeholder="10-digit mobile"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-xs focus:ring-1 focus:ring-pink-500 focus:border-pink-500 outline-none text-gray-800 font-medium"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  disabled={submittingNotify}
+                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-lg transition-colors text-xs uppercase tracking-wider shadow-md disabled:opacity-70 cursor-pointer"
+                >
+                  {submittingNotify ? "Saving..." : "Notify Me when available"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

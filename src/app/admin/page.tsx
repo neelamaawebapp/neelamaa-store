@@ -329,15 +329,69 @@ export default function AdminDashboard() {
         images: uploadedUrls, // The full array of angles!
       };
 
+      let savedProductId = editingId;
       if (editingId) {
         await updateDoc(doc(db, "products", editingId), productData);
         setSuccess("Product updated successfully!");
       } else {
-        await addDoc(collection(db, "products"), {
+        const docRef = await addDoc(collection(db, "products"), {
           ...productData,
           createdAt: serverTimestamp(),
         });
+        savedProductId = docRef.id;
         setSuccess("Product added successfully!");
+      }
+
+      // Trigger back-in-stock notification check if quantity is > 0
+      if (productData.quantity > 0 && savedProductId) {
+        // Trigger Server API (calls Nodemailer & writes Firestore Notifications)
+        try {
+          await fetch("/api/notify-restock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productId: savedProductId,
+              brand: productData.brand,
+              title: productData.title,
+              quantity: productData.quantity
+            })
+          });
+        } catch (apiErr) {
+          console.error("Failed to trigger restock API:", apiErr);
+        }
+
+        // Trigger Local/Mock Notifications (for local guest testing)
+        try {
+          const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+          const pendingSubs = localSubs.filter((s: any) => s.productId === savedProductId && s.status === "Pending");
+          
+          if (pendingSubs.length > 0) {
+            const localNotifications = JSON.parse(localStorage.getItem("neelsutra_local_notifications") || "[]");
+            pendingSubs.forEach((sub: any) => {
+              localNotifications.unshift({
+                id: `notif_${Date.now()}_${Math.random()}`,
+                userId: sub.userId,
+                email: sub.email,
+                title: "Back in Stock! 🌟",
+                message: `The "${productData.brand} - ${productData.title}" you wanted is back in stock now!`,
+                productId: savedProductId,
+                createdAt: new Date().toISOString(),
+                read: false
+              });
+            });
+            localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifications));
+
+            const updatedSubs = localSubs.map((s: any) => {
+              if (s.productId === savedProductId && s.status === "Pending") {
+                return { ...s, status: "Notified", notifiedAt: new Date().toISOString() };
+              }
+              return s;
+            });
+            localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(updatedSubs));
+          }
+        } catch (localErr) {
+          console.error("Failed to process local restock notifications:", localErr);
+        }
       }
 
       resetForm();
@@ -427,7 +481,7 @@ export default function AdminDashboard() {
           Number(item.otherExpenses || 0) + 
           Number(item.profit || 0);
 
-        await addDoc(collection(db, "products"), {
+        const docRef = await addDoc(collection(db, "products"), {
           brand: item.brand,
           title: item.title,
           price: calculatedBulkPrice,
@@ -443,6 +497,57 @@ export default function AdminDashboard() {
           image: finalUrl,
           createdAt: serverTimestamp(),
         });
+
+        // Trigger notifications if restocked (bulk upload stock > 0)
+        const bulkQuantity = Number(item.quantity || 0);
+        if (bulkQuantity > 0) {
+          try {
+            await fetch("/api/notify-restock", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                productId: docRef.id,
+                brand: item.brand,
+                title: item.title,
+                quantity: bulkQuantity
+              })
+            });
+          } catch (apiErr) {
+            console.error("Failed to trigger bulk restock API:", apiErr);
+          }
+
+          // Trigger Local/Mock Notifications
+          try {
+            const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+            const pendingSubs = localSubs.filter((s: any) => s.productId === docRef.id && s.status === "Pending");
+            if (pendingSubs.length > 0) {
+              const localNotifications = JSON.parse(localStorage.getItem("neelsutra_local_notifications") || "[]");
+              pendingSubs.forEach((sub: any) => {
+                localNotifications.unshift({
+                  id: `notif_${Date.now()}_${Math.random()}`,
+                  userId: sub.userId,
+                  email: sub.email,
+                  title: "Back in Stock! 🌟",
+                  message: `The "${item.brand} - ${item.title}" you wanted is back in stock now!`,
+                  productId: docRef.id,
+                  createdAt: new Date().toISOString(),
+                  read: false
+                });
+              });
+              localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifications));
+
+              const updatedSubs = localSubs.map((s: any) => {
+                if (s.productId === docRef.id && s.status === "Pending") {
+                  return { ...s, status: "Notified", notifiedAt: new Date().toISOString() };
+                }
+                return s;
+              });
+              localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(updatedSubs));
+            }
+          } catch (localErr) {
+            console.error("Failed to process bulk local notifications:", localErr);
+          }
+        }
         count++;
       }
       setSuccess(`Successfully uploaded ${count} products!`);
