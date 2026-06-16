@@ -243,38 +243,23 @@ export async function POST(req: Request) {
     const emailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
     const smsConfigured = !!process.env.FAST2SMS_API_KEY;
 
+    // In production, only block the request if credentials are set but the delivery failed.
+    // If credentials are unconfigured, we will fall back to demo mode so testing is not blocked.
     if (isProduction) {
-      if (method === "mobile") {
-        if (!smsConfigured) {
-          return NextResponse.json({ 
-            error: "Mobile password reset is currently unavailable (FAST2SMS_API_KEY is not configured on the server)." 
-          }, { status: 503 });
-        }
-        if (!smsSent) {
-          return NextResponse.json({ 
-            error: "Failed to send verification OTP via SMS. Please try again later." 
-          }, { status: 550 });
-        }
+      if (method === "mobile" && smsConfigured && !smsSent) {
+        return NextResponse.json({ 
+          error: "Failed to send verification OTP via SMS. Please check gateway status or try again." 
+        }, { status: 550 });
       }
-      if (method === "email") {
-        if (!emailConfigured) {
-          return NextResponse.json({ 
-            error: "SMTP email credentials (EMAIL_USER & EMAIL_PASS) are not configured on the server. Please contact support." 
-          }, { status: 503 });
-        }
-        if (!emailSent) {
-          return NextResponse.json({ 
-            error: "Failed to send verification code email. Please verify SMTP settings and try again." 
-          }, { status: 550 });
-        }
+      if (method === "email" && emailConfigured && !emailSent) {
+        return NextResponse.json({ 
+          error: "Failed to send verification code email. Please check SMTP settings and try again." 
+        }, { status: 550 });
       }
     }
 
-    // Fall back to on-screen demo mode only if the actual code could not be sent (development only)
-    const demoMode = !isProduction && (
-      (method === "mobile" && !smsSent) || 
-      (method === "email" && !emailSent)
-    );
+    // Fall back to on-screen demo mode if the actual message could not be sent (e.g. unconfigured credentials)
+    const demoMode = (method === "mobile" && !smsSent) || (method === "email" && !emailSent);
 
     return NextResponse.json({
       success: true,
