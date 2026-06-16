@@ -33,16 +33,18 @@ export async function POST(req: Request) {
       ...doc.data()
     })) as any[];
 
-    // 3. Setup Nodemailer Transporter
+    // 3. Setup Nodemailer Transporter with standard Gmail host configuration and longer timeouts
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 3000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const isEmailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
@@ -57,9 +59,10 @@ export async function POST(req: Request) {
       if (isEmailConfigured && sub.email) {
         try {
           const mailOptions = {
-            from: `"NeelSutra Notifications" <${process.env.EMAIL_USER}>`,
+            from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
             to: sub.email,
-            subject: `Back in stock: ${brand} - ${title} is available now! 🌟`,
+            subject: `Product Restock Alert: ${brand} - ${title}`,
+            text: `Hello,\n\nThe product you requested a stock alert for, "${brand} - ${title}", is back in stock.\n\nYou can view and purchase the item here:\n${appUrl}/product/${productId}\n\nThank you,\nNeelSutra Support`,
             html: `
               <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 25px;">
@@ -67,16 +70,16 @@ export async function POST(req: Request) {
                 </div>
                 
                 <h2 style="font-size: 18px; color: #1e293b; margin-top: 0; text-align: center;">
-                  Item is Back in Stock! 🎉
+                  Product Back in Stock
                 </h2>
                 
                 <p style="font-size: 14px; line-height: 1.6; color: #475569; text-align: center;">
-                  Great news! The item you requested stock alerts for, <strong>${brand} - ${title}</strong>, is available again.
+                  The product you requested stock alerts for, <strong>${brand} - ${title}</strong>, is available again.
                 </p>
                 
                 <div style="text-align: center; margin: 25px 0;">
                   <a href="${appUrl}/product/${productId}" style="background-color: #ec4899; color: white; padding: 12px 24px; font-weight: bold; border-radius: 8px; text-decoration: none; display: inline-block; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(236,72,153,0.2);">
-                    SHOP NOW
+                    View Product Details
                   </a>
                 </div>
                 
@@ -86,6 +89,11 @@ export async function POST(req: Request) {
                 </p>
               </div>
             `,
+            headers: {
+              "Precedence": "bulk",
+              "X-Auto-Response-Suppress": "All",
+              "Auto-Submitted": "auto-generated"
+            }
           };
           await transporter.sendMail(mailOptions);
           emailSuccessCount++;

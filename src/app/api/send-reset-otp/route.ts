@@ -149,23 +149,28 @@ export async function POST(req: Request) {
 
     // 5. Deliver OTP
     let emailSent = false;
+    let smsSent = false;
+
     if (method === "email") {
-      // Prepare Nodemailer transport with timeouts to prevent hangs/server timeouts
+      // Prepare Nodemailer transport with standard Gmail host configuration and longer timeouts
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        connectionTimeout: 3000, // 3 seconds timeout
-        greetingTimeout: 3000,
-        socketTimeout: 3000,
+        connectionTimeout: 10000, // 10 seconds timeout
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
       });
 
       const mailOptions = {
         from: `"NeelSutra Support" <${process.env.EMAIL_USER || 'support@neelsutra.com'}>`,
         to: email,
         subject: `Password Reset Verification Code`,
+        text: `Hello,\n\nWe received a request to reset the password for your NeelSutra account.\n\nUse the following 6-digit verification code to complete your reset process:\n\n${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not make this request, you can safely ignore this email.`,
         html: `
           <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div style="text-align: center; margin-bottom: 25px;">
@@ -202,39 +207,86 @@ export async function POST(req: Request) {
       } else {
         console.warn("SMTP credentials not configured. Email sending skipped.");
       }
+    } else if (method === "mobile" && phone) {
+      // Send OTP via Fast2SMS API
+      if (process.env.FAST2SMS_API_KEY) {
+        try {
+          const smsMessage = `Your NeelSutra verification OTP code is ${otp}. Valid for 5 minutes. Please do not share this code.`;
+          const smsRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+            method: "POST",
+            headers: {
+              "authorization": process.env.FAST2SMS_API_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              route: "q",
+              message: smsMessage,
+              language: "english",
+              flash: 0,
+              numbers: phone,
+            })
+          });
+          if (smsRes.ok) {
+            smsSent = true;
+          } else {
+            console.error("Fast2SMS API returned non-ok status:", smsRes.status);
+          }
+        } catch (smsError) {
+          console.error("Fast2SMS send SMS failed:", smsError);
+        }
+      } else {
+        console.warn("FAST2SMS_API_KEY not configured. SMS sending skipped.");
+      }
     }
 
     const isProduction = process.env.NODE_ENV === "production";
     const emailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    const smsConfigured = !!process.env.FAST2SMS_API_KEY;
 
     if (isProduction) {
       if (method === "mobile") {
-        return NextResponse.json({ 
-          error: "Mobile password reset is currently unavailable. Please use the 'Reset via Email' option." 
-        }, { status: 501 });
+        if (!smsConfigured) {
+          return NextResponse.json({ 
+            error: "Mobile password reset is currently unavailable (FAST2SMS_API_KEY is not configured on the server)." 
+          }, { status: 503 });
+        }
+        if (!smsSent) {
+          return NextResponse.json({ 
+            error: "Failed to send verification OTP via SMS. Please try again later." 
+          }, { status: 550 });
+        }
       }
-      if (!emailConfigured) {
-        return NextResponse.json({ 
-          error: "SMTP email credentials (EMAIL_USER & EMAIL_PASS) are not configured on the server. Please contact support." 
-        }, { status: 503 });
-      }
-      if (!emailSent) {
-        return NextResponse.json({ 
-          error: "Failed to send verification code email. Please verify SMTP settings and try again." 
-        }, { status: 550 });
+      if (method === "email") {
+        if (!emailConfigured) {
+          return NextResponse.json({ 
+            error: "SMTP email credentials (EMAIL_USER & EMAIL_PASS) are not configured on the server. Please contact support." 
+          }, { status: 503 });
+        }
+        if (!emailSent) {
+          return NextResponse.json({ 
+            error: "Failed to send verification code email. Please verify SMTP settings and try again." 
+          }, { status: 550 });
+        }
       }
     }
 
-    const demoMode = !isProduction && (method === "mobile" || !emailSent);
+    // Fall back to on-screen demo mode only if the actual code could not be sent (development only)
+    const demoMode = !isProduction && (
+      (method === "mobile" && !smsSent) || 
+      (method === "email" && !emailSent)
+    );
 
     return NextResponse.json({
       success: true,
       ...(demoMode ? { otp } : {}), // Only return OTP in response when in demo/sandbox mode
       emailSent,
+      smsSent,
       demoMode,
       message: method === "email" && emailSent 
         ? "Verification code sent to your email inbox." 
-        : "Verification code generated successfully (Demo Mode)."
+        : method === "mobile" && smsSent
+          ? "Verification code sent to your mobile phone."
+          : "Verification code generated successfully (Demo Mode)."
     });
 
   } catch (error: any) {

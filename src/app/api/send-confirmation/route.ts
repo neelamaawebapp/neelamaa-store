@@ -7,20 +7,23 @@ export async function POST(req: Request) {
 
     // 1. Send Email using Nodemailer (requires Gmail App Password in .env)
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS, // "App Password" from Google Account
       },
-      connectionTimeout: 3000, // 3 seconds timeout
-      greetingTimeout: 3000,
-      socketTimeout: 3000,
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const mailOptions = {
       from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Order Confirmation - ${orderId}`,
+      text: `Hello ${name},\n\nThank you for your order! We have successfully received order #${orderId}.\n\nTotal Amount: ₹${amount}\n\nWe will notify you once it ships. Thanks for shopping at NeelSutra!`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333;">
           <h2 style="color: #ec4899;">Thank you for your order, ${name}!</h2>
@@ -33,9 +36,10 @@ export async function POST(req: Request) {
 
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "neelsutra1@gmail.com";
     const adminMailOptions = {
-      from: `"NeelSutra Notifications" <${process.env.EMAIL_USER}>`,
+      from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
       to: adminEmail,
       subject: `New Order Received - #${orderId}`,
+      text: `New Order Placed!\n\nOrder #${orderId} has been successfully placed by a customer.\n\nCustomer Details:\nName: ${name}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nTotal Amount: ₹${amount}\n\nPlease log in to the admin panel to view full details.`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #e2e8f0; border-radius: 8px;">
           <h2 style="color: #ec4899; margin-top: 0;">New Order Placed!</h2>

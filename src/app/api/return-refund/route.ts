@@ -90,14 +90,16 @@ export async function POST(req: Request) {
 
     // 5. Send Email Notification to Admin using Nodemailer
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 3000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "neelsutra1@gmail.com";
@@ -105,6 +107,7 @@ export async function POST(req: Request) {
       from: `"NeelSutra Support" <${process.env.EMAIL_USER || 'support@neelsutra.com'}>`,
       to: adminEmail,
       subject: `New Return/Refund Request - Order #${orderId.slice(-8).toUpperCase()}`,
+      text: `New Return/Refund Request Received!\n\nOrder ID: #${orderId.slice(-8).toUpperCase()}\nCustomer Details:\nName: ${customerName}\nEmail: ${customerEmail}\nRequest Type: ${requestType}\nReason: ${reason}\nComments: ${comments || 'No comments'}\n\nPlease log in to the admin panel to view full details.`,
       html: `
         <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
           <div style="text-align: center; margin-bottom: 25px;">

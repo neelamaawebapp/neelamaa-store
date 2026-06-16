@@ -48,6 +48,8 @@ export default function ForgotPassword() {
         setMessage("A 6-digit OTP code has been successfully sent to your email inbox.");
       } else if (resetMethod === "email") {
         setMessage("OTP code generated (Demo Mode: See sandbox below).");
+      } else if (resetMethod === "mobile" && data.smsSent) {
+        setMessage("A 6-digit OTP has been sent to your registered mobile number.");
       } else {
         setMessage("A 6-digit OTP has been sent to your registered mobile number (Demo Mode: See sandbox below).");
       }
