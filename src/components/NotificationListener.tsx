@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Bell, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function NotificationListener() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>("default");
 
@@ -93,6 +95,56 @@ export default function NotificationListener() {
 
     return () => unsubscribe();
   }, []);
+
+  // Listen to real-time personal user notifications (like back-in-stock alerts)
+  useEffect(() => {
+    if (typeof window === "undefined" || !user || user.uid.startsWith("mock_")) return;
+
+    const notificationsRef = collection(db, "notifications");
+    const q = query(notificationsRef, where("userId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const oneMinuteAgo = Date.now() - 60 * 1000;
+      
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          const createdAtTime = new Date(data.createdAt).getTime();
+
+          // Only alert for brand new notifications that are unread
+          if (createdAtTime > oneMinuteAgo && !data.read) {
+            // 1. Trigger OS system notification if permission is granted
+            if (Notification.permission === "granted") {
+              try {
+                new Notification(data.title, {
+                  body: data.message,
+                  icon: "/icon.svg"
+                });
+              } catch (err) {
+                console.warn("Native OS Notification failed", err);
+              }
+            }
+
+            // 2. Trigger active in-app Toast
+            setToast({
+              title: data.title,
+              message: data.message
+            });
+
+            // Auto-hide in-app toast after 8 seconds
+            const timer = setTimeout(() => {
+              setToast(null);
+            }, 8000);
+
+            return () => clearTimeout(timer);
+          }
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
 
   // Show a permission prompt subtly on the home / catalog pages if they haven't decided
   const shouldShowPrompt = 

@@ -204,7 +204,28 @@ export async function POST(req: Request) {
       }
     }
 
-    const demoMode = method === "mobile" || !emailSent;
+    const isProduction = process.env.NODE_ENV === "production";
+    const emailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+
+    if (isProduction) {
+      if (method === "mobile") {
+        return NextResponse.json({ 
+          error: "Mobile password reset is currently unavailable. Please use the 'Reset via Email' option." 
+        }, { status: 501 });
+      }
+      if (!emailConfigured) {
+        return NextResponse.json({ 
+          error: "SMTP email credentials (EMAIL_USER & EMAIL_PASS) are not configured on the server. Please contact support." 
+        }, { status: 503 });
+      }
+      if (!emailSent) {
+        return NextResponse.json({ 
+          error: "Failed to send verification code email. Please verify SMTP settings and try again." 
+        }, { status: 550 });
+      }
+    }
+
+    const demoMode = !isProduction && (method === "mobile" || !emailSent);
 
     return NextResponse.json({
       success: true,
@@ -213,7 +234,7 @@ export async function POST(req: Request) {
       demoMode,
       message: method === "email" && emailSent 
         ? "Verification code sent to your email inbox." 
-        : "Verification code generated successfully."
+        : "Verification code generated successfully (Demo Mode)."
     });
 
   } catch (error: any) {
