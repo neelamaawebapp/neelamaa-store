@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import CategoryMenu from "@/components/CategoryMenu";
 import HeroBanner from "@/components/HeroBanner";
-import ProductFeed from "@/components/ProductFeed";
+import ProductFeed, { ProductFeedSkeleton } from "@/components/ProductFeed";
 import { Suspense } from "react";
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
         <main>
           <CategoryMenu />
           <HeroBanner />
-          <Suspense fallback={<div className="p-8 text-center">Loading feed...</div>}>
+          <Suspense fallback={<ProductFeedSkeleton />}>
             <ProductFeed />
           </Suspense>
         </main>
