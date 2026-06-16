@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-const PROMO_MESSAGES = [
+const DEFAULT_PROMOS = [
   "⚡ Mid-Season Sale: FLAT 50% OFF! Code: NEELSUTRA50 ⚡",
   "✨ Explore NeelSutra's New Arrivals: Fresh Styles Daily ✨",
   "💫 NEELSUTRA: Indulge in Premium Luxury Fashion 💫"
@@ -16,16 +18,36 @@ export default function Header() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [promoMessages, setPromoMessages] = useState<string[]>(DEFAULT_PROMOS);
   const [promoIndex, setPromoIndex] = useState(0);
   const [fadeClass, setFadeClass] = useState("opacity-100 translate-y-0");
 
   useEffect(() => {
+    const fetchPromos = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "promoTicker"));
+        if (snap.exists() && snap.data().messages && Array.isArray(snap.data().messages) && snap.data().messages.length > 0) {
+          setPromoMessages(snap.data().messages);
+        }
+      } catch (err) {
+        console.error("Error fetching promo ticker:", err);
+      }
+    };
+    fetchPromos();
+  }, []);
+
+  useEffect(() => {
+    if (promoMessages.length <= 1) {
+      setPromoIndex(0);
+      return;
+    }
+
     const interval = setInterval(() => {
       // Fade out and slide down slightly
       setFadeClass("opacity-0 translate-y-1");
 
       setTimeout(() => {
-        setPromoIndex((prev) => (prev + 1) % PROMO_MESSAGES.length);
+        setPromoIndex((prev) => (prev + 1) % promoMessages.length);
         // Position it off-screen top before fading back in
         setFadeClass("opacity-0 -translate-y-1");
 
@@ -36,7 +58,7 @@ export default function Header() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [promoMessages]);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchQuery.trim()) {
@@ -51,7 +73,7 @@ export default function Header() {
       {/* Dynamic Promo Ticker Strip */}
       <div className="bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 text-white text-center py-2 px-4 text-[10px] font-black uppercase tracking-widest select-none min-h-[30px] flex items-center justify-center overflow-hidden shadow-inner">
         <div className={`transition-all duration-300 ease-out transform ${fadeClass} text-center`}>
-          {PROMO_MESSAGES[promoIndex]}
+          {promoMessages[promoIndex]}
         </div>
       </div>
 

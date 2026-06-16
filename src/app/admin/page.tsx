@@ -39,6 +39,14 @@ export default function AdminDashboard() {
   // Flash Sale State
   const [flashSaleEnd, setFlashSaleEnd] = useState("");
   const [flashSaleLoading, setFlashSaleLoading] = useState(false);
+
+  // Promo Ticker State
+  const [promoMessages, setPromoMessages] = useState<string[]>([
+    "⚡ Mid-Season Sale: FLAT 50% OFF! Code: NEELSUTRA50 ⚡",
+    "✨ Explore NeelSutra's New Arrivals: Fresh Styles Daily ✨",
+    "💫 NEELSUTRA: Indulge in Premium Luxury Fashion 💫"
+  ]);
+  const [promoLoading, setPromoLoading] = useState(false);
   
   // Product Images States (Multiple)
   const [productImages, setProductImages] = useState<{
@@ -85,7 +93,7 @@ export default function AdminDashboard() {
       setFetching(false);
     });
 
-    // Fetch Categories
+    // Fetch Categories and other settings
     import("firebase/firestore").then(({ getDoc, doc }) => {
       getDoc(doc(db, "settings", "categories")).then((snap) => {
         if (snap.exists() && snap.data().data) {
@@ -100,6 +108,12 @@ export default function AdminDashboard() {
           const offset = date.getTimezoneOffset() * 60000;
           const localISOTime = (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
           setFlashSaleEnd(localISOTime);
+        }
+      });
+      // Fetch Promo Ticker Setting
+      getDoc(doc(db, "settings", "promoTicker")).then((snap) => {
+        if (snap.exists() && snap.data().messages) {
+          setPromoMessages(snap.data().messages);
         }
       });
     });
@@ -147,6 +161,34 @@ export default function AdminDashboard() {
       setError(err.message || "Failed to update flash sale timer");
     } finally {
       setFlashSaleLoading(false);
+    }
+  };
+
+  const updatePromoMessage = (index: number, val: string) => {
+    setPromoMessages(prev => {
+      const updated = [...prev];
+      updated[index] = val;
+      return updated;
+    });
+  };
+
+  const savePromoTicker = async () => {
+    setPromoLoading(true);
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
+      const cleaned = promoMessages.map(m => m.trim()).filter(Boolean);
+      if (cleaned.length === 0) {
+        throw new Error("Must provide at least one promotional message");
+      }
+      await setDoc(doc(db, "settings", "promoTicker"), {
+        messages: cleaned
+      });
+      setSuccess("Promo ticker updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to update promo ticker");
+    } finally {
+      setPromoLoading(false);
     }
   };
 
@@ -913,6 +955,55 @@ export default function AdminDashboard() {
                   className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800"
                 >
                   {flashSaleLoading ? "SAVING..." : "SET TIMER"}
+                </button>
+              </div>
+            </div>
+
+            {/* Promo Ticker Settings Panel */}
+            <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 mt-6 shadow-xl">
+              <h2 className="text-base font-extrabold text-white mb-4">Promo Ticker Settings</h2>
+              <div className="space-y-3">
+                {promoMessages.map((msg, index) => (
+                  <div key={index}>
+                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold text-pink-500">Message {index + 1}</label>
+                    <input 
+                      type="text" 
+                      value={msg} 
+                      onChange={(e) => updatePromoMessage(index, e.target.value)} 
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:border-pink-500 outline-none text-white transition-all" 
+                      placeholder={`e.g. Promo Message ${index + 1}`}
+                    />
+                  </div>
+                ))}
+                
+                <div className="flex justify-between items-center pt-2">
+                  {promoMessages.length < 5 ? (
+                    <button 
+                      type="button"
+                      onClick={() => setPromoMessages(prev => [...prev, ""])}
+                      className="text-[10px] font-bold text-pink-500 hover:text-pink-400 transition-colors uppercase tracking-wider cursor-pointer"
+                    >
+                      + Add Message
+                    </button>
+                  ) : <div></div>}
+
+                  {promoMessages.length > 1 ? (
+                    <button 
+                      type="button"
+                      onClick={() => setPromoMessages(prev => prev.slice(0, -1))}
+                      className="text-[10px] font-bold text-rose-500 hover:text-rose-450 transition-colors uppercase tracking-wider cursor-pointer"
+                    >
+                      - Remove Message
+                    </button>
+                  ) : <div></div>}
+                </div>
+
+                <button 
+                  onClick={savePromoTicker} 
+                  disabled={promoLoading} 
+                  className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800 mt-4 block"
+                >
+                  {promoLoading ? "SAVING..." : "UPDATE TICKER"}
                 </button>
               </div>
             </div>
