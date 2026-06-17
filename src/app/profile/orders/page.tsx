@@ -490,7 +490,16 @@ export default function CustomerOrdersPage() {
                   <div className="space-y-4 mb-4">
                     {order.items?.map((item: any, idx: number) => (
                       <div key={idx} className="border-b border-gray-50 last:border-0 pb-3 last:pb-0">
-                        <div className="flex items-center space-x-3">
+                        <div 
+                          className="flex items-center space-x-3 cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
+                          onClick={() => {
+                            setTrackingOrder(order);
+                            setEditAddressText(order.address || "");
+                            setShowTrackingModal(true);
+                            setShowCancelConfirm(false);
+                            setShowEditAddress(false);
+                          }}
+                        >
                           <img src={item.image} alt={item.brand} className="w-12 h-16 object-cover rounded border border-gray-100" />
                           <div className="flex-1">
                             <h3 className="font-bold text-sm text-gray-900">{item.brand}</h3>
