@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
       let exists = false;
       // Check admin email whitelist
-      if (email === "craftstyle1@gmail.com" || email === "admin@craftstyle.com") {
+      if (email === "admincraftstyle@gmail.com" || email === "admin@craftstyle.com") {
         exists = true;
       }
 

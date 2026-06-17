@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       socketTimeout: 10000,
     });
 
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "craftstyle1@gmail.com";
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admincraftstyle@gmail.com";
     const mailOptions = {
       from: `"Craft Style Support" <${process.env.EMAIL_USER || 'support@craftstyle.com'}>`,
       to: adminEmail,

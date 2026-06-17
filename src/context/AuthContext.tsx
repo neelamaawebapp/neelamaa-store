@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const parsed = JSON.parse(localMockUser);
           setUser(parsed);
-          if (parsed.email === "admin@craftstyle.com" || parsed.email === "craftstyle1@gmail.com") {
+          if (parsed.email === "admin@craftstyle.com" || parsed.email === "admincraftstyle@gmail.com") {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "craftstyle1@gmail.com")) {
+      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "admincraftstyle@gmail.com")) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } as any;
     localStorage.setItem("craftstyle_mock_user", JSON.stringify(mockUser));
     setUser(mockUser);
-    if (email === "admin@craftstyle.com" || email === "craftstyle1@gmail.com") {
+    if (email === "admin@craftstyle.com" || email === "admincraftstyle@gmail.com") {
       setIsAdmin(true);
     } else {
       setIsAdmin(false);

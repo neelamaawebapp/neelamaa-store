@@ -46,7 +46,7 @@ export default function TermsOfService() {
         </p>
         <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 mt-2 space-y-1">
           <p className="font-semibold text-gray-800">Neelamaa Enterprises</p>
-          <p>Email: <a href="mailto:craftstyle1@gmail.com" className="text-pink-600 font-bold hover:underline">craftstyle1@gmail.com</a></p>
+          <p>Email: <a href="mailto:admincraftstyle@gmail.com" className="text-pink-600 font-bold hover:underline">admincraftstyle@gmail.com</a></p>
           <p>Call/WhatsApp: <a href="tel:+919828120484" className="text-pink-600 font-bold hover:underline">+91-9828120484</a></p>
         </div>
       </div>
