@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle, Camera, Image as ImageIcon } from "lucide-react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle, Camera, Image as ImageIcon, Copy, Edit, Phone, Mail, ExternalLink, MessageSquare, Check, HelpCircle } from "lucide-react";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function CustomerOrdersPage() {
@@ -26,6 +26,122 @@ export default function CustomerOrdersPage() {
   
   const [uploadingProof, setUploadingProof] = useState(false);
   const [submittingReturn, setSubmittingReturn] = useState(false);
+
+  // Order Tracking States
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingOrder, setTrackingOrder] = useState<any>(null);
+  const [copiedTrackingId, setCopiedTrackingId] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [showEditAddress, setShowEditAddress] = useState(false);
+  const [editAddressText, setEditAddressText] = useState("");
+  const [updatingAddress, setUpdatingAddress] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+
+  const getTrackingLink = (company: string, trackingNumber: string) => {
+    if (!company || !trackingNumber) return "#";
+    let link = `https://www.google.com/search?q=${encodeURIComponent(company + " tracking " + trackingNumber)}`;
+    switch (company) {
+      case "Delhivery": return `https://www.delhivery.com/track/package/${trackingNumber}`;
+      case "BlueDart": return `https://www.bluedart.com/tracking`;
+      case "DTDC": return `https://www.dtdc.in/tracking.asp`;
+      case "XpressBees": return `https://www.xpressbees.com/track?awb=${trackingNumber}`;
+      case "Ecom Express": return `https://ecomexpress.in/tracking/?awb=${trackingNumber}`;
+      case "India Post": return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+      case "Shadowfax": return `https://track.shadowfax.in/track?order=${trackingNumber}`;
+    }
+    return link;
+  };
+
+  const getEstimatedDeliveryDate = (createdAt: any, status: string) => {
+    if (status === "Cancelled") return "N/A (Cancelled)";
+    let orderTime = Date.now();
+    if (createdAt) {
+      if (typeof createdAt.toMillis === "function") {
+        orderTime = createdAt.toMillis();
+      } else if (createdAt.seconds) {
+        orderTime = createdAt.seconds * 1000;
+      } else {
+        const parsed = new Date(createdAt).getTime();
+        if (!isNaN(parsed)) orderTime = parsed;
+      }
+    }
+    // Pending: 5 days, Shipped: 3 days, Delivered: 0 days
+    const addedDays = status === "Pending" ? 5 : status === "Shipped" ? 3 : 0;
+    const estDate = new Date(orderTime + addedDays * 24 * 60 * 60 * 1000);
+    return estDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!user) return;
+    setCancellingOrder(true);
+    try {
+      if (orderId.startsWith("mock_")) {
+        // Mock order in local storage
+        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const updatedLocal = localOrders.map((o: any) => {
+          if (o.id === orderId) {
+            return { ...o, status: "Cancelled" };
+          }
+          return o;
+        });
+        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+      } else {
+        // Remote order in Firestore
+        await updateDoc(doc(db, "orders", orderId), { status: "Cancelled" });
+      }
+
+      // Update local state
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "Cancelled" } : o));
+      if (trackingOrder && trackingOrder.id === orderId) {
+        setTrackingOrder((prev: any) => ({ ...prev, status: "Cancelled" }));
+      }
+      setShowCancelConfirm(false);
+      alert("Order has been cancelled successfully.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to cancel order. Please try again.");
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
+
+  const handleUpdateAddress = async (orderId: string, newAddress: string) => {
+    if (!newAddress.trim()) {
+      alert("Address cannot be empty.");
+      return;
+    }
+    setUpdatingAddress(true);
+    try {
+      if (orderId.startsWith("mock_")) {
+        // Mock order in local storage
+        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const updatedLocal = localOrders.map((o: any) => {
+          if (o.id === orderId) {
+            return { ...o, address: newAddress };
+          }
+          return o;
+        });
+        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+      } else {
+        // Remote order in Firestore
+        await updateDoc(doc(db, "orders", orderId), { address: newAddress });
+      }
+
+      // Update local state
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, address: newAddress } : o));
+      if (trackingOrder && trackingOrder.id === orderId) {
+        setTrackingOrder((prev: any) => ({ ...prev, address: newAddress }));
+      }
+      setShowEditAddress(false);
+      alert("Delivery address updated successfully.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update delivery address. Please try again.");
+    } finally {
+      setUpdatingAddress(false);
+    }
+  };
 
   const isReturnEligible = (order: any) => {
     if (order.status !== "Delivered") return false;
@@ -390,11 +506,29 @@ export default function CustomerOrdersPage() {
                   </div>
 
                   {/* Totals */}
-                  <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Ordered on: {formatOrderDate(order.createdAt)}</span>
-                    <div className="text-right">
-                      <span className="text-xs text-gray-500 mr-2">Total Amount:</span>
-                      <span className="font-bold text-gray-900">₹{order.totalAmount}</span>
+                  <div className="border-t border-gray-100 pt-3 space-y-3">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500">Ordered on: {formatOrderDate(order.createdAt)}</span>
+                      <div className="text-right">
+                        <span className="text-gray-500 mr-2">Total Amount:</span>
+                        <span className="font-bold text-gray-900">₹{order.totalAmount}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex pt-1">
+                      <button
+                        onClick={() => {
+                          setTrackingOrder(order);
+                          setEditAddressText(order.address || "");
+                          setShowTrackingModal(true);
+                          setShowCancelConfirm(false);
+                          setShowEditAddress(false);
+                        }}
+                        className="w-full bg-pink-500 text-white font-bold py-2.5 rounded-lg hover:bg-pink-600 transition-all text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Truck size={14} />
+                        Track Order
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -579,6 +713,338 @@ export default function CustomerOrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Order Tracking Modal */}
+      {showTrackingModal && trackingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-gray-150 flex flex-col relative max-h-[90vh] animate-scale-in">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="font-bold text-sm text-gray-900 uppercase tracking-wide">Track Your Order</h2>
+                <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {trackingOrder.id.slice(-8).toUpperCase()}</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowTrackingModal(false)}
+                className="text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Status Banner */}
+              <div className={`p-4 rounded-xl border flex items-center justify-between
+                ${trackingOrder.status === 'Pending' ? 'bg-orange-50/70 border-orange-100 text-orange-850' : 
+                  trackingOrder.status === 'Shipped' ? 'bg-blue-50/70 border-blue-100 text-blue-850' :
+                  trackingOrder.status === 'Delivered' ? 'bg-green-50/70 border-green-100 text-green-850' :
+                  'bg-red-50/70 border-red-100 text-red-850'}
+              `}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Current Status</p>
+                  <h3 className="text-sm font-extrabold uppercase mt-0.5">{trackingOrder.status}</h3>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                    {trackingOrder.status === 'Delivered' ? 'Delivered On' : 'Estimated Delivery'}
+                  </p>
+                  <p className="text-xs font-bold mt-0.5">
+                    {getEstimatedDeliveryDate(trackingOrder.createdAt, trackingOrder.status)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Timeline Stepper */}
+              {trackingOrder.status !== 'Cancelled' ? (
+                <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-100/80 space-y-4">
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Delivery Journey</h3>
+                  <div className="relative pl-6 border-l-2 border-slate-200 ml-3 space-y-6">
+                    {/* Step 1: Placed */}
+                    <div className="relative">
+                      <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
+                        <Check size={12} className="stroke-[3]" />
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900">Order Placed</h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Your order was registered successfully.</p>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Confirmed */}
+                    <div className="relative">
+                      <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
+                        <Check size={12} className="stroke-[3]" />
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900">Order Confirmed</h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Payment verified. Packing in progress.</p>
+                      </div>
+                    </div>
+
+                    {/* Step 3: Shipped */}
+                    <div className="relative">
+                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                        ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-slate-200 text-slate-400'}`}
+                      >
+                        <Check size={12} className="stroke-[3]" />
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900 font-sans">Shipped</h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                            ? `Handed over to carrier: ${trackingOrder.shippingCompany || 'Courier Service'}`
+                            : 'Preparing package for pickup by courier.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 4: In Transit / On the Way */}
+                    <div className="relative">
+                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                        ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-slate-200 text-slate-400'}`}
+                      >
+                        <Check size={12} className="stroke-[3]" />
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900 font-sans">On the Way</h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                            ? 'Package is in transit. Moving between sorting centers.' 
+                            : 'Package will enter transit after shipping.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 5: Delivered */}
+                    <div className="relative">
+                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                        ${trackingOrder.status === 'Delivered' 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-slate-200 text-slate-400'}`}
+                      >
+                        <Check size={12} className="stroke-[3]" />
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900 font-sans">Delivered</h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {trackingOrder.status === 'Delivered' 
+                            ? 'Package has been delivered to your address.' 
+                            : 'Package will be delivered by estimated date.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50/30 p-6 rounded-xl border border-red-100 flex flex-col items-center justify-center text-center">
+                  <XCircle size={36} className="text-red-500 mb-2.5" />
+                  <h3 className="font-bold text-sm text-red-900">Order Cancelled</h3>
+                  <p className="text-xs text-red-700/80 mt-1 max-w-xs leading-relaxed">This order was cancelled. No delivery attempts will be made. If you need any assistance, please contact support.</p>
+                </div>
+              )}
+
+              {/* Carrier & Tracking details */}
+              {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && trackingOrder.shippingCompany && (
+                <div className="bg-white p-4 rounded-xl border border-gray-150 space-y-3 shadow-sm">
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Shipping Carrier Details</h3>
+                  <div className="flex justify-between items-center text-xs">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider">Courier Partner</p>
+                      <p className="font-bold text-gray-800 mt-0.5">{trackingOrder.shippingCompany}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-sans">Tracking Number</p>
+                      <div className="flex items-center space-x-1.5 mt-0.5 justify-end">
+                        <span className="font-mono font-bold text-gray-800">{trackingOrder.trackingNumber}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(trackingOrder.trackingNumber || "");
+                            setCopiedTrackingId(true);
+                            setTimeout(() => setCopiedTrackingId(false), 2000);
+                          }}
+                          className="text-pink-600 hover:text-pink-700 transition-colors p-1 cursor-pointer"
+                          title="Copy Tracking ID"
+                        >
+                          {copiedTrackingId ? <Check size={14} className="text-green-650 stroke-[3]" /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={getTrackingLink(trackingOrder.shippingCompany, trackingOrder.trackingNumber)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full mt-2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer uppercase tracking-wider"
+                  >
+                    <ExternalLink size={14} />
+                    Track on Courier Portal
+                  </a>
+                </div>
+              )}
+
+              {/* Address Card */}
+              <div className="bg-white p-4 rounded-xl border border-gray-150 space-y-2.5 shadow-sm">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Delivery Address</h3>
+                  {trackingOrder.status === 'Pending' && !showEditAddress && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditAddress(true)}
+                      className="text-xs font-bold text-pink-655 hover:text-pink-850 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit size={12} />
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {showEditAddress ? (
+                  <div className="space-y-2.5 pt-1">
+                    <textarea
+                      value={editAddressText}
+                      onChange={e => setEditAddressText(e.target.value)}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-pink-500 outline-none text-gray-900 resize-none font-medium"
+                      placeholder="Enter new delivery address..."
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEditAddress(false);
+                          setEditAddressText(trackingOrder.address || "");
+                        }}
+                        disabled={updatingAddress}
+                        className="flex-1 py-2 text-[10px] font-bold text-gray-500 border border-gray-250 rounded-lg hover:bg-slate-50 transition-colors uppercase tracking-wider cursor-pointer text-center"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateAddress(trackingOrder.id, editAddressText)}
+                        disabled={updatingAddress}
+                        className="flex-1 py-2 text-[10px] font-bold text-white bg-pink-550 hover:bg-pink-650 rounded-lg transition-colors uppercase tracking-wider cursor-pointer text-center"
+                      >
+                        {updatingAddress ? "Saving..." : "Save Address"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600 leading-relaxed font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-100/70">{trackingOrder.address || "No address provided."}</p>
+                )}
+              </div>
+
+              {/* Support & Cancellation Actions */}
+              <div className="pt-2 space-y-2.5">
+                {trackingOrder.status === 'Pending' && (
+                  <>
+                    {showCancelConfirm ? (
+                      <div className="bg-red-50/70 border border-red-100 rounded-xl p-3.5 space-y-3">
+                        <p className="text-xs text-red-800 font-bold leading-relaxed">Are you sure you want to cancel this order? This action is irreversible.</p>
+                        <div className="flex space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowCancelConfirm(false)}
+                            disabled={cancellingOrder}
+                            className="flex-1 py-2 text-[10px] font-bold text-gray-500 border border-gray-350 bg-white hover:bg-slate-50 transition-colors uppercase tracking-wider cursor-pointer text-center"
+                          >
+                            Keep Order
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder(trackingOrder.id)}
+                            disabled={cancellingOrder}
+                            className="flex-1 py-2 text-[10px] font-bold text-white bg-red-550 hover:bg-red-650 rounded-lg transition-colors uppercase tracking-wider cursor-pointer text-center"
+                          >
+                            {cancellingOrder ? "Cancelling..." : "Confirm Cancel"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowCancelConfirm(true)}
+                        className="w-full py-3 text-xs font-bold text-red-600 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100/60 transition-all uppercase tracking-wider cursor-pointer text-center"
+                      >
+                        Cancel Order
+                      </button>
+                    )}
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowSupportModal(true)}
+                  className="w-full py-3 text-xs font-bold text-gray-700 bg-slate-100 hover:bg-slate-200 border border-gray-200 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                >
+                  <MessageSquare size={14} />
+                  Need Help? Contact Support
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Support Info Modal */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-gray-150 flex flex-col relative animate-scale-in">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h2 className="font-bold text-sm text-gray-900 uppercase tracking-wide">Customer Support</h2>
+              <button 
+                type="button"
+                onClick={() => setShowSupportModal(false)}
+                className="text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-center">
+              <div className="w-12 h-12 bg-pink-50 border border-pink-100 rounded-full flex items-center justify-center mx-auto text-pink-500">
+                <MessageSquare size={22} />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">How can we help you?</h3>
+                <p className="text-xs text-gray-500 mt-1">Our support agents are available Mon-Sat, 9AM to 6PM</p>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <a 
+                  href="https://wa.me/919999999999?text=Hi%2C%20I%2520need%2520help%2520with%2520my%2520order"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2.5 px-4 bg-green-550 hover:bg-green-650 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
+                >
+                  <MessageSquare size={14} />
+                  Chat on WhatsApp
+                </a>
+                <a 
+                  href="mailto:support@neelsutra.com?subject=Order Support Request"
+                  className="w-full py-2.5 px-4 bg-white border border-gray-300 hover:bg-slate-50 text-gray-750 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
+                >
+                  <Mail size={14} />
+                  Email Support
+                </a>
+                <a 
+                  href="tel:+919999999999"
+                  className="w-full py-2.5 px-4 bg-white border border-gray-300 hover:bg-slate-50 text-gray-750 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
+                >
+                  <Phone size={14} />
+                  Call Support Helpline
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

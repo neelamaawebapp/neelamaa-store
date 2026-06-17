@@ -323,18 +323,26 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
-          <span className="text-5xl">🎉</span>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center animate-fade-in">
+        <div className="w-20 h-20 bg-green-50 border border-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
+          <span className="text-4xl">🎉</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Successful!</h1>
-        <p className="text-gray-500 mb-8">Thank you for shopping with us. Your order will be delivered soon.</p>
-        <button 
-          onClick={() => router.push("/")}
-          className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors"
-        >
-          CONTINUE SHOPPING
-        </button>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2 uppercase tracking-wide">Order Successful!</h1>
+        <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed">Thank you for shopping with us. Your order has been registered and is being processed.</p>
+        <div className="space-y-3 w-full">
+          <button 
+            onClick={() => router.push("/profile/orders")}
+            className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors uppercase tracking-wider text-sm shadow-md"
+          >
+            Track My Orders
+          </button>
+          <button 
+            onClick={() => router.push("/")}
+            className="w-full border border-gray-300 text-gray-700 bg-white font-bold py-3.5 rounded-md hover:bg-gray-50 transition-colors uppercase tracking-wider text-sm"
+          >
+            Continue Shopping
+          </button>
+        </div>
       </div>
     );
   }
