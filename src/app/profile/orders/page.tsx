@@ -53,6 +53,33 @@ export default function CustomerOrdersPage() {
     return link;
   };
 
+  const getOrderTime = (order: any) => {
+    if (!order || !order.createdAt) return Date.now();
+    if (typeof order.createdAt.toMillis === "function") {
+      return order.createdAt.toMillis();
+    }
+    if (order.createdAt.seconds) {
+      return order.createdAt.seconds * 1000;
+    }
+    const parsed = new Date(order.createdAt).getTime();
+    return isNaN(parsed) ? Date.now() : parsed;
+  };
+
+  const formatTimelineDate = (dateVal: any) => {
+    if (!dateVal) return "";
+    let d = new Date();
+    if (typeof dateVal.toDate === "function") {
+      d = dateVal.toDate();
+    } else if (dateVal.seconds) {
+      d = new Date(dateVal.seconds * 1000);
+    } else {
+      const parsed = new Date(dateVal);
+      if (isNaN(parsed.getTime())) return "";
+      d = parsed;
+    }
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const getEstimatedDeliveryDate = (createdAt: any, status: string) => {
     if (status === "Cancelled") return "N/A (Cancelled)";
     let orderTime = Date.now();
@@ -762,15 +789,20 @@ export default function CustomerOrdersPage() {
               {trackingOrder.status !== 'Cancelled' ? (
                 <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-100/80 space-y-4">
                   <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Delivery Journey</h3>
-                  <div className="relative pl-6 border-l-2 border-slate-200 ml-3 space-y-6">
+                  <div className="relative pl-6 border-l-2 border-slate-200 ml-3 space-y-6 font-sans">
                     {/* Step 1: Placed */}
                     <div className="relative">
                       <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
                         <Check size={12} className="stroke-[3]" />
                       </span>
-                      <div>
-                        <h4 className="font-bold text-xs text-gray-900">Order Placed</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">Your order was registered successfully.</p>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs text-gray-900">Order Placed</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Your order was registered successfully.</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                          {formatTimelineDate(trackingOrder.createdAt)}
+                        </span>
                       </div>
                     </div>
 
@@ -779,9 +811,14 @@ export default function CustomerOrdersPage() {
                       <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
                         <Check size={12} className="stroke-[3]" />
                       </span>
-                      <div>
-                        <h4 className="font-bold text-xs text-gray-900">Order Confirmed</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">Payment verified. Packing in progress.</p>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs text-gray-900">Order Confirmed</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Payment verified. Packing in progress.</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                          {formatTimelineDate(trackingOrder.confirmedAt || trackingOrder.createdAt)}
+                        </span>
                       </div>
                     </div>
 
@@ -794,13 +831,22 @@ export default function CustomerOrdersPage() {
                       >
                         <Check size={12} className="stroke-[3]" />
                       </span>
-                      <div>
-                        <h4 className="font-bold text-xs text-gray-900 font-sans">Shipped</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">
-                          {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
-                            ? `Handed over to carrier: ${trackingOrder.shippingCompany || 'Courier Service'}`
-                            : 'Preparing package for pickup by courier.'}
-                        </p>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs text-gray-900 font-sans">Shipped</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                              ? `Handed over to carrier: ${trackingOrder.shippingCompany || 'Courier Service'}`
+                              : 'Preparing package for pickup by courier.'}
+                          </p>
+                        </div>
+                        {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+                          <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                            {trackingOrder.shippedAt 
+                              ? formatTimelineDate(trackingOrder.shippedAt) 
+                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 2 * 24 * 60 * 60 * 1000))}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -813,13 +859,22 @@ export default function CustomerOrdersPage() {
                       >
                         <Check size={12} className="stroke-[3]" />
                       </span>
-                      <div>
-                        <h4 className="font-bold text-xs text-gray-900 font-sans">On the Way</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">
-                          {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
-                            ? 'Package is in transit. Moving between sorting centers.' 
-                            : 'Package will enter transit after shipping.'}
-                        </p>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs text-gray-900 font-sans">On the Way</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                              ? 'Package is in transit. Moving between sorting centers.' 
+                              : 'Package will enter transit after shipping.'}
+                          </p>
+                        </div>
+                        {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+                          <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                            {trackingOrder.shippedAt
+                              ? formatTimelineDate(new Date(new Date(trackingOrder.shippedAt).getTime() + 1 * 24 * 60 * 60 * 1000))
+                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 3 * 24 * 60 * 60 * 1000))}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -832,13 +887,22 @@ export default function CustomerOrdersPage() {
                       >
                         <Check size={12} className="stroke-[3]" />
                       </span>
-                      <div>
-                        <h4 className="font-bold text-xs text-gray-900 font-sans">Delivered</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">
-                          {trackingOrder.status === 'Delivered' 
-                            ? 'Package has been delivered to your address.' 
-                            : 'Package will be delivered by estimated date.'}
-                        </p>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs text-gray-900 font-sans">Delivered</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {trackingOrder.status === 'Delivered' 
+                              ? 'Package has been delivered to your address.' 
+                              : 'Package will be delivered by estimated date.'}
+                          </p>
+                        </div>
+                        {trackingOrder.status === 'Delivered' && (
+                          <span className="text-[10px] text-green-750 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                            {trackingOrder.deliveredAt
+                              ? formatTimelineDate(trackingOrder.deliveredAt)
+                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 4 * 24 * 60 * 60 * 1000))}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

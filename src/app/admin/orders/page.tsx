@@ -162,44 +162,73 @@ export default function AdminOrders() {
       }
 
       const wasDeducted = order.inventoryDeducted === true;
+      const isMock = orderId.startsWith("mock_");
 
-      if (newStatus === "Shipped" && !wasDeducted) {
-        // Deduct inventory when shipping
-        if (order.items && order.items.length > 0) {
-          const { increment } = await import("firebase/firestore");
-          for (const item of order.items) {
-            if (item.productId) {
-              const productRef = doc(db, "products", item.productId);
-              await updateDoc(productRef, {
-                quantity: increment(-Number(item.quantity || 1))
-              });
-            }
-          }
+      const extraFields: any = { status: newStatus };
+      if (newStatus === "Shipped") {
+        extraFields.shippedAt = new Date().toISOString();
+      } else if (newStatus === "Delivered") {
+        extraFields.deliveredAt = new Date().toISOString();
+        if (!order.shippedAt) {
+          extraFields.shippedAt = new Date(getOrderTime(order) + 2 * 24 * 60 * 60 * 1000).toISOString();
         }
-        await updateDoc(doc(db, "orders", orderId), { 
-          status: newStatus,
-          inventoryDeducted: true 
-        });
-      } else if (newStatus !== "Shipped" && wasDeducted) {
-        // Return items to inventory if reverted from Shipped
-        if (order.items && order.items.length > 0) {
-          const { increment } = await import("firebase/firestore");
-          for (const item of order.items) {
-            if (item.productId) {
-              const productRef = doc(db, "products", item.productId);
-              await updateDoc(productRef, {
-                quantity: increment(Number(item.quantity || 1))
-              });
-            }
+      } else if (newStatus === "Cancelled") {
+        extraFields.cancelledAt = new Date().toISOString();
+      }
+
+      if (isMock) {
+        // Mock order in local storage
+        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const updatedLocal = localOrders.map((o: any) => {
+          if (o.id === orderId) {
+            return { 
+              ...o, 
+              ...extraFields,
+              inventoryDeducted: newStatus === "Shipped" ? true : (newStatus !== "Shipped" && o.inventoryDeducted ? false : o.inventoryDeducted)
+            };
           }
-        }
-        await updateDoc(doc(db, "orders", orderId), { 
-          status: newStatus,
-          inventoryDeducted: false 
+          return o;
         });
+        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...extraFields, inventoryDeducted: newStatus === "Shipped" ? true : (newStatus !== "Shipped" && o.inventoryDeducted ? false : o.inventoryDeducted) } : o));
       } else {
-        // Standard update
-        await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+        // Firestore update
+        const fieldsToUpdate: any = { 
+          status: newStatus,
+          ...extraFields
+        };
+
+        if (newStatus === "Shipped" && !wasDeducted) {
+          // Deduct inventory when shipping
+          if (order.items && order.items.length > 0) {
+            const { increment } = await import("firebase/firestore");
+            for (const item of order.items) {
+              if (item.productId) {
+                const productRef = doc(db, "products", item.productId);
+                await updateDoc(productRef, {
+                  quantity: increment(-Number(item.quantity || 1))
+                });
+              }
+            }
+          }
+          fieldsToUpdate.inventoryDeducted = true;
+        } else if (newStatus !== "Shipped" && wasDeducted) {
+          // Return items to inventory if reverted from Shipped
+          if (order.items && order.items.length > 0) {
+            const { increment } = await import("firebase/firestore");
+            for (const item of order.items) {
+              if (item.productId) {
+                const productRef = doc(db, "products", item.productId);
+                await updateDoc(productRef, {
+                  quantity: increment(Number(item.quantity || 1))
+                });
+              }
+            }
+          }
+          fieldsToUpdate.inventoryDeducted = false;
+        }
+
+        await updateDoc(doc(db, "orders", orderId), fieldsToUpdate);
       }
     } catch (err) {
       console.error("Failed to update status", err);
