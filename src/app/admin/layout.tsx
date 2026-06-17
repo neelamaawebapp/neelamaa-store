@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       let localPending = 0;
       if (typeof window !== "undefined") {
         try {
-          const localReturns = JSON.parse(localStorage.getItem("neelsutra_local_return_requests") || "[]");
+          const localReturns = JSON.parse(localStorage.getItem("craftstyle_local_return_requests") || "[]");
           localPending = localReturns.filter((r: any) => r.status === "Pending").length;
         } catch (e) {}
       }

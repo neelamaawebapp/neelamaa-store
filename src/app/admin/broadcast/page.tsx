@@ -56,7 +56,7 @@ export default function BroadcastDashboard() {
       // Combine with local mock subscriptions if they exist in localStorage
       let localSubs: any[] = [];
       try {
-        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
         if (stored) {
           localSubs = JSON.parse(stored);
         }
@@ -86,7 +86,7 @@ export default function BroadcastDashboard() {
     }, (err) => {
       console.warn("Firestore subscriptions sub failed, falling back to local storage", err);
       try {
-        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
         if (stored) {
           const localSubs = JSON.parse(stored).map((s: any) => ({
             id: `local_${s.productId}_${s.email}`,
@@ -124,7 +124,7 @@ export default function BroadcastDashboard() {
       // Combine with local storage broadcast notifications
       let localBroadcasts: any[] = [];
       try {
-        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const stored = localStorage.getItem("craftstyle_local_notifications");
         if (stored) {
           // Keep only broadcast type notifications
           localBroadcasts = JSON.parse(stored).filter((n: any) => n.id?.startsWith("broadcast_"));
@@ -153,7 +153,7 @@ export default function BroadcastDashboard() {
     }, (err) => {
       console.warn("Firestore broadcasts failed, falling back to local storage", err);
       try {
-        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const stored = localStorage.getItem("craftstyle_local_notifications");
         if (stored) {
           const localBroadcasts = JSON.parse(stored).filter((n: any) => n.id?.startsWith("broadcast_")).map((n: any) => ({
             ...n,
@@ -202,7 +202,7 @@ export default function BroadcastDashboard() {
 
       // 2. Add to Local Storage (so guest/local administrators can test it)
       try {
-        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const stored = localStorage.getItem("craftstyle_local_notifications");
         const localNotifs = stored ? JSON.parse(stored) : [];
         localNotifs.unshift({
           id: `broadcast_${Date.now()}_${Math.random()}`,
@@ -211,7 +211,7 @@ export default function BroadcastDashboard() {
           createdAt: broadcastData.createdAt,
           read: false
         });
-        localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifs));
+        localStorage.setItem("craftstyle_local_notifications", JSON.stringify(localNotifs));
       } catch (e) {
         console.error("Failed to write local broadcast notification:", e);
       }
@@ -232,11 +232,11 @@ export default function BroadcastDashboard() {
     
     if (bc.isLocal) {
       try {
-        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const stored = localStorage.getItem("craftstyle_local_notifications");
         if (stored) {
           const localNotifs = JSON.parse(stored);
           const filtered = localNotifs.filter((n: any) => n.id !== bc.id);
-          localStorage.setItem("neelsutra_local_notifications", JSON.stringify(filtered));
+          localStorage.setItem("craftstyle_local_notifications", JSON.stringify(filtered));
           setBroadcasts(prev => prev.filter(b => b.id !== bc.id));
         }
       } catch (e) {
@@ -259,11 +259,11 @@ export default function BroadcastDashboard() {
     
     if (sub.isLocal) {
       try {
-        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
         if (stored) {
           const localSubs = JSON.parse(stored);
           const filtered = localSubs.filter((s: any) => !(s.productId === sub.productId && s.email === sub.email));
-          localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(filtered));
+          localStorage.setItem("craftstyle_stock_subscriptions", JSON.stringify(filtered));
           setSubscriptions(prev => prev.filter(s => s.id !== sub.id));
         }
       } catch (e) {}

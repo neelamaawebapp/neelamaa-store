@@ -30,7 +30,7 @@ export default function ProfilePage() {
 
     const fetchAddress = async () => {
       // 1. Check local storage mock fallback first
-      const localAddr = localStorage.getItem("neelsutra_mock_user_address");
+      const localAddr = localStorage.getItem("craftstyle_mock_user_address");
       if (localAddr) {
         try {
           const parsed = JSON.parse(localAddr);
@@ -73,7 +73,7 @@ export default function ProfilePage() {
     const addressData = { street, city, pin, phone };
     
     // Save locally
-    localStorage.setItem("neelsutra_mock_user_address", JSON.stringify(addressData));
+    localStorage.setItem("craftstyle_mock_user_address", JSON.stringify(addressData));
 
     // Save to Firestore
     try {

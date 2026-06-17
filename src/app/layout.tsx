@@ -21,7 +21,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "NeelSutra",
+  title: "Craft Style",
   description: "High-performance E-commerce Web Application",
   manifest: "/manifest.json",
 };

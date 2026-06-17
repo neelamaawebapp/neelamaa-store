@@ -45,14 +45,14 @@ export default function NotificationListener() {
       if (!latestBroadcast) return;
 
       // Check last seen timestamp in localStorage
-      const lastSeenStr = localStorage.getItem("neelsutra_last_seen_broadcast");
+      const lastSeenStr = localStorage.getItem("craftstyle_last_seen_broadcast");
       const lastSeenTime = lastSeenStr ? new Date(lastSeenStr).getTime() : 0;
       const broadcastTime = new Date(latestBroadcast.createdAt).getTime();
 
       // If this is a new broadcast
       if (broadcastTime > lastSeenTime) {
         // Update last seen
-        localStorage.setItem("neelsutra_last_seen_broadcast", latestBroadcast.createdAt);
+        localStorage.setItem("craftstyle_last_seen_broadcast", latestBroadcast.createdAt);
 
         // Only show if the broadcast was sent within the last 15 minutes to prevent showing stale ones
         const fifteenMinsAgo = Date.now() - 15 * 60 * 1000;

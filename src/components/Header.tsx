@@ -9,9 +9,9 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 const DEFAULT_PROMOS = [
-  "⚡ Mid-Season Sale: FLAT 50% OFF! Code: NEELSUTRA50 ⚡",
-  "✨ Explore NeelSutra's New Arrivals: Fresh Styles Daily ✨",
-  "💫 NEELSUTRA: Indulge in Premium Luxury Fashion 💫"
+  "⚡ Mid-Season Sale: FLAT 50% OFF! Code: CRAFTSTYLE50 ⚡",
+  "✨ Explore Craft Style's New Arrivals: Fresh Styles Daily ✨",
+  "💫 CRAFT STYLE: Indulge in Premium Luxury Fashion 💫"
 ];
 
 export default function Header() {

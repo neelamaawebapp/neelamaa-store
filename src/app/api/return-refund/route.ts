@@ -102,16 +102,16 @@ export async function POST(req: Request) {
       socketTimeout: 10000,
     });
 
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "neelsutra1@gmail.com";
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "craftstyle1@gmail.com";
     const mailOptions = {
-      from: `"NeelSutra Support" <${process.env.EMAIL_USER || 'support@neelsutra.com'}>`,
+      from: `"Craft Style Support" <${process.env.EMAIL_USER || 'support@craftstyle.com'}>`,
       to: adminEmail,
       subject: `New Return/Refund Request - Order #${orderId.slice(-8).toUpperCase()}`,
       text: `New Return/Refund Request Received!\n\nOrder ID: #${orderId.slice(-8).toUpperCase()}\nCustomer Details:\nName: ${customerName}\nEmail: ${customerEmail}\nRequest Type: ${requestType}\nReason: ${reason}\nComments: ${comments || 'No comments'}\n\nPlease log in to the admin panel to view full details.`,
       html: `
         <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
           <div style="text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">NeelSutra</h1>
+            <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">Craft Style</h1>
           </div>
           
           <h2 style="font-size: 18px; color: #1e293b; margin-top: 0; border-b: 1px solid #f1f5f9; padding-bottom: 10px;">
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
           
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;"/>
           <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 0;">
-            Please log in to the NeelSutra Admin Panel to review this return request, inspect the item conditions, and manage the Razorpay refund if approved.
+            Please log in to the Craft Style Admin Panel to review this return request, inspect the item conditions, and manage the Razorpay refund if approved.
           </p>
         </div>
       `,

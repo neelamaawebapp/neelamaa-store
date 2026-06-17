@@ -56,7 +56,7 @@ export default function InvoicePage() {
 
       // Check localStorage fallback
       if (typeof window !== "undefined") {
-        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
         if (localOrdersStr) {
           try {
             const localOrders = JSON.parse(localOrdersStr);
@@ -206,7 +206,7 @@ export default function InvoicePage() {
         {/* Footer */}
         <div className="border-t border-gray-300 pt-6 text-xs text-gray-500 text-center">
           <p>This is a computer generated invoice and does not require a physical signature.</p>
-          <p className="mt-1">Thank you for shopping with NeelSutra!</p>
+          <p className="mt-1">Thank you for shopping with Craft Style!</p>
         </div>
       </div>
     </div>

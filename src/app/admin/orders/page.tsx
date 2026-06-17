@@ -97,7 +97,7 @@ export default function AdminOrders() {
 
       let allOrders = [...ordersData];
       if (typeof window !== "undefined") {
-        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
         if (localOrdersStr) {
           try {
             const localOrders = JSON.parse(localOrdersStr);
@@ -120,7 +120,7 @@ export default function AdminOrders() {
     }, (error) => {
       console.error("Firestore orders failed, falling back to localStorage", error);
       if (typeof window !== "undefined") {
-        const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+        const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
         if (localOrdersStr) {
           try {
             const localOrders = JSON.parse(localOrdersStr);
@@ -178,7 +178,7 @@ export default function AdminOrders() {
 
       if (isMock) {
         // Mock order in local storage
-        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
         const updatedLocal = localOrders.map((o: any) => {
           if (o.id === orderId) {
             return { 
@@ -189,7 +189,7 @@ export default function AdminOrders() {
           }
           return o;
         });
-        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...extraFields, inventoryDeducted: newStatus === "Shipped" ? true : (newStatus !== "Shipped" && o.inventoryDeducted ? false : o.inventoryDeducted) } : o));
       } else {
         // Firestore update

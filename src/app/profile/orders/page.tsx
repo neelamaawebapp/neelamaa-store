@@ -105,14 +105,14 @@ export default function CustomerOrdersPage() {
     try {
       if (orderId.startsWith("mock_")) {
         // Mock order in local storage
-        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
         const updatedLocal = localOrders.map((o: any) => {
           if (o.id === orderId) {
             return { ...o, status: "Cancelled" };
           }
           return o;
         });
-        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
       } else {
         // Remote order in Firestore
         await updateDoc(doc(db, "orders", orderId), { status: "Cancelled" });
@@ -142,14 +142,14 @@ export default function CustomerOrdersPage() {
     try {
       if (orderId.startsWith("mock_")) {
         // Mock order in local storage
-        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
         const updatedLocal = localOrders.map((o: any) => {
           if (o.id === orderId) {
             return { ...o, address: newAddress };
           }
           return o;
         });
-        localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
       } else {
         // Remote order in Firestore
         await updateDoc(doc(db, "orders", orderId), { address: newAddress });
@@ -282,7 +282,7 @@ export default function CustomerOrdersPage() {
       // If mock order, save back to localStorage
       if (selectedOrder.id.startsWith("mock_")) {
         try {
-          const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+          const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
           const updatedLocal = localOrders.map((o: any) => {
             if (o.id === selectedOrder.id) {
               const updatedItems = [...(o.items || [])];
@@ -295,10 +295,10 @@ export default function CustomerOrdersPage() {
             }
             return o;
           });
-          localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedLocal));
+          localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
 
           // Also save a mock return request in localStorage for Admin Returns Workspace
-          const localReturns = JSON.parse(localStorage.getItem("neelsutra_local_return_requests") || "[]");
+          const localReturns = JSON.parse(localStorage.getItem("craftstyle_local_return_requests") || "[]");
           const newLocalReturn = {
             id: `mock_return_${Date.now()}`,
             orderId: selectedOrder.id,
@@ -314,7 +314,7 @@ export default function CustomerOrdersPage() {
             createdAt: new Date().toISOString(),
             itemDetails: selectedItem
           };
-          localStorage.setItem("neelsutra_local_return_requests", JSON.stringify([newLocalReturn, ...localReturns]));
+          localStorage.setItem("craftstyle_local_return_requests", JSON.stringify([newLocalReturn, ...localReturns]));
         } catch (e) {
           console.error("Failed to update local orders in localStorage", e);
         }
@@ -338,7 +338,7 @@ export default function CustomerOrdersPage() {
         // 1. Get local storage orders
         let localOrdersData: any[] = [];
         try {
-          const localOrders = localStorage.getItem("neelsutra_local_orders");
+          const localOrders = localStorage.getItem("craftstyle_local_orders");
           if (localOrders) {
             const parsed = JSON.parse(localOrders);
             localOrdersData = parsed.filter((o: any) => o.userId === user.uid);
@@ -1103,7 +1103,7 @@ export default function CustomerOrdersPage() {
                   Chat on WhatsApp
                 </a>
                 <a 
-                  href="mailto:support@neelsutra.com?subject=Order Support Request"
+                  href="mailto:support@craftstyle.com?subject=Order Support Request"
                   className="w-full py-2.5 px-4 bg-white border border-gray-300 hover:bg-slate-50 text-gray-750 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
                 >
                   <Mail size={14} />

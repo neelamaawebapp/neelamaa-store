@@ -13,7 +13,7 @@ export default function TermsOfService() {
       <div className="p-6 text-gray-600 text-sm leading-relaxed space-y-4">
         <p className="text-xs text-gray-400 font-medium">Last Updated: June 2026</p>
         <p>
-          Welcome to <strong>NeelSutra</strong> (a platform operated by <strong>Neelamaa Enterprises</strong>). 
+          Welcome to <strong>Craft Style</strong> (a platform operated by <strong>Neelamaa Enterprises</strong>). 
           By accessing or using our web application, you agree to be bound by these Terms and Conditions. Please read them carefully.
         </p>
         
@@ -46,7 +46,7 @@ export default function TermsOfService() {
         </p>
         <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 mt-2 space-y-1">
           <p className="font-semibold text-gray-800">Neelamaa Enterprises</p>
-          <p>Email: <a href="mailto:neelsutra1@gmail.com" className="text-pink-600 font-bold hover:underline">neelsutra1@gmail.com</a></p>
+          <p>Email: <a href="mailto:craftstyle1@gmail.com" className="text-pink-600 font-bold hover:underline">craftstyle1@gmail.com</a></p>
           <p>Call/WhatsApp: <a href="tel:+919828120484" className="text-pink-600 font-bold hover:underline">+91-9828120484</a></p>
         </div>
       </div>

@@ -33,7 +33,7 @@ export default function AdminReturns() {
       let allRequests = [...dbRequests];
       if (typeof window !== "undefined") {
         try {
-          const localReturnsStr = localStorage.getItem("neelsutra_local_return_requests");
+          const localReturnsStr = localStorage.getItem("craftstyle_local_return_requests");
           if (localReturnsStr) {
             const localRequests = JSON.parse(localReturnsStr);
             allRequests = [...localRequests, ...allRequests];
@@ -56,7 +56,7 @@ export default function AdminReturns() {
       // Fallback to local returns only
       if (typeof window !== "undefined") {
         try {
-          const localReturnsStr = localStorage.getItem("neelsutra_local_return_requests");
+          const localReturnsStr = localStorage.getItem("craftstyle_local_return_requests");
           if (localReturnsStr) {
             const localRequests = JSON.parse(localReturnsStr);
             localRequests.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -82,7 +82,7 @@ export default function AdminReturns() {
       // Check if it's a mock request
       if (requestId.startsWith("mock_")) {
         // Handle mock request update in localStorage
-        const localReturnsStr = localStorage.getItem("neelsutra_local_return_requests");
+        const localReturnsStr = localStorage.getItem("craftstyle_local_return_requests");
         if (localReturnsStr) {
           const localReturns = JSON.parse(localReturnsStr);
           let targetOrder: string = "";
@@ -96,10 +96,10 @@ export default function AdminReturns() {
             }
             return r;
           });
-          localStorage.setItem("neelsutra_local_return_requests", JSON.stringify(updatedReturns));
+          localStorage.setItem("craftstyle_local_return_requests", JSON.stringify(updatedReturns));
 
           // Also update the return status in local orders
-          const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+          const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
           if (localOrdersStr && targetOrder && targetIndex !== -1) {
             const localOrders = JSON.parse(localOrdersStr);
             const updatedOrders = localOrders.map((o: any) => {
@@ -115,7 +115,7 @@ export default function AdminReturns() {
               }
               return o;
             });
-            localStorage.setItem("neelsutra_local_orders", JSON.stringify(updatedOrders));
+            localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedOrders));
           }
 
           // Trigger local state reload

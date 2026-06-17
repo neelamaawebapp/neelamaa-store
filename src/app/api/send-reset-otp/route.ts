@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
       let exists = false;
       // Check admin email whitelist
-      if (email === "neelsutra1@gmail.com" || email === "admin@neelsutra.com") {
+      if (email === "craftstyle1@gmail.com" || email === "admin@craftstyle.com") {
         exists = true;
       }
 
@@ -167,18 +167,18 @@ export async function POST(req: Request) {
       });
 
       const mailOptions = {
-        from: `"NeelSutra Support" <${process.env.EMAIL_USER || 'support@neelsutra.com'}>`,
+        from: `"Craft Style Support" <${process.env.EMAIL_USER || 'support@craftstyle.com'}>`,
         to: email,
         subject: `Password Reset Verification Code`,
-        text: `Hello,\n\nWe received a request to reset the password for your NeelSutra account.\n\nUse the following 6-digit verification code to complete your reset process:\n\n${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not make this request, you can safely ignore this email.`,
+        text: `Hello,\n\nWe received a request to reset the password for your Craft Style account.\n\nUse the following 6-digit verification code to complete your reset process:\n\n${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not make this request, you can safely ignore this email.`,
         html: `
           <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div style="text-align: center; margin-bottom: 25px;">
-              <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">NeelSutra</h1>
+              <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">Craft Style</h1>
             </div>
             <h2 style="font-size: 18px; color: #1e293b; margin-top: 0;">Password Reset Verification Code</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-              We received a request to reset the password for your NeelSutra account associated with <strong>${email}</strong>.
+              We received a request to reset the password for your Craft Style account associated with <strong>${email}</strong>.
             </p>
             <p style="font-size: 14px; line-height: 1.6; color: #475569;">
               Use the following 6-digit verification code to complete your reset process. This code is valid for 5 minutes.
@@ -211,7 +211,7 @@ export async function POST(req: Request) {
       // Send OTP via Fast2SMS API
       if (process.env.FAST2SMS_API_KEY) {
         try {
-          const smsMessage = `Your NeelSutra verification OTP code is ${otp}. Valid for 5 minutes. Please do not share this code.`;
+          const smsMessage = `Your Craft Style verification OTP code is ${otp}. Valid for 5 minutes. Please do not share this code.`;
           const smsRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
             method: "POST",
             headers: {

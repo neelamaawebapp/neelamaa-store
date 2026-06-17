@@ -20,23 +20,23 @@ export async function POST(req: Request) {
     });
 
     const mailOptions = {
-      from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
+      from: `"Craft Style" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Order Confirmation - ${orderId}`,
-      text: `Hello ${name},\n\nThank you for your order! We have successfully received order #${orderId}.\n\nTotal Amount: ₹${amount}\n\nWe will notify you once it ships. Thanks for shopping at NeelSutra!`,
+      text: `Hello ${name},\n\nThank you for your order! We have successfully received order #${orderId}.\n\nTotal Amount: ₹${amount}\n\nWe will notify you once it ships. Thanks for shopping at Craft Style!`,
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333;">
           <h2 style="color: #ec4899;">Thank you for your order, ${name}!</h2>
           <p>We have successfully received your order <strong>#${orderId}</strong>.</p>
           <p>Total Amount: ₹${amount}</p>
-          <p>We will notify you once it ships. Thanks for shopping at NeelSutra!</p>
+          <p>We will notify you once it ships. Thanks for shopping at Craft Style!</p>
         </div>
       `,
     };
 
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "neelsutra1@gmail.com";
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "craftstyle1@gmail.com";
     const adminMailOptions = {
-      from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
+      from: `"Craft Style" <${process.env.EMAIL_USER}>`,
       to: adminEmail,
       subject: `New Order Received - #${orderId}`,
       text: `New Order Placed!\n\nOrder #${orderId} has been successfully placed by a customer.\n\nCustomer Details:\nName: ${name}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nTotal Amount: ₹${amount}\n\nPlease log in to the admin panel to view full details.`,
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 
     // 2. Send SMS using Fast2SMS API
     if (process.env.FAST2SMS_API_KEY && phone) {
-      const message = `Hi ${name}, your order #${orderId} of ₹${amount} is confirmed at NeelSutra! We'll update you when it ships.`;
+      const message = `Hi ${name}, your order #${orderId} of ₹${amount} is confirmed at Craft Style! We'll update you when it ships.`;
       
       await fetch("https://www.fast2sms.com/dev/bulkV2", {
         method: "POST",

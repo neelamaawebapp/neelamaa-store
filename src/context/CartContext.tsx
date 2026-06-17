@@ -44,7 +44,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // If not logged in, load from localStorage
     if (!user) {
-      const stored = localStorage.getItem("neelsutra_local_cart");
+      const stored = localStorage.getItem("craftstyle_local_cart");
       if (stored) {
         try {
           setCart(JSON.parse(stored));
@@ -68,7 +68,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCart(items);
 
       // Sync local cart items to Firestore if there are any
-      const stored = localStorage.getItem("neelsutra_local_cart");
+      const stored = localStorage.getItem("craftstyle_local_cart");
       if (stored) {
         try {
           const localItems = JSON.parse(stored) as CartItem[];
@@ -85,7 +85,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 await setDoc(itemRef, localItem);
               }
             });
-            localStorage.removeItem("neelsutra_local_cart");
+            localStorage.removeItem("craftstyle_local_cart");
           }
         } catch (e) {
           console.error("Sync local cart failed", e);
@@ -93,7 +93,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }, (error) => {
       console.error("Firestore cart sub error, falling back to localStorage", error);
-      const stored = localStorage.getItem("neelsutra_local_cart");
+      const stored = localStorage.getItem("craftstyle_local_cart");
       if (stored) {
         try {
           setCart(JSON.parse(stored));
@@ -124,7 +124,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         currentCart.push(newCartItem);
       }
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
       return;
     }
 
@@ -151,7 +151,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         currentCart.push(newCartItem);
       }
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
     }
   };
 
@@ -159,7 +159,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) {
       const currentCart = cart.filter(item => item.id !== id);
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
       return;
     }
 
@@ -170,7 +170,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Firestore delete failed, falling back to local storage", err);
       const currentCart = cart.filter(item => item.id !== id);
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
     }
   };
 
@@ -183,7 +183,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) {
       const currentCart = cart.map(item => item.id === id ? { ...item, quantity: qty } : item);
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
       return;
     }
 
@@ -194,12 +194,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Firestore update failed, falling back to local storage", err);
       const currentCart = cart.map(item => item.id === id ? { ...item, quantity: qty } : item);
       setCart(currentCart);
-      localStorage.setItem("neelsutra_local_cart", JSON.stringify(currentCart));
+      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
     }
   };
 
   const clearCart = async () => {
-    localStorage.removeItem("neelsutra_local_cart");
+    localStorage.removeItem("craftstyle_local_cart");
     if (!user) {
       setCart([]);
       return;

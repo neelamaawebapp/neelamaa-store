@@ -142,7 +142,7 @@ function LoginContent() {
 
               <div className="text-center mt-6">
                 <p className="text-gray-600 text-sm">
-                  New to NeelSutra?{" "}
+                  New to Craft Style?{" "}
                   <Link href={`/signup?redirect=${encodeURIComponent(redirect)}`} className="text-pink-600 font-bold hover:underline">
                     Create an account
                   </Link>

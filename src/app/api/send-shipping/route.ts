@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     }
 
     const mailOptions = {
-      from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
+      from: `"Craft Style" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Your Order #${orderId} has Shipped!`,
       html: `
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
             </a>
           </div>
           
-          <p style="font-size: 14px; color: #777; text-align: center;">Thanks for shopping at NeelSutra!</p>
+          <p style="font-size: 14px; color: #777; text-align: center;">Thanks for shopping at Craft Style!</p>
         </div>
       `,
     };

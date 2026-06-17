@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
 
       // Check local storage first
       try {
-        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
         if (stored) {
           const localSubs = JSON.parse(stored);
           const localMatched = localSubs.some((s: any) => s.productId === id && s.status === "Pending");
@@ -114,12 +114,12 @@ export default function ProductDetailPage() {
 
       // Prepend or add to localStorage
       try {
-        const stored = localStorage.getItem("neelsutra_stock_subscriptions");
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
         const localSubs = stored ? JSON.parse(stored) : [];
         const exists = localSubs.some((s: any) => s.productId === id && s.email === subscriptionData.email && s.status === "Pending");
         if (!exists) {
           localSubs.push(subscriptionData);
-          localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(localSubs));
+          localStorage.setItem("craftstyle_stock_subscriptions", JSON.stringify(localSubs));
         }
       } catch (e) {
         console.error("Failed to write local stock subscription:", e);
@@ -141,7 +141,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!id) return;
     try {
-      const stored = localStorage.getItem("neelsutra_wishlist");
+      const stored = localStorage.getItem("craftstyle_wishlist");
       if (stored) {
         const localWishlist = JSON.parse(stored);
         setIsWishlisted(localWishlist.includes(id));
@@ -154,7 +154,7 @@ export default function ProductDetailPage() {
   const toggleWishlist = () => {
     if (!id) return;
     try {
-      const stored = localStorage.getItem("neelsutra_wishlist");
+      const stored = localStorage.getItem("craftstyle_wishlist");
       const localWishlist = stored ? JSON.parse(stored) : [];
       let newWishlist;
       if (isWishlisted) {
@@ -164,7 +164,7 @@ export default function ProductDetailPage() {
         newWishlist = [...localWishlist, id];
         setToast("Added to Wishlist!");
       }
-      localStorage.setItem("neelsutra_wishlist", JSON.stringify(newWishlist));
+      localStorage.setItem("craftstyle_wishlist", JSON.stringify(newWishlist));
       setIsWishlisted(!isWishlisted);
     } catch (e) {
       console.error("Failed to toggle wishlist:", e);
@@ -177,8 +177,8 @@ export default function ProductDetailPage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `NeelSutra - ${product.brand}`,
-          text: `Check out ${product.title} on NeelSutra!`,
+          title: `Craft Style - ${product.brand}`,
+          text: `Check out ${product.title} on Craft Style!`,
           url: window.location.href,
         });
       } else {

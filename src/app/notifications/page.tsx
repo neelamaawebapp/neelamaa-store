@@ -21,7 +21,7 @@ export default function NotificationsPage() {
         // 1. Get local storage notifications
         let localNotifs: any[] = [];
         try {
-          const stored = localStorage.getItem("neelsutra_local_notifications");
+          const stored = localStorage.getItem("craftstyle_local_notifications");
           if (stored) {
             const parsed = JSON.parse(stored);
             // If logged in, filter by user.uid. Otherwise, show all guest notifications.
@@ -84,12 +84,12 @@ export default function NotificationsPage() {
     try {
       // 1. Clear local notifications
       try {
-        const stored = localStorage.getItem("neelsutra_local_notifications");
+        const stored = localStorage.getItem("craftstyle_local_notifications");
         if (stored) {
           const parsed = JSON.parse(stored);
           // Keep notifications that belong to other users
           const remaining = parsed.filter((n: any) => user && n.userId !== user.uid && n.userId);
-          localStorage.setItem("neelsutra_local_notifications", JSON.stringify(remaining));
+          localStorage.setItem("craftstyle_local_notifications", JSON.stringify(remaining));
         }
       } catch (e) {
         console.error(e);

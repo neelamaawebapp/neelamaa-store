@@ -75,7 +75,7 @@ export default function AdminCustomers() {
         let localOrders: any[] = [];
         if (typeof window !== "undefined") {
           try {
-            const localOrdersStr = localStorage.getItem("neelsutra_local_orders");
+            const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
             if (localOrdersStr) {
               localOrders = JSON.parse(localOrdersStr);
             }
@@ -124,8 +124,8 @@ export default function AdminCustomers() {
 
         // Also add mock user
         if (typeof window !== "undefined") {
-          const mockAddr = localStorage.getItem("neelsutra_mock_user_address");
-          const mockUser = localStorage.getItem("neelsutra_mock_user");
+          const mockAddr = localStorage.getItem("craftstyle_mock_user_address");
+          const mockUser = localStorage.getItem("craftstyle_mock_user");
           if (mockUser) {
             try {
               const parsedUser = JSON.parse(mockUser);

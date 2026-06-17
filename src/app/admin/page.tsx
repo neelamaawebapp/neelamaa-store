@@ -42,9 +42,9 @@ export default function AdminDashboard() {
 
   // Promo Ticker State
   const [promoMessages, setPromoMessages] = useState<string[]>([
-    "⚡ Mid-Season Sale: FLAT 50% OFF! Code: NEELSUTRA50 ⚡",
-    "✨ Explore NeelSutra's New Arrivals: Fresh Styles Daily ✨",
-    "💫 NEELSUTRA: Indulge in Premium Luxury Fashion 💫"
+    "⚡ Mid-Season Sale: FLAT 50% OFF! Code: CRAFTSTYLE50 ⚡",
+    "✨ Explore Craft Style's New Arrivals: Fresh Styles Daily ✨",
+    "💫 CRAFT STYLE: Indulge in Premium Luxury Fashion 💫"
   ]);
   const [promoLoading, setPromoLoading] = useState(false);
   
@@ -406,11 +406,11 @@ export default function AdminDashboard() {
 
         // Trigger Local/Mock Notifications (for local guest testing)
         try {
-          const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+          const localSubs = JSON.parse(localStorage.getItem("craftstyle_stock_subscriptions") || "[]");
           const pendingSubs = localSubs.filter((s: any) => s.productId === savedProductId && s.status === "Pending");
           
           if (pendingSubs.length > 0) {
-            const localNotifications = JSON.parse(localStorage.getItem("neelsutra_local_notifications") || "[]");
+            const localNotifications = JSON.parse(localStorage.getItem("craftstyle_local_notifications") || "[]");
             pendingSubs.forEach((sub: any) => {
               localNotifications.unshift({
                 id: `notif_${Date.now()}_${Math.random()}`,
@@ -423,7 +423,7 @@ export default function AdminDashboard() {
                 read: false
               });
             });
-            localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifications));
+            localStorage.setItem("craftstyle_local_notifications", JSON.stringify(localNotifications));
 
             const updatedSubs = localSubs.map((s: any) => {
               if (s.productId === savedProductId && s.status === "Pending") {
@@ -431,7 +431,7 @@ export default function AdminDashboard() {
               }
               return s;
             });
-            localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(updatedSubs));
+            localStorage.setItem("craftstyle_stock_subscriptions", JSON.stringify(updatedSubs));
           }
         } catch (localErr) {
           console.error("Failed to process local restock notifications:", localErr);
@@ -562,10 +562,10 @@ export default function AdminDashboard() {
 
           // Trigger Local/Mock Notifications
           try {
-            const localSubs = JSON.parse(localStorage.getItem("neelsutra_stock_subscriptions") || "[]");
+            const localSubs = JSON.parse(localStorage.getItem("craftstyle_stock_subscriptions") || "[]");
             const pendingSubs = localSubs.filter((s: any) => s.productId === docRef.id && s.status === "Pending");
             if (pendingSubs.length > 0) {
-              const localNotifications = JSON.parse(localStorage.getItem("neelsutra_local_notifications") || "[]");
+              const localNotifications = JSON.parse(localStorage.getItem("craftstyle_local_notifications") || "[]");
               pendingSubs.forEach((sub: any) => {
                 localNotifications.unshift({
                   id: `notif_${Date.now()}_${Math.random()}`,
@@ -578,7 +578,7 @@ export default function AdminDashboard() {
                   read: false
                 });
               });
-              localStorage.setItem("neelsutra_local_notifications", JSON.stringify(localNotifications));
+              localStorage.setItem("craftstyle_local_notifications", JSON.stringify(localNotifications));
 
               const updatedSubs = localSubs.map((s: any) => {
                 if (s.productId === docRef.id && s.status === "Pending") {
@@ -586,7 +586,7 @@ export default function AdminDashboard() {
                 }
                 return s;
               });
-              localStorage.setItem("neelsutra_stock_subscriptions", JSON.stringify(updatedSubs));
+              localStorage.setItem("craftstyle_stock_subscriptions", JSON.stringify(updatedSubs));
             }
           } catch (localErr) {
             console.error("Failed to process bulk local notifications:", localErr);

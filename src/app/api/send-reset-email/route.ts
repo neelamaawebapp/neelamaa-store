@@ -58,17 +58,17 @@ export async function POST(req: Request) {
     });
 
     const mailOptions = {
-      from: `"NeelSutra Support" <${process.env.EMAIL_USER || 'support@neelsutra.com'}>`,
+      from: `"Craft Style Support" <${process.env.EMAIL_USER || 'support@craftstyle.com'}>`,
       to: email,
-      subject: `Reset Your NeelSutra Password`,
+      subject: `Reset Your Craft Style Password`,
       html: `
         <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
           <div style="text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">NeelSutra</h1>
+            <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">Craft Style</h1>
           </div>
           <h2 style="font-size: 18px; color: #1e293b; margin-top: 0;">Password Reset Request</h2>
           <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-            We received a request to reset the password for your NeelSutra account associated with <strong>${email}</strong>.
+            We received a request to reset the password for your Craft Style account associated with <strong>${email}</strong>.
           </p>
           <p style="font-size: 14px; line-height: 1.6; color: #475569;">
             Click the button below to reset your password. This link is valid for 1 hour.

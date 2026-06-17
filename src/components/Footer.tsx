@@ -25,9 +25,9 @@ export default function Footer() {
         <Link href="/cancellation" className="hover:text-pink-600 transition-colors">Cancellation & Refund</Link>
       </div>
       <div className="flex justify-center items-center space-x-2 mb-4">
-        <span className="font-bold text-lg text-pink-600 tracking-widest">NEELSUTRA</span>
+        <span className="font-bold text-lg text-pink-600 tracking-widest">CRAFT STYLE</span>
       </div>
-      <p className="text-xs text-gray-400">© 2026 NeelSutra. All rights reserved.</p>
+      <p className="text-xs text-gray-400">© 2026 Craft Style. All rights reserved.</p>
     </footer>
   );
 }

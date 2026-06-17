@@ -51,7 +51,7 @@ export default function CheckoutPage() {
       if (!user) return;
 
       // 1. Try local storage mock fallback first
-      const localAddr = localStorage.getItem("neelsutra_mock_user_address");
+      const localAddr = localStorage.getItem("craftstyle_mock_user_address");
       if (localAddr) {
         try {
           const parsed = JSON.parse(localAddr);
@@ -119,7 +119,7 @@ export default function CheckoutPage() {
           amount: data.order.amount,
           currency: "INR",
           name: "Neelamaa Enterprises",
-          description: "Purchase from NeelSutra",
+          description: "Purchase from Craft Style",
           order_id: data.order.id,
           handler: async function (response: any) {
             await completeOrder("Online", response.razorpay_payment_id);
@@ -225,13 +225,13 @@ export default function CheckoutPage() {
         console.error("Firestore order creation failed, saving locally", dbErr);
         orderId = `mock_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
         // Save to local storage orders
-        const localOrders = JSON.parse(localStorage.getItem("neelsutra_local_orders") || "[]");
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
         localOrders.push({ 
           ...orderData, 
           id: orderId, 
           createdAt: new Date().toISOString()
         });
-        localStorage.setItem("neelsutra_local_orders", JSON.stringify(localOrders));
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(localOrders));
       }
       
       // Trigger Notification API
@@ -485,7 +485,7 @@ export default function CheckoutPage() {
             <div className="bg-slate-50 p-4 border-b border-gray-200 flex justify-between items-center">
               <div>
                 <p className="text-xs text-gray-500">Merchant Name</p>
-                <h3 className="font-bold text-gray-800 text-sm">NeelSutra</h3>
+                <h3 className="font-bold text-gray-800 text-sm">Craft Style</h3>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">Amount to Pay</p>
@@ -531,7 +531,7 @@ export default function CheckoutPage() {
                           <div className="w-10 h-10 bg-slate-900"></div>
                           <div className="w-10 h-10 bg-slate-900 self-end"></div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[10px] font-bold tracking-widest text-pink-600 uppercase font-mono bg-white px-1">NEELSUTRA</span>
+                            <span className="text-[10px] font-bold tracking-widest text-pink-600 uppercase font-mono bg-white px-1">CRAFT STYLE</span>
                           </div>
                           {/* Inner pixels */}
                           <div className="absolute top-12 left-6 w-3 h-3 bg-slate-900"></div>

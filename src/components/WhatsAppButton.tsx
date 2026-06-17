@@ -27,9 +27,9 @@ export default function WhatsAppButton() {
   if (pathname?.startsWith("/admin")) return null;
 
   const getWhatsAppLink = () => {
-    let text = "Hi NeelSutra, I'm interested in your products!";
-    if (pathname?.startsWith("/product/") && productTitle !== "NeelSutra") {
-      text = `Hi NeelSutra, I'm interested in ${productTitle}. Is it available?`;
+    let text = "Hi Craft Style, I'm interested in your products!";
+    if (pathname?.startsWith("/product/") && productTitle !== "Craft Style") {
+      text = `Hi Craft Style, I'm interested in ${productTitle}. Is it available?`;
     }
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
   };

@@ -59,14 +59,14 @@ export async function POST(req: Request) {
       if (isEmailConfigured && sub.email) {
         try {
           const mailOptions = {
-            from: `"NeelSutra" <${process.env.EMAIL_USER}>`,
+            from: `"Craft Style" <${process.env.EMAIL_USER}>`,
             to: sub.email,
             subject: `Product Restock Alert: ${brand} - ${title}`,
-            text: `Hello,\n\nThe product you requested a stock alert for, "${brand} - ${title}", is back in stock.\n\nYou can view and purchase the item here:\n${appUrl}/product/${productId}\n\nThank you,\nNeelSutra Support`,
+            text: `Hello,\n\nThe product you requested a stock alert for, "${brand} - ${title}", is back in stock.\n\nYou can view and purchase the item here:\n${appUrl}/product/${productId}\n\nThank you,\nCraft Style Support`,
             html: `
               <div style="font-family: sans-serif; padding: 25px; color: #333; max-w: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 25px;">
-                  <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">NeelSutra</h1>
+                  <h1 style="color: #ec4899; margin: 0; font-family: serif; font-size: 28px;">Craft Style</h1>
                 </div>
                 
                 <h2 style="font-size: 18px; color: #1e293b; margin-top: 0; text-align: center;">

@@ -28,12 +28,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Check local storage for mock user first
     if (typeof window !== "undefined") {
-      const localMockUser = localStorage.getItem("neelsutra_mock_user");
+      const localMockUser = localStorage.getItem("craftstyle_mock_user");
       if (localMockUser) {
         try {
           const parsed = JSON.parse(localMockUser);
           setUser(parsed);
-          if (parsed.email === "admin@neelsutra.com" || parsed.email === "neelsutra1@gmail.com") {
+          if (parsed.email === "admin@craftstyle.com" || parsed.email === "craftstyle1@gmail.com") {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "neelsutra1@gmail.com")) {
+      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "craftstyle1@gmail.com")) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
@@ -66,9 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       displayName: name,
       emailVerified: true,
     } as any;
-    localStorage.setItem("neelsutra_mock_user", JSON.stringify(mockUser));
+    localStorage.setItem("craftstyle_mock_user", JSON.stringify(mockUser));
     setUser(mockUser);
-    if (email === "admin@neelsutra.com" || email === "neelsutra1@gmail.com") {
+    if (email === "admin@craftstyle.com" || email === "craftstyle1@gmail.com") {
       setIsAdmin(true);
     } else {
       setIsAdmin(false);
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    localStorage.removeItem("neelsutra_mock_user");
+    localStorage.removeItem("craftstyle_mock_user");
     setUser(null);
     setIsAdmin(false);
     try {

@@ -36,7 +36,7 @@ export default function CancellationPolicy() {
 
         <h3 className="font-bold text-gray-900 text-base mt-6">4.3 Damaged or Defective Items</h3>
         <p>
-          If an item arrives damaged or defective, you must notify us through the NeelSutra webapp portal within 48 hours of delivery. Photographic or video evidence of the damage and original packaging is strictly required to process a claim. For approved merchant-fault claims, we will arrange a replacement or issue a full/partial refund at no cost to the buyer.
+          If an item arrives damaged or defective, you must notify us through the Craft Style webapp portal within 48 hours of delivery. Photographic or video evidence of the damage and original packaging is strictly required to process a claim. For approved merchant-fault claims, we will arrange a replacement or issue a full/partial refund at no cost to the buyer.
         </p>
 
         <h3 className="font-bold text-gray-900 text-base mt-6">4.4 Return Shipping & Fees</h3>
@@ -61,7 +61,7 @@ export default function CancellationPolicy() {
         </p>
         <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 mt-2 space-y-1">
           <p className="font-semibold text-gray-800">Neelamaa Enterprises</p>
-          <p>Email: <a href="mailto:neelsutra1@gmail.com" className="text-pink-600 font-bold hover:underline">neelsutra1@gmail.com</a></p>
+          <p>Email: <a href="mailto:craftstyle1@gmail.com" className="text-pink-600 font-bold hover:underline">craftstyle1@gmail.com</a></p>
           <p>Call/WhatsApp: <a href="tel:+919828120484" className="text-pink-600 font-bold hover:underline">+91-9828120484</a></p>
         </div>
       </div>
