@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChevronRight, Edit2, UploadCloud, X, Save, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import ImageEditorModal from "@/components/ImageEditorModal";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -30,6 +31,10 @@ export default function HeroBanner() {
   const [isEditing, setIsEditing] = useState(false);
   const [editBanners, setEditBanners] = useState(defaultBanners);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+
+  // Image Editor States
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editorImageUrl, setEditorImageUrl] = useState<string>("");
 
   // Fetch Banners from Firestore
   useEffect(() => {
@@ -63,10 +68,7 @@ export default function HeroBanner() {
     return () => clearInterval(timer);
   }, [banners.length, isEditing]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadAndSaveBannerImg = async (file: File, idx: number) => {
     setUploadingIdx(idx);
     try {
       const formData = new FormData();
@@ -90,6 +92,21 @@ export default function HeroBanner() {
       alert("Error uploading image");
     } finally {
       setUploadingIdx(null);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAndSaveBannerImg(file, idx);
+  };
+
+  const handleSaveEditedBanner = async (editedFile: File) => {
+    const idx = editingIdx;
+    setEditingIdx(null);
+    setEditorImageUrl("");
+    if (idx !== null) {
+      await uploadAndSaveBannerImg(editedFile, idx);
     }
   };
 
@@ -161,6 +178,11 @@ export default function HeroBanner() {
                 fill
                 className="object-cover"
                 priority={idx === 0}
+                unoptimized={
+                  banner.image?.toLowerCase().includes(".apng") || 
+                  banner.image?.toLowerCase().includes(".png") ||
+                  banner.image?.toLowerCase().includes(".gif")
+                }
               />
               
               {/* Banner Content Overlay */}
@@ -232,7 +254,22 @@ export default function HeroBanner() {
                     <label className="block text-xs font-bold text-gray-500 mb-2">BANNER IMAGE</label>
                     <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 group">
                       {banner.image ? (
-                        <Image src={banner.image} alt="Preview" fill className="object-cover" />
+                        <>
+                          <Image src={banner.image} alt="Preview" fill className="object-cover" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingIdx(idx);
+                              setEditorImageUrl(banner.image);
+                            }}
+                            className="absolute bottom-2 left-2 bg-black/80 hover:bg-black text-white text-[10px] px-2.5 py-1 rounded backdrop-blur z-20 cursor-pointer font-bold border border-white/20"
+                            title="Edit Image"
+                          >
+                            Edit
+                          </button>
+                        </>
                       ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                           <UploadCloud size={24} className="mb-1" />
@@ -357,6 +394,18 @@ export default function HeroBanner() {
             </div>
           </div>
         </div>
+      )}
+
+      {editorImageUrl && (
+        <ImageEditorModal
+          imageUrl={editorImageUrl}
+          aspectRatio={21 / 9} // Banners are wide 21:9
+          onClose={() => {
+            setEditingIdx(null);
+            setEditorImageUrl("");
+          }}
+          onSave={handleSaveEditedBanner}
+        />
       )}
     </div>
   );

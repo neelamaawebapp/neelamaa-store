@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
 import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
+import ImageEditorModal from "@/components/ImageEditorModal";
 
 export default function AdminDashboard() {
   const [viewMode, setViewMode] = useState<"single" | "bulk">("single");
@@ -58,6 +59,40 @@ export default function AdminDashboard() {
   const [pastedUrl, setPastedUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Image Editor States
+  const [editingImageIdx, setEditingImageIdx] = useState<number | null>(null);
+  const [editorImageUrl, setEditorImageUrl] = useState<string | null>(null);
+  const [isEditingBulkImage, setIsEditingBulkImage] = useState(false);
+
+  const handleSaveEditedImage = (editedFile: File, editedDataUrl: string) => {
+    if (editingImageIdx === null) return;
+    if (isEditingBulkImage) {
+      setBulkFiles(prev => {
+        const updated = [...prev];
+        updated[editingImageIdx] = {
+          ...updated[editingImageIdx],
+          file: editedFile,
+          preview: editedDataUrl
+        };
+        return updated;
+      });
+    } else {
+      setProductImages(prev => {
+        const updated = [...prev];
+        updated[editingImageIdx] = {
+          ...updated[editingImageIdx],
+          file: editedFile,
+          preview: editedDataUrl,
+          url: "" // Clear url to force upload of edited version
+        };
+        return updated;
+      });
+    }
+    setEditingImageIdx(null);
+    setEditorImageUrl(null);
+    setIsEditingBulkImage(false);
+  };
 
   // Status State
   const [loading, setLoading] = useState(false);
@@ -736,6 +771,18 @@ export default function AdminDashboard() {
                           >
                             <X size={10} />
                           </button>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setEditingImageIdx(idx);
+                              setEditorImageUrl(img.preview);
+                              setIsEditingBulkImage(false);
+                            }}
+                            className="absolute bottom-1 right-1 bg-slate-900/80 backdrop-blur text-white p-1 rounded hover:bg-black opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                            title="Edit Image"
+                          >
+                            <Edit2 size={10} />
+                          </button>
                           {idx === 0 && (
                             <span className="absolute bottom-1 left-1 bg-pink-650 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
                               Primary
@@ -1192,8 +1239,21 @@ export default function AdminDashboard() {
                     </button>
                     
                     {/* Image Preview */}
-                    <div className="w-full sm:w-40 h-40 sm:h-auto bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-850">
+                    <div className="w-full sm:w-40 h-40 sm:h-auto bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-850 relative group">
                       <img src={item.preview} alt={`Upload ${index}`} className="w-full h-full object-contain" />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setEditingImageIdx(index);
+                          setEditorImageUrl(item.preview);
+                          setIsEditingBulkImage(true);
+                        }}
+                        className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white p-1.5 rounded-lg hover:bg-black opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                        title="Edit Image"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit</span>
+                      </button>
                     </div>
                     
                     {/* Form Fields */}
@@ -1311,6 +1371,19 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+      )}
+
+      {editorImageUrl && (
+        <ImageEditorModal
+          imageUrl={editorImageUrl}
+          aspectRatio={isEditingBulkImage ? "free" : 3 / 4}
+          onClose={() => {
+            setEditingImageIdx(null);
+            setEditorImageUrl(null);
+            setIsEditingBulkImage(false);
+          }}
+          onSave={handleSaveEditedImage}
+        />
       )}
     </div>
   );

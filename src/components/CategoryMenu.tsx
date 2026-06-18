@@ -8,6 +8,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Edit2, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
+import ImageEditorModal from "@/components/ImageEditorModal";
 
 export default function CategoryMenu() {
   const router = useRouter();
@@ -19,6 +20,10 @@ export default function CategoryMenu() {
   const [isEditing, setIsEditing] = useState(false);
   const [editCategories, setEditCategories] = useState<any[]>([]);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+
+  // Image Editor States
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editorImageUrl, setEditorImageUrl] = useState<string>("");
 
   // Fetch Categories
   useEffect(() => {
@@ -44,10 +49,7 @@ export default function CategoryMenu() {
     fetchCategories();
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadAndSaveCategoryImg = async (file: File, idx: number) => {
     setUploadingIdx(idx);
     try {
       const formData = new FormData();
@@ -71,6 +73,21 @@ export default function CategoryMenu() {
       alert("Error uploading image");
     } finally {
       setUploadingIdx(null);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAndSaveCategoryImg(file, idx);
+  };
+
+  const handleSaveEditedCategory = async (editedFile: File) => {
+    const idx = editingIdx;
+    setEditingIdx(null);
+    setEditorImageUrl("");
+    if (idx !== null) {
+      await uploadAndSaveCategoryImg(editedFile, idx);
     }
   };
 
@@ -173,9 +190,22 @@ export default function CategoryMenu() {
               {editCategories.map((cat, idx) => (
                 <div key={idx} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
                   {/* Image Upload */}
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-300 flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-300 flex-shrink-0 group">
                     {cat.image ? (
-                      <Image src={cat.image} alt={cat.name} fill className="object-cover" />
+                      <>
+                        <Image src={cat.image} alt={cat.name} fill className="object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingIdx(idx);
+                            setEditorImageUrl(cat.image);
+                          }}
+                          className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer text-[10px] font-bold"
+                          title="Edit Image"
+                        >
+                          EDIT
+                        </button>
+                      </>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                         <UploadCloud size={16} />
@@ -243,6 +273,18 @@ export default function CategoryMenu() {
             </div>
           </div>
         </div>
+      )}
+
+      {editorImageUrl && (
+        <ImageEditorModal
+          imageUrl={editorImageUrl}
+          aspectRatio={1} // Categories are 1:1 round circles
+          onClose={() => {
+            setEditingIdx(null);
+            setEditorImageUrl("");
+          }}
+          onSave={handleSaveEditedCategory}
+        />
       )}
     </div>
   );
