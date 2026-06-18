@@ -78,19 +78,32 @@ export default function Header() {
       </div>
 
       <div className="pt-3 pb-2 px-4">
-        {/* Top Row: Location & Rewards */}
-        <div className="flex justify-between items-center mb-3 text-sm">
-          <div className="flex items-center space-x-1 text-gray-800 font-medium overflow-hidden whitespace-nowrap">
-            <MapPin size={16} className="text-gray-700" />
-            <span className="truncate max-w-[220px]">
-              Deliver to {user?.displayName || user?.email?.split('@')[0] || "Guest"} - India
+        {/* Top Row: Logo, Location & Rewards */}
+        <div className="flex justify-between items-center mb-3">
+          {/* Brand Logo & Name */}
+          <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-200/50 shadow-sm bg-white p-0.5 flex items-center justify-center">
+              <img src="/logo.png" alt="Craft Style Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-serif font-black text-sm tracking-wider uppercase bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 bg-clip-text text-transparent">
+              Craft Style
             </span>
-            <ChevronDown size={16} className="text-gray-500 flex-shrink-0" />
-          </div>
-          <div className="flex items-center bg-[#eaffea] text-green-700 px-2 py-0.5 rounded-full text-xs font-bold border border-green-200">
-            <span className="mr-1">₹0</span>
-            <div className="bg-green-600 text-white rounded-full p-0.5">
-              <Sparkles size={10} />
+          </Link>
+          
+          {/* Location & Points Container */}
+          <div className="flex items-center space-x-2 text-xs">
+            <div className="flex items-center space-x-0.5 text-gray-650 font-semibold max-w-[120px] overflow-hidden whitespace-nowrap">
+              <MapPin size={13} className="text-gray-600 flex-shrink-0" />
+              <span className="truncate">
+                {user?.displayName || user?.email?.split('@')[0] || "Guest"}
+              </span>
+              <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />
+            </div>
+            <div className="flex items-center bg-[#eaffea] text-green-700 px-1.5 py-0.5 rounded-full font-bold border border-green-200">
+              <span className="mr-0.5">₹0</span>
+              <div className="bg-green-600 text-white rounded-full p-0.5">
+                <Sparkles size={8} />
+              </div>
             </div>
           </div>
         </div>
@@ -98,19 +111,16 @@ export default function Header() {
         {/* Second Row: Search & Icons */}
         <div className="flex items-center space-x-3">
           {/* Search Bar */}
-          <div className="flex-1 bg-white rounded-full flex items-center px-3 py-2 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-pink-600 rounded-full mr-2 font-bold text-xs">
-              M
-            </div>
+          <div className="flex-1 bg-white rounded-full flex items-center px-3.5 py-2 shadow-sm border border-gray-100">
+            <Search size={16} className="text-gray-400 mr-2 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search for products, brands..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
-              className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
+              className="flex-1 bg-transparent outline-none text-xs text-gray-700 placeholder-gray-400"
             />
-            <Search size={18} className="text-gray-400 cursor-pointer" onClick={() => searchQuery.trim() ? router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`) : router.push('/')} />
           </div>
 
           {/* Action Icons */}
