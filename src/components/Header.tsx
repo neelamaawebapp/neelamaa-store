@@ -82,7 +82,7 @@ export default function Header() {
         <div className="flex justify-between items-center mb-3">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center flex-shrink-0">
-            <div className="relative h-8 w-28 flex items-center justify-start">
+            <div className="relative h-12 w-36 flex items-center justify-start">
               <img src="/logo.png" alt="Craft Style Logo" className="h-full w-auto object-contain object-left" />
             </div>
           </Link>
