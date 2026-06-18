@@ -71,15 +71,15 @@ export async function POST(req: Request) {
       `,
     };
 
-    // Attempt to send email, but don't crash if credentials aren't set yet
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    const emailSent = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    if (emailSent) {
       await transporter.sendMail(mailOptions);
     } else {
       console.log("Email skipped: EMAIL_USER or EMAIL_PASS not configured.");
     }
 
-    // 2. Send SMS using Fast2SMS API
-    if (process.env.FAST2SMS_API_KEY && phone) {
+    const smsSent = !!(process.env.FAST2SMS_API_KEY && phone);
+    if (smsSent) {
       const message = `Hi ${name}, your order #${orderId} has shipped via ${shippingCompany}. Tracking: ${trackingNumber}. Thanks!`;
       
       await fetch("https://www.fast2sms.com/dev/bulkV2", {
@@ -100,7 +100,11 @@ export async function POST(req: Request) {
       console.log("SMS skipped: FAST2SMS_API_KEY not configured.");
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      emailSent,
+      smsSent
+    });
   } catch (error) {
     console.error("Shipping notification error:", error);
     return NextResponse.json({ error: "Failed to send shipping notification" }, { status: 500 });

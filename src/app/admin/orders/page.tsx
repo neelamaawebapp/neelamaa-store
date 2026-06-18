@@ -275,9 +275,18 @@ export default function AdminOrders() {
       });
 
       if (res.ok) {
-        alert("Shipping details saved and customer notified!");
+        const resData = await res.json();
+        if (resData.success) {
+          if (!resData.emailSent) {
+            alert("Shipping details saved to database. Warning: Email notification was skipped because SMTP credentials (EMAIL_USER/EMAIL_PASS) are not configured.");
+          } else {
+            alert("Shipping details saved and customer notified successfully!");
+          }
+        } else {
+          alert("Shipping details saved, but notification server returned an error.");
+        }
       } else {
-        alert("Saved to DB, but failed to send email notification.");
+        alert("Saved to DB, but failed to contact notification server.");
       }
     } catch (err) {
       console.error(err);
