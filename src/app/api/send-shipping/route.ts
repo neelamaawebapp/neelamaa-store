@@ -27,6 +27,9 @@ export async function POST(req: Request) {
       case "DTDC":
         trackingLink = `https://www.dtdc.in/tracking.asp`; 
         break;
+      case "FedEx":
+        trackingLink = `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+        break;
       case "XpressBees":
         trackingLink = `https://www.xpressbees.com/track?awb=${trackingNumber}`;
         break;

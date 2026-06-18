@@ -45,6 +45,7 @@ export default function CustomerOrdersPage() {
       case "Delhivery": return `https://www.delhivery.com/track/package/${trackingNumber}`;
       case "BlueDart": return `https://www.bluedart.com/tracking`;
       case "DTDC": return `https://www.dtdc.in/tracking.asp`;
+      case "FedEx": return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
       case "XpressBees": return `https://www.xpressbees.com/track?awb=${trackingNumber}`;
       case "Ecom Express": return `https://ecomexpress.in/tracking/?awb=${trackingNumber}`;
       case "India Post": return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;

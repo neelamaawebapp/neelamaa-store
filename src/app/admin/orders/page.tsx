@@ -501,6 +501,7 @@ export default function AdminOrders() {
                         <option value="Delhivery">Delhivery</option>
                         <option value="BlueDart">BlueDart</option>
                         <option value="DTDC">DTDC</option>
+                        <option value="FedEx">FedEx</option>
                         <option value="XpressBees">XpressBees</option>
                         <option value="Ecom Express">Ecom Express</option>
                         <option value="India Post">India Post</option>
