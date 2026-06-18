@@ -47,18 +47,20 @@ export async function POST(req: Request) {
 
     // Prepare Nodemailer transport with timeouts to prevent hangs
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.EMAIL_USER,
+        user: process.env.EMAIL_USER || 'admincraftstyle@gmail.com',
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 3000, // 3 seconds timeout
-      greetingTimeout: 3000,
-      socketTimeout: 3000,
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const mailOptions = {
-      from: `"Craft Style Support" <${process.env.EMAIL_USER || 'support@craftstyle.com'}>`,
+      from: `"Craft Style Support" <${process.env.EMAIL_USER || 'admincraftstyle@gmail.com'}>`,
       to: email,
       subject: `Reset Your Craft Style Password`,
       html: `
@@ -90,8 +92,9 @@ export async function POST(req: Request) {
       `,
     };
 
+    const isConfigured = (val?: string) => !!val && val.trim() !== "" && !val.includes("YOUR_");
     let emailSent = false;
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (isConfigured(process.env.EMAIL_USER) && isConfigured(process.env.EMAIL_PASS)) {
       try {
         await transporter.sendMail(mailOptions);
         emailSent = true;

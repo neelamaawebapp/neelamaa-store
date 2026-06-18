@@ -5,13 +5,30 @@ export async function POST(req: Request) {
   try {
     const { name, email, phone, orderId, shippingCompany, trackingNumber } = await req.json();
 
+    const isConfigured = (val?: string) => !!val && val.trim() !== "" && !val.includes("YOUR_");
+    const emailSent = isConfigured(process.env.EMAIL_USER) && isConfigured(process.env.EMAIL_PASS);
+
+    if (!email || !email.includes("@")) {
+      return NextResponse.json({
+        success: true,
+        emailSent: false,
+        smsSent: false,
+        warning: "Customer email is missing or invalid."
+      });
+    }
+
     // 1. Send Email using Nodemailer (requires Gmail App Password in .env)
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.EMAIL_USER, 
+        user: process.env.EMAIL_USER || 'admincraftstyle@gmail.com', 
         pass: process.env.EMAIL_PASS, // "App Password" from Google Account
       },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     // Determine direct tracking link based on courier company
@@ -46,7 +63,7 @@ export async function POST(req: Request) {
     }
 
     const mailOptions = {
-      from: `"Craft Style" <${process.env.EMAIL_USER}>`,
+      from: `"Craft Style" <${process.env.EMAIL_USER || 'admincraftstyle@gmail.com'}>`,
       to: email,
       subject: `Your Order #${orderId} has Shipped!`,
       html: `
@@ -71,11 +88,10 @@ export async function POST(req: Request) {
       `,
     };
 
-    const emailSent = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
     if (emailSent) {
       await transporter.sendMail(mailOptions);
     } else {
-      console.log("Email skipped: EMAIL_USER or EMAIL_PASS not configured.");
+      console.log("Email skipped: EMAIL_USER or EMAIL_PASS not configured or contains placeholder.");
     }
 
     const smsSent = !!(process.env.FAST2SMS_API_KEY && phone);

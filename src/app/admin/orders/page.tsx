@@ -253,6 +253,12 @@ export default function AdminOrders() {
       return;
     }
 
+    const customerEmail = order.customerEmail || order.email || "";
+    if (!customerEmail || !customerEmail.includes("@")) {
+      alert("Error: Cannot notify customer via email because their email address is missing or invalid on this order.");
+      return;
+    }
+
     try {
       // 1. Save to DB
       await updateDoc(doc(db, "orders", order.id), {
@@ -265,9 +271,9 @@ export default function AdminOrders() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: order.customerName,
-          email: order.customerEmail,
-          phone: order.phone,
+          name: order.customerName || "Customer",
+          email: customerEmail,
+          phone: order.phone || "",
           orderId: order.id,
           shippingCompany: data.company,
           trackingNumber: data.tracking
@@ -277,7 +283,9 @@ export default function AdminOrders() {
       if (res.ok) {
         const resData = await res.json();
         if (resData.success) {
-          if (!resData.emailSent) {
+          if (resData.warning) {
+            alert(`Shipping details saved to database. Warning: ${resData.warning}`);
+          } else if (!resData.emailSent) {
             alert("Shipping details saved to database. Warning: Email notification was skipped because SMTP credentials (EMAIL_USER/EMAIL_PASS) are not configured.");
           } else {
             alert("Shipping details saved and customer notified successfully!");
