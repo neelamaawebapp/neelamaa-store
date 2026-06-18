@@ -80,14 +80,11 @@ export default function Header() {
       <div className="pt-3 pb-2 px-4">
         {/* Top Row: Logo, Location & Rewards */}
         <div className="flex justify-between items-center mb-3">
-          {/* Brand Logo & Name */}
-          <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
-            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-200/50 shadow-sm bg-white p-0.5 flex items-center justify-center">
-              <img src="/logo.png" alt="Craft Style Logo" className="w-full h-full object-contain" />
+          {/* Brand Logo */}
+          <Link href="/" className="flex items-center flex-shrink-0">
+            <div className="relative h-8 w-28 flex items-center justify-start">
+              <img src="/logo.png" alt="Craft Style Logo" className="h-full w-auto object-contain object-left" />
             </div>
-            <span className="font-serif font-black text-sm tracking-wider uppercase bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 bg-clip-text text-transparent">
-              Craft Style
-            </span>
           </Link>
           
           {/* Location & Points Container */}
