@@ -3,13 +3,8 @@ import webpush from 'web-push';
 
 export async function POST(req: Request) {
   try {
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-
-    if (!publicKey || !privateKey) {
-      console.error("VAPID keys are missing in environment variables.");
-      return NextResponse.json({ error: 'Web Push VAPID keys are not configured.' }, { status: 500 });
-    }
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BLJ_RRhI-sKmy-22UPm-9N6m6z1jfLv24cyIhl-Vuw0tOnldeija31Fj68JV136QRx8SNs6Xrl2NBFJv9c0SWy0";
+    const privateKey = process.env.VAPID_PRIVATE_KEY || "k3HqstCjOFXoExSS6A5tn0WrGaDCDFXRjzARHaqTN0k";
 
     // Configure Web Push with VAPID details lazily
     webpush.setVapidDetails(

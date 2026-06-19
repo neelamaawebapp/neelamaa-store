@@ -30,12 +30,7 @@ export default function NotificationListener() {
 
   const subscribeUserToPush = async (registration: ServiceWorkerRegistration) => {
     try {
-      const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicVapidKey) {
-        console.error("VAPID public key is missing");
-        return;
-      }
-
+      const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BLJ_RRhI-sKmy-22UPm-9N6m6z1jfLv24cyIhl-Vuw0tOnldeija31Fj68JV136QRx8SNs6Xrl2NBFJv9c0SWy0";
       const applicationServerKey = urlBase64ToUint8Array(publicVapidKey);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
