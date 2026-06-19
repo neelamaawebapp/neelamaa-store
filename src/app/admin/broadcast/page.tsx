@@ -200,7 +200,31 @@ export default function BroadcastDashboard() {
         console.warn("Failed to save broadcast to Firestore, falling back to localStorage", firestoreErr);
       }
 
-      // 2. Add to Local Storage (so guest/local administrators can test it)
+      // 2. Send Background Web Push Notifications via API route
+      try {
+        const response = await fetch("/api/send-broadcast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: broadcastData.title,
+            message: broadcastData.message,
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          console.warn("Web push broadcast API returned error status:", errData);
+        } else {
+          const resData = await response.json();
+          console.log("Web push broadcast sent:", resData);
+        }
+      } catch (apiErr) {
+        console.error("Failed to request Web Push API route:", apiErr);
+      }
+
+      // 3. Add to Local Storage (so guest/local administrators can test it)
       try {
         const stored = localStorage.getItem("craftstyle_local_notifications");
         const localNotifs = stored ? JSON.parse(stored) : [];

@@ -1,11 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Bell, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, "+")
+    .replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export default function NotificationListener() {
   const pathname = usePathname();
@@ -13,16 +28,75 @@ export default function NotificationListener() {
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>("default");
 
+  const subscribeUserToPush = async (registration: ServiceWorkerRegistration) => {
+    try {
+      const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!publicVapidKey) {
+        console.error("VAPID public key is missing");
+        return;
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(publicVapidKey);
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
+
+      console.log("Push Subscription generated:", subscription);
+      
+      const subJson = subscription.toJSON();
+      if (!subJson.endpoint || !subJson.keys) {
+        console.error("Subscription details are incomplete:", subJson);
+        return;
+      }
+
+      // Save/merge to Firestore push_subscriptions using endpoint as key (encoded)
+      const encodedEndpoint = encodeURIComponent(subJson.endpoint);
+      const subRef = doc(db, "push_subscriptions", encodedEndpoint);
+      await setDoc(subRef, {
+        endpoint: subJson.endpoint,
+        keys: subJson.keys,
+        userId: user ? user.uid : "guest",
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      console.log("Subscription successfully synchronized with Firestore");
+    } catch (err) {
+      console.error("Failed to subscribe user to push notifications:", err);
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     setPermissionStatus(Notification.permission);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("Notification" in window)) return;
+
+    // Register service worker
+    navigator.serviceWorker.register("/sw.js")
+      .then((registration) => {
+        console.log("Service Worker registered scope:", registration.scope);
+        // If permission is already granted, subscribe/update
+        if (Notification.permission === "granted") {
+          subscribeUserToPush(registration);
+        }
+      })
+      .catch((err) => {
+        console.error("Service Worker registration failed:", err);
+      });
+  }, [user]);
+
   const requestPermission = async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return;
     try {
       const permission = await Notification.requestPermission();
       setPermissionStatus(permission);
+      if (permission === "granted") {
+        const registration = await navigator.serviceWorker.ready;
+        await subscribeUserToPush(registration);
+      }
     } catch (e) {
       console.error("Failed to request notification permission:", e);
     }
