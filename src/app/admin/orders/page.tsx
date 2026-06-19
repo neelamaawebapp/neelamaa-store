@@ -259,12 +259,29 @@ export default function AdminOrders() {
       return;
     }
 
+    const isMock = order.id.startsWith("mock_");
     try {
       // 1. Save to DB
-      await updateDoc(doc(db, "orders", order.id), {
-        shippingCompany: data.company,
-        trackingNumber: data.tracking
-      });
+      if (isMock) {
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
+        const updatedLocal = localOrders.map((o: any) => {
+          if (o.id === order.id) {
+            return {
+              ...o,
+              shippingCompany: data.company,
+              trackingNumber: data.tracking
+            };
+          }
+          return o;
+        });
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, shippingCompany: data.company, trackingNumber: data.tracking } : o));
+      } else {
+        await updateDoc(doc(db, "orders", order.id), {
+          shippingCompany: data.company,
+          trackingNumber: data.tracking
+        });
+      }
 
       // 2. Notify User
       const res = await fetch("/api/send-shipping", {

@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       await fetch("https://www.fast2sms.com/dev/bulkV2", {
         method: "POST",
         headers: {
-          "authorization": process.env.FAST2SMS_API_KEY,
+          "authorization": process.env.FAST2SMS_API_KEY || "",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({

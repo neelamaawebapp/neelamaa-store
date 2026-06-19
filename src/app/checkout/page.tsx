@@ -96,14 +96,46 @@ export default function CheckoutPage() {
       return;
     }
 
+    setPlacing(true);
+
+    // Validate stock levels before placing order
+    try {
+      const { doc, getDoc } = await import("firebase/firestore");
+      
+      let validationError = "";
+      for (const item of cart) {
+        const productRef = doc(db, "products", item.productId);
+        const docSnap = await getDoc(productRef);
+        if (docSnap.exists()) {
+          const stock = Number(docSnap.data().quantity || 0);
+          if (stock <= 0) {
+            validationError = `The item "${item.brand} - ${item.title}" is out of stock.`;
+            break;
+          } else if (stock < item.quantity) {
+            validationError = `Only ${stock} units of "${item.brand} - ${item.title}" are available in stock (you requested ${item.quantity}).`;
+            break;
+          }
+        } else {
+          validationError = `The item "${item.brand} - ${item.title}" is no longer available.`;
+          break;
+        }
+      }
+
+      if (validationError) {
+        alert(`${validationError} Please update your shopping bag before proceeding.`);
+        setPlacing(false);
+        return;
+      }
+    } catch (err) {
+      console.error("Stock validation failed, proceeding with caution", err);
+    }
+
     if (payMethod === "COD") {
-      setPlacing(true);
       await completeOrder("COD", "COD");
       return;
     }
 
     // Pay Online Flow
-    setPlacing(true);
     try {
       const res = await fetch("/api/create-order", {
         method: "POST",

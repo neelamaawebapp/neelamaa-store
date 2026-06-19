@@ -1,12 +1,51 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck, AlertTriangle } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function BagPage() {
   const { cart, removeFromBag, updateQuantity, totalAmount } = useCart();
+  const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
+  const [loadingStock, setLoadingStock] = useState(true);
+
+  useEffect(() => {
+    const fetchStock = async () => {
+      const newStockLevels: Record<string, number> = {};
+      try {
+        await Promise.all(
+          cart.map(async (item) => {
+            const productRef = doc(db, "products", item.productId);
+            const docSnap = await getDoc(productRef);
+            if (docSnap.exists()) {
+              newStockLevels[item.productId] = Number(docSnap.data().quantity || 0);
+            } else {
+              newStockLevels[item.productId] = 0;
+            }
+          })
+        );
+      } catch (err) {
+        console.error("Error fetching stock levels", err);
+      } finally {
+        setStockLevels(newStockLevels);
+        setLoadingStock(false);
+      }
+    };
+    if (cart.length > 0) {
+      fetchStock();
+    } else {
+      setLoadingStock(false);
+    }
+  }, [cart]);
+
+  const hasOutOfStockItems = cart.some(item => {
+    const stock = stockLevels[item.productId];
+    return stock !== undefined && (stock <= 0 || stock < item.quantity);
+  });
   const router = useRouter();
 
   const discount = Math.round(totalAmount * 0.33); // Simulating 33% total discount
@@ -62,6 +101,17 @@ export default function BagPage() {
                   <span className="font-bold text-sm text-gray-900">₹{item.price}</span>
                   <span className="text-xs text-gray-400 line-through">₹{Math.round(item.price * 1.5)}</span>
                 </div>
+
+                {stockLevels[item.productId] !== undefined && stockLevels[item.productId] <= 0 && (
+                  <div className="text-red-600 text-[11px] font-extrabold mb-2 bg-red-50/50 border border-red-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
+                    <AlertTriangle size={11} /> Out of Stock
+                  </div>
+                )}
+                {stockLevels[item.productId] !== undefined && stockLevels[item.productId] > 0 && stockLevels[item.productId] < item.quantity && (
+                  <div className="text-orange-600 text-[11px] font-extrabold mb-2 bg-orange-50/50 border border-orange-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
+                    <AlertTriangle size={11} /> Only {stockLevels[item.productId]} available
+                  </div>
+                )}
                 
                 <div className="mt-auto flex items-center space-x-4">
                   <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-gray-50">
@@ -127,16 +177,32 @@ export default function BagPage() {
       {/* Sticky Bottom Action */}
       {cart.length > 0 && (
         <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          {hasOutOfStockItems && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-2.5 rounded-lg text-center mb-3 flex items-center justify-center gap-1.5 animate-pulse">
+              <AlertTriangle size={14} />
+              <span>Out of stock items present. Please remove them.</span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>
               <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">View Details</a>
             </div>
             <button 
-              onClick={() => router.push("/checkout")}
-              className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors w-1/2 flex justify-center items-center"
+              onClick={() => {
+                if (hasOutOfStockItems) {
+                  alert("Please remove out of stock items from your bag to proceed.");
+                  return;
+                }
+                router.push("/checkout");
+              }}
+              disabled={hasOutOfStockItems || loadingStock}
+              className={`font-bold py-3.5 px-8 rounded-md transition-colors w-1/2 flex justify-center items-center uppercase tracking-wider text-xs cursor-pointer
+                ${hasOutOfStockItems || loadingStock
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                  : "bg-pink-500 text-white hover:bg-pink-600 shadow-sm"}`}
             >
-              PLACE ORDER
+              {loadingStock ? "CHECKING STOCK..." : "PLACE ORDER"}
             </button>
           </div>
         </div>

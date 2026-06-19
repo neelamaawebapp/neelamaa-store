@@ -37,6 +37,8 @@ export default function CustomerOrdersPage() {
   const [editAddressText, setEditAddressText] = useState("");
   const [updatingAddress, setUpdatingAddress] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [courierData, setCourierData] = useState<any>(null);
+  const [loadingCourierData, setLoadingCourierData] = useState(false);
 
   const getTrackingLink = (company: string, trackingNumber: string) => {
     if (!company || !trackingNumber) return "#";
@@ -81,9 +83,12 @@ export default function CustomerOrdersPage() {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getEstimatedDeliveryDate = (createdAt: any, status: string) => {
-    if (status === "Cancelled") return "N/A (Cancelled)";
+  const getEstimatedDeliveryDate = (order: any) => {
+    if (!order) return "N/A";
+    if (order.status === "Cancelled") return "N/A (Cancelled)";
+    
     let orderTime = Date.now();
+    const createdAt = order.createdAt;
     if (createdAt) {
       if (typeof createdAt.toMillis === "function") {
         orderTime = createdAt.toMillis();
@@ -94,11 +99,53 @@ export default function CustomerOrdersPage() {
         if (!isNaN(parsed)) orderTime = parsed;
       }
     }
-    // Pending: 5 days, Shipped: 3 days, Delivered: 0 days
-    const addedDays = status === "Pending" ? 5 : status === "Shipped" ? 3 : 0;
-    const estDate = new Date(orderTime + addedDays * 24 * 60 * 60 * 1000);
+
+    if (order.status === "Delivered" && order.deliveredAt) {
+      const delDate = new Date(order.deliveredAt);
+      return delDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    if (courierData && courierData.expectedDeliveryDate) {
+      const estDate = new Date(courierData.expectedDeliveryDate);
+      return estDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    const estDate = new Date(orderTime + 8 * 24 * 60 * 60 * 1000); // 3 days to ship + 5 days to reach
     return estDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };
+
+  useEffect(() => {
+    if (!trackingOrder) {
+      setCourierData(null);
+      return;
+    }
+
+    const hasCourier = trackingOrder.shippingCompany && trackingOrder.trackingNumber;
+    if (!hasCourier) {
+      setCourierData(null);
+      return;
+    }
+
+    const fetchCourierData = async () => {
+      setLoadingCourierData(true);
+      try {
+        const url = `/api/track-courier?company=${encodeURIComponent(trackingOrder.shippingCompany)}&tracking=${encodeURIComponent(trackingOrder.trackingNumber)}&shippedAt=${encodeURIComponent(trackingOrder.shippedAt || "")}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setCourierData(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch courier tracking details", err);
+      } finally {
+        setLoadingCourierData(false);
+      }
+    };
+
+    fetchCourierData();
+  }, [trackingOrder]);
 
   const handleCancelOrder = async (orderId: string) => {
     if (!user) return;
@@ -789,133 +836,188 @@ export default function CustomerOrdersPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
                     {trackingOrder.status === 'Delivered' ? 'Delivered On' : 'Estimated Delivery'}
                   </p>
-                  <p className="text-xs font-bold mt-0.5">
-                    {getEstimatedDeliveryDate(trackingOrder.createdAt, trackingOrder.status)}
-                  </p>
+                  {loadingCourierData ? (
+                    <div className="flex justify-end items-center mt-1">
+                      <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-end">
+                      <p className="text-xs font-bold mt-0.5">
+                        {getEstimatedDeliveryDate(trackingOrder)}
+                      </p>
+                      {courierData && (
+                        <span className="text-[8px] font-bold text-green-600 bg-green-50 px-1 rounded border border-green-100 mt-0.5 flex items-center gap-0.5">
+                          <Check size={8} className="stroke-[3]" /> Auto-synced
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Timeline Stepper */}
               {trackingOrder.status !== 'Cancelled' ? (
                 <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-100/80 space-y-4">
-                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Delivery Journey</h3>
-                  <div className="relative pl-6 border-l-2 border-slate-200 ml-3 space-y-6 font-sans">
-                    {/* Step 1: Placed */}
-                    <div className="relative">
-                      <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
-                        <Check size={12} className="stroke-[3]" />
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Delivery Journey</h3>
+                    {courierData && (
+                      <span className="text-[9px] text-gray-400 font-semibold bg-white border border-gray-200 px-1.5 py-0.5 rounded shadow-[0_1px_1px_rgba(0,0,0,0.01)]">
+                        Scanned from {trackingOrder.shippingCompany} Portal
                       </span>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs text-gray-900">Order Placed</h4>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Your order was registered successfully.</p>
-                        </div>
-                        <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
-                          {formatTimelineDate(trackingOrder.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Confirmed */}
-                    <div className="relative">
-                      <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
-                        <Check size={12} className="stroke-[3]" />
-                      </span>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs text-gray-900">Order Confirmed</h4>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Payment verified. Packing in progress.</p>
-                        </div>
-                        <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
-                          {formatTimelineDate(trackingOrder.confirmedAt || trackingOrder.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Step 3: Shipped */}
-                    <div className="relative">
-                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
-                        ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-slate-200 text-slate-400'}`}
-                      >
-                        <Check size={12} className="stroke-[3]" />
-                      </span>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs text-gray-900 font-sans">Shipped</h4>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
-                              ? `Handed over to carrier: ${trackingOrder.shippingCompany || 'Courier Service'}`
-                              : 'Preparing package for pickup by courier.'}
-                          </p>
-                        </div>
-                        {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
-                          <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
-                            {trackingOrder.shippedAt 
-                              ? formatTimelineDate(trackingOrder.shippedAt) 
-                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 2 * 24 * 60 * 60 * 1000))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Step 4: In Transit / On the Way */}
-                    <div className="relative">
-                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
-                        ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-slate-200 text-slate-400'}`}
-                      >
-                        <Check size={12} className="stroke-[3]" />
-                      </span>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs text-gray-900 font-sans">On the Way</h4>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
-                              ? 'Package is in transit. Moving between sorting centers.' 
-                              : 'Package will enter transit after shipping.'}
-                          </p>
-                        </div>
-                        {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
-                          <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
-                            {trackingOrder.shippedAt
-                              ? formatTimelineDate(new Date(new Date(trackingOrder.shippedAt).getTime() + 1 * 24 * 60 * 60 * 1000))
-                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 3 * 24 * 60 * 60 * 1000))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Step 5: Delivered */}
-                    <div className="relative">
-                      <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
-                        ${trackingOrder.status === 'Delivered' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-slate-200 text-slate-400'}`}
-                      >
-                        <Check size={12} className="stroke-[3]" />
-                      </span>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs text-gray-900 font-sans">Delivered</h4>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            {trackingOrder.status === 'Delivered' 
-                              ? 'Package has been delivered to your address.' 
-                              : 'Package will be delivered by estimated date.'}
-                          </p>
-                        </div>
-                        {trackingOrder.status === 'Delivered' && (
-                          <span className="text-[10px] text-green-750 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
-                            {trackingOrder.deliveredAt
-                              ? formatTimelineDate(trackingOrder.deliveredAt)
-                              : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 4 * 24 * 60 * 60 * 1000))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
+                  
+                  {loadingCourierData ? (
+                    <div className="flex flex-col items-center justify-center py-6 space-y-2">
+                      <div className="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Checking courier portal...</p>
+                    </div>
+                  ) : courierData && courierData.timeline && courierData.timeline.length > 0 ? (
+                    <div className="relative pl-6 border-l-2 border-pink-200 ml-3 space-y-6 font-sans">
+                      {courierData.timeline.map((event: any, idx: number) => {
+                        const isLatest = idx === 0;
+                        return (
+                          <div key={idx} className="relative">
+                            <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                              ${isLatest ? 'bg-pink-500 text-white' : 'bg-green-500 text-white'}`}
+                            >
+                              <Check size={10} className="stroke-[3]" />
+                            </span>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className={`font-bold text-xs ${isLatest ? 'text-pink-600' : 'text-gray-900'}`}>{event.status}</h4>
+                                <p className="text-[10px] text-gray-500 mt-0.5">{event.details}</p>
+                                {event.location && (
+                                  <p className="text-[9px] text-gray-400 font-semibold uppercase mt-0.5">Location: {event.location}</p>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                                {formatTimelineDate(event.time)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 border-l-2 border-slate-200 ml-3 space-y-6 font-sans">
+                      {/* Step 1: Placed */}
+                      <div className="relative">
+                        <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
+                          <Check size={12} className="stroke-[3]" />
+                        </span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-gray-900">Order Placed</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">Your order was registered successfully.</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                            {formatTimelineDate(trackingOrder.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Step 2: Confirmed */}
+                      <div className="relative">
+                        <span className="absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white border-4 border-white shadow-sm">
+                          <Check size={12} className="stroke-[3]" />
+                        </span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-gray-900">Order Confirmed</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">Payment verified. Packing in progress.</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                            {formatTimelineDate(trackingOrder.confirmedAt || trackingOrder.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Shipped */}
+                      <div className="relative">
+                        <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                          ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-slate-200 text-slate-400'}`}
+                        >
+                          <Check size={12} className="stroke-[3]" />
+                        </span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-gray-900 font-sans">Shipped</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                                ? `Handed over to carrier: ${trackingOrder.shippingCompany || 'Courier Service'}`
+                                : 'Preparing package for pickup by courier.'}
+                            </p>
+                          </div>
+                          {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+                            <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                              {trackingOrder.shippedAt 
+                                ? formatTimelineDate(trackingOrder.shippedAt) 
+                                : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 2 * 24 * 60 * 60 * 1000))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Step 4: In Transit / On the Way */}
+                      <div className="relative">
+                        <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                          ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-slate-200 text-slate-400'}`}
+                        >
+                          <Check size={12} className="stroke-[3]" />
+                        </span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-gray-900 font-sans">On the Way</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              {trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered' 
+                                ? 'Package is in transit. Moving between sorting centers.' 
+                                : 'Package will enter transit after shipping.'}
+                            </p>
+                          </div>
+                          {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+                            <span className="text-[10px] text-gray-450 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                              {trackingOrder.shippedAt
+                                ? formatTimelineDate(new Date(new Date(trackingOrder.shippedAt).getTime() + 1 * 24 * 60 * 60 * 1000))
+                                : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 3 * 24 * 60 * 60 * 1000))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Step 5: Delivered */}
+                      <div className="relative">
+                        <span className={`absolute -left-9 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-4 border-white shadow-sm
+                          ${trackingOrder.status === 'Delivered' 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-slate-200 text-slate-400'}`}
+                        >
+                          <Check size={12} className="stroke-[3]" />
+                        </span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-xs text-gray-900 font-sans">Delivered</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              {trackingOrder.status === 'Delivered' 
+                                ? 'Package has been delivered to your address.' 
+                                : 'Package will be delivered by estimated date.'}
+                            </p>
+                          </div>
+                          {trackingOrder.status === 'Delivered' && (
+                            <span className="text-[10px] text-green-750 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-150 shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0 ml-2">
+                              {trackingOrder.deliveredAt
+                                ? formatTimelineDate(trackingOrder.deliveredAt)
+                                : formatTimelineDate(new Date(getOrderTime(trackingOrder) + 4 * 24 * 60 * 60 * 1000))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-red-50/30 p-6 rounded-xl border border-red-100 flex flex-col items-center justify-center text-center">
