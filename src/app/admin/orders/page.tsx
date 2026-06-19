@@ -230,6 +230,31 @@ export default function AdminOrders() {
 
         await updateDoc(doc(db, "orders", orderId), fieldsToUpdate);
       }
+
+      // 3. Trigger customer status update notification (Delivered or Cancelled)
+      if (newStatus === "Delivered" || newStatus === "Cancelled") {
+        try {
+          const res = await fetch("/api/send-status-update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: order.customerName || "Customer",
+              email: order.customerEmail || order.email || "",
+              phone: order.phone || "",
+              orderId: order.id,
+              status: newStatus
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && !data.emailSent) {
+              console.log("Status update notification email skipped (SMTP credentials not configured).");
+            }
+          }
+        } catch (notifyErr) {
+          console.error("Failed to send status update notification", notifyErr);
+        }
+      }
     } catch (err) {
       console.error("Failed to update status", err);
       alert("Failed to update order status.");
