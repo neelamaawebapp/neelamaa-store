@@ -28,6 +28,7 @@ export default function BroadcastDashboard() {
   // State for Broadcast Composer
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastImage, setBroadcastImage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   
   // State for Subscriptions & Broadcast History
@@ -190,6 +191,7 @@ export default function BroadcastDashboard() {
       const broadcastData = {
         title: broadcastTitle.trim(),
         message: broadcastMessage.trim(),
+        image: broadcastImage.trim() || null,
         createdAt: new Date().toISOString()
       };
 
@@ -210,6 +212,7 @@ export default function BroadcastDashboard() {
           body: JSON.stringify({
             title: broadcastData.title,
             message: broadcastData.message,
+            image: broadcastData.image,
           }),
         });
 
@@ -232,6 +235,7 @@ export default function BroadcastDashboard() {
           id: `broadcast_${Date.now()}_${Math.random()}`,
           title: broadcastData.title,
           message: broadcastData.message,
+          image: broadcastData.image,
           createdAt: broadcastData.createdAt,
           read: false
         });
@@ -242,6 +246,7 @@ export default function BroadcastDashboard() {
 
       setBroadcastTitle("");
       setBroadcastMessage("");
+      setBroadcastImage("");
       setSuccess("Broadcast notification sent to all devices successfully!");
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
@@ -362,6 +367,17 @@ export default function BroadcastDashboard() {
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notification Banner Image URL (Optional)</label>
+                <input 
+                  type="url" 
+                  value={broadcastImage} 
+                  onChange={(e) => setBroadcastImage(e.target.value)} 
+                  className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 font-semibold" 
+                  placeholder="e.g. https://example.com/banner.jpg" 
+                />
+              </div>
+
               <div className="pt-2">
                 <button 
                   type="submit" 
@@ -438,6 +454,11 @@ export default function BroadcastDashboard() {
                             <div className="min-w-0">
                               <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{bc.title}</h4>
                               <p className="text-xs text-slate-350 mt-1 leading-relaxed">{bc.message}</p>
+                              {bc.image && (
+                                <div className="mt-2 rounded-lg overflow-hidden border border-slate-850 max-w-xs">
+                                  <img src={bc.image} alt="Broadcast Banner" className="w-full h-auto object-cover max-h-24" />
+                                </div>
+                              )}
                               <div className="flex items-center gap-1 text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-wide">
                                 <Clock size={10} />
                                 <span>Sent: {formattedTime}</span>

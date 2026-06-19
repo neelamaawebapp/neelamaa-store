@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       privateKey
     );
 
-    const { title, message } = await req.json();
+    const { title, message, image } = await req.json();
 
     if (!title || !message) {
       return NextResponse.json({ error: 'Missing required parameters: title, message' }, { status: 400 });
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     let failureCount = 0;
 
     // 3. Send Web Push to each subscriber
-    const payload = JSON.stringify({ title, message });
+    const payload = JSON.stringify({ title, message, image });
 
     for (const sub of subscriptions) {
       try {

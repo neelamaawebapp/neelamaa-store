@@ -25,7 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
 export default function NotificationListener() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
+  const [toast, setToast] = useState<{ title: string; message: string; image?: string } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>("default");
 
   const subscribeUserToPush = async (registration: ServiceWorkerRegistration) => {
@@ -149,7 +149,8 @@ export default function NotificationListener() {
           // 2. Trigger active in-app Toast
           setToast({
             title: latestBroadcast.title,
-            message: latestBroadcast.message
+            message: latestBroadcast.message,
+            image: latestBroadcast.image
           });
 
           // Auto-hide in-app toast after 8 seconds
@@ -197,7 +198,8 @@ export default function NotificationListener() {
             // 2. Trigger active in-app Toast
             setToast({
               title: data.title,
-              message: data.message
+              message: data.message,
+              image: data.image
             });
 
             // Auto-hide in-app toast after 8 seconds
@@ -234,6 +236,11 @@ export default function NotificationListener() {
             <div className="flex-1 pr-6 min-w-0">
               <h4 className="font-extrabold text-xs tracking-wide text-white uppercase">{toast.title}</h4>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">{toast.message}</p>
+              {toast.image && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-slate-800">
+                  <img src={toast.image} alt="Notification Banner" className="w-full h-auto object-cover max-h-24" />
+                </div>
+              )}
             </div>
             <button 
               onClick={() => setToast(null)}
