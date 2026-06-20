@@ -6,6 +6,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, 
 import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
+import { autoAdjustImage } from "@/lib/imageUtils";
 
 export default function AdminDashboard() {
   const [viewMode, setViewMode] = useState<"single" | "bulk">("single");
@@ -237,8 +238,11 @@ export default function AdminDashboard() {
     setIsDragging(false);
   };
 
-  const handleMultipleFileSelection = (files: File[]) => {
-    const newItems = files.map(file => ({
+  const handleMultipleFileSelection = async (files: File[]) => {
+    const adjustedFiles = await Promise.all(
+      files.map(file => autoAdjustImage(file, 3 / 4))
+    );
+    const newItems = adjustedFiles.map(file => ({
       id: `img_${Date.now()}_${Math.random()}`,
       file,
       url: "",
@@ -497,9 +501,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleBulkFiles = (files: File[]) => {
+  const handleBulkFiles = async (files: File[]) => {
     const validFiles = files.filter(f => f.type.startsWith("image/"));
-    const newBulkItems = validFiles.map(file => ({
+    const adjustedFiles = await Promise.all(
+      validFiles.map(file => autoAdjustImage(file, 3 / 4))
+    );
+    const newBulkItems = adjustedFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file),
       brand: "",

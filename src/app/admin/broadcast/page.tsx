@@ -19,8 +19,12 @@ import {
   CheckCircle2, 
   History, 
   Clock,
-  UserCheck
+  UserCheck,
+  UploadCloud,
+  X
 } from "lucide-react";
+import { autoAdjustImage } from "@/lib/imageUtils";
+import { useRef } from "react";
 
 export default function BroadcastDashboard() {
   const [activeTab, setActiveTab] = useState<"history" | "restock">("history");
@@ -30,6 +34,9 @@ export default function BroadcastDashboard() {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastImage, setBroadcastImage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State for Subscriptions & Broadcast History
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -175,6 +182,65 @@ export default function BroadcastDashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  const handleUploadImageFile = async (file: File) => {
+    setUploadingImage(true);
+    setSuccess("");
+    setError("");
+    try {
+      const adjustedFile = await autoAdjustImage(file, 2 / 1);
+      const formData = new FormData();
+      formData.append("image", adjustedFile);
+      
+      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setBroadcastImage(data.data.url);
+        setSuccess("Banner image uploaded and adjusted successfully!");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError(data.error?.message || "Failed to upload image.");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during upload.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        handleUploadImageFile(file);
+      } else {
+        setError("Please drop a valid image file.");
+      }
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleUploadImageFile(file);
+    }
+  };
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,13 +434,57 @@ export default function BroadcastDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notification Banner Image URL (Optional)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notification Banner Image (Optional)</label>
+                
+                {/* Image Preview if uploaded */}
+                {broadcastImage ? (
+                  <div className="relative aspect-[2/1] rounded-xl overflow-hidden border border-slate-800 bg-slate-950/50 mb-3 group flex items-center justify-center">
+                    <img src={broadcastImage} alt="Banner Preview" className="w-full h-full object-cover" />
+                    <button 
+                      type="button" 
+                      onClick={() => setBroadcastImage("")}
+                      className="absolute top-2 right-2 bg-slate-900/90 text-slate-400 hover:text-white p-1 rounded-full border border-slate-800 transition-all z-10 cursor-pointer shadow-md"
+                    >
+                      <X size={14} />
+                    </button>
+                    <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded tracking-wide uppercase">
+                      Adjusted (2:1)
+                    </div>
+                  </div>
+                ) : (
+                  /* Drag & Drop Upload Zone */
+                  <div 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3 relative min-h-[96px]
+                      ${isDragging ? 'border-pink-500 bg-pink-500/5' : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/60'}
+                    `}
+                  >
+                    {uploadingImage ? (
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider animate-pulse">Adjusting & Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <UploadCloud size={24} className={`mb-1.5 ${isDragging ? 'text-pink-500' : 'text-slate-500'}`} />
+                        <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">Drag & drop banner image here</p>
+                        <p className="text-[9px] text-center text-slate-500 font-semibold mt-0.5">Or click to select a file (auto center-crops to 2:1)</p>
+                      </>
+                    )}
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                  </div>
+                )}
+
+                {/* Paste URL Option */}
                 <input 
                   type="url" 
                   value={broadcastImage} 
                   onChange={(e) => setBroadcastImage(e.target.value)} 
                   className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 font-semibold" 
-                  placeholder="e.g. https://example.com/banner.jpg" 
+                  placeholder="Or paste direct image URL link..." 
                 />
               </div>
 

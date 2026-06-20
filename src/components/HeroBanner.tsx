@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
+import { autoAdjustImage } from "@/lib/imageUtils";
 
 const defaultBanners = [
   {
@@ -98,7 +99,8 @@ export default function HeroBanner() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadAndSaveBannerImg(file, idx);
+    const adjustedFile = await autoAdjustImage(file, 21 / 9);
+    await uploadAndSaveBannerImg(adjustedFile, idx);
   };
 
   const handleSaveEditedBanner = async (editedFile: File) => {
@@ -106,7 +108,8 @@ export default function HeroBanner() {
     setEditingIdx(null);
     setEditorImageUrl("");
     if (idx !== null) {
-      await uploadAndSaveBannerImg(editedFile, idx);
+      const adjustedFile = await autoAdjustImage(editedFile, 21 / 9);
+      await uploadAndSaveBannerImg(adjustedFile, idx);
     }
   };
 

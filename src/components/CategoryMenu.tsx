@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { Edit2, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
+import { autoAdjustImage } from "@/lib/imageUtils";
 
 export default function CategoryMenu() {
   const router = useRouter();
@@ -79,7 +80,8 @@ export default function CategoryMenu() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadAndSaveCategoryImg(file, idx);
+    const adjustedFile = await autoAdjustImage(file, 1);
+    await uploadAndSaveCategoryImg(adjustedFile, idx);
   };
 
   const handleSaveEditedCategory = async (editedFile: File) => {
@@ -87,7 +89,8 @@ export default function CategoryMenu() {
     setEditingIdx(null);
     setEditorImageUrl("");
     if (idx !== null) {
-      await uploadAndSaveCategoryImg(editedFile, idx);
+      const adjustedFile = await autoAdjustImage(editedFile, 1);
+      await uploadAndSaveCategoryImg(adjustedFile, idx);
     }
   };
 
