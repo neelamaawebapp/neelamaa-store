@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     // If somehow a non-logged in user reaches here, redirect
@@ -103,6 +104,44 @@ export default function ProfilePage() {
       router.push("/");
     } catch (err) {
       console.error("Failed to log out", err);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to permanently delete your account? This action is irreversible and all your profile and address data will be erased.");
+    if (!confirmDelete) return;
+
+    setDeletingAccount(true);
+    try {
+      if (user) {
+        const { doc, deleteDoc } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        await deleteDoc(doc(db, "users", user.uid));
+        
+        if (user.delete && typeof user.delete === "function") {
+          await user.delete();
+        }
+      }
+      
+      localStorage.removeItem("craftstyle_mock_user");
+      localStorage.removeItem("craftstyle_mock_user_address");
+      
+      await logout();
+      alert("Your account has been deleted successfully.");
+      router.push("/");
+    } catch (err: any) {
+      console.error("Account deletion error:", err);
+      if (err.code === "auth/requires-recent-login") {
+        alert("For security reasons, please log out, log back in, and try deleting your account again.");
+      } else {
+        localStorage.removeItem("craftstyle_mock_user");
+        localStorage.removeItem("craftstyle_mock_user_address");
+        await logout();
+        alert("Your profile has been removed from local storage and you have been logged out.");
+        router.push("/");
+      }
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -275,6 +314,18 @@ export default function ProfilePage() {
           <LogOut size={18} />
           <span>LOGOUT</span>
         </button>
+
+        {/* Account Deletion (Google Play Compliance) */}
+        <div className="mt-8 border-t border-gray-200 pt-6 text-center">
+          <p className="text-xs text-gray-400 mb-2">Want to close your account? This will permanently delete your user profile and address details.</p>
+          <button 
+            onClick={handleDeleteAccount}
+            disabled={deletingAccount}
+            className="text-xs text-red-600 font-bold hover:underline tracking-wide uppercase disabled:opacity-50 cursor-pointer"
+          >
+            {deletingAccount ? "Deleting Account..." : "Delete Account"}
+          </button>
+        </div>
 
       </div>
     </div>
