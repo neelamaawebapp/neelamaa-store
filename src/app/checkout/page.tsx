@@ -264,13 +264,43 @@ export default function CheckoutPage() {
     try {
       let orderId = "";
       try {
-        const { doc, setDoc, collection } = await import("firebase/firestore");
+        const { doc, setDoc, collection, runTransaction } = await import("firebase/firestore");
         const docRef = doc(collection(db, "orders"));
         orderId = docRef.id;
 
+        const getFinancialYear = (date: Date = new Date()) => {
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const startYear = month >= 3 ? year : year - 1;
+          const endYear = startYear + 1;
+          const startYY = String(startYear).substring(2);
+          const endYY = String(endYear).substring(2);
+          return `${startYY}-${endYY}`;
+        };
+
+        let generatedInvoiceNo = `CS-${orderId.substring(0, 5).toUpperCase()}/${getFinancialYear()}`;
+        try {
+          const counterRef = doc(db, "settings", "counters");
+          await runTransaction(db, async (transaction) => {
+            const counterSnap = await transaction.get(counterRef);
+            let nextSeq = 1;
+            if (counterSnap.exists()) {
+              const data = counterSnap.data();
+              if (typeof data.invoiceSeq === "number") {
+                nextSeq = data.invoiceSeq + 1;
+              }
+            }
+            transaction.set(counterRef, { invoiceSeq: nextSeq }, { merge: true });
+            const seqStr = String(nextSeq).padStart(3, '0');
+            generatedInvoiceNo = `CS${seqStr}/${getFinancialYear()}`;
+          });
+        } catch (txErr) {
+          console.error("Failed transaction for invoiceSeq, using short order ID as fallback", txErr);
+        }
+
         const completeOrderData = {
           ...orderData,
-          invoiceNo: `INV-${orderId}`,
+          invoiceNo: generatedInvoiceNo,
           invoiceDate: new Date().toISOString()
         };
 
@@ -278,12 +308,26 @@ export default function CheckoutPage() {
       } catch (dbErr) {
         console.error("Firestore order creation failed, saving locally", dbErr);
         orderId = `mock_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-        // Save to local storage orders
+        
+        const getFinancialYear = (date: Date = new Date()) => {
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const startYear = month >= 3 ? year : year - 1;
+          const endYear = startYear + 1;
+          const startYY = String(startYear).substring(2);
+          const endYY = String(endYear).substring(2);
+          return `${startYY}-${endYY}`;
+        };
+
         const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
+        const nextLocalSeq = localOrders.length + 1;
+        const seqStr = String(nextLocalSeq).padStart(3, '0');
+        const localInvoiceNo = `CS${seqStr}/${getFinancialYear()}`;
+
         localOrders.push({ 
           ...orderData, 
           id: orderId,
-          invoiceNo: `INV-${orderId}`,
+          invoiceNo: localInvoiceNo,
           invoiceDate: new Date().toISOString(),
           createdAt: new Date().toISOString()
         });

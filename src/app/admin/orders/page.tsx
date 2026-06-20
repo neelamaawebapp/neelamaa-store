@@ -25,6 +25,27 @@ export default function AdminOrders() {
     return isNaN(parsed) ? 0 : parsed;
   };
 
+  const getFinancialYear = (dateInput?: any) => {
+    if (!dateInput) return "25-26";
+    const d = typeof dateInput.toDate === "function" ? dateInput.toDate() : new Date(dateInput);
+    const date = isNaN(d.getTime()) ? new Date() : d;
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const startYear = month >= 3 ? year : year - 1;
+    const endYear = startYear + 1;
+    const startYY = String(startYear).substring(2);
+    const endYY = String(endYear).substring(2);
+    return `${startYY}-${endYY}`;
+  };
+
+  const getInvoiceNo = (order: any) => {
+    if (order.invoiceNo) return order.invoiceNo;
+    const idStr = order.id || "";
+    const cleanId = idStr.startsWith("mock_") ? idStr.replace("mock_", "") : idStr;
+    const shortId = cleanId.substring(0, 5).toUpperCase();
+    return `CS-${shortId}/${getFinancialYear(order.createdAt)}`;
+  };
+
   const statusPriority: Record<string, number> = {
     "Pending": 1,
     "Shipped": 2,
@@ -35,7 +56,7 @@ export default function AdminOrders() {
   const filteredAndSortedOrders = orders
     .filter(order => {
       const q = searchQuery.toLowerCase();
-      const invoiceNo = (order.invoiceNo || `INV-${order.id}`).toLowerCase();
+      const invoiceNo = getInvoiceNo(order).toLowerCase();
       return (
         order.id.toLowerCase().includes(q) ||
         invoiceNo.includes(q) ||
@@ -599,7 +620,7 @@ export default function AdminOrders() {
                     <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5 font-semibold">
                       <span>Invoice Number</span>
                       <span className="font-mono bg-slate-950 px-1.5 py-0.5 border border-slate-850 rounded text-slate-300">
-                        {order.invoiceNo || `INV-${order.id}`}
+                        {getInvoiceNo(order)}
                       </span>
                     </div>
 

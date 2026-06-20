@@ -33,6 +33,27 @@ export default function InvoicePage() {
     return "Recently";
   };
 
+  const getFinancialYear = (dateInput?: any) => {
+    if (!dateInput) return "25-26";
+    const d = typeof dateInput.toDate === "function" ? dateInput.toDate() : new Date(dateInput);
+    const date = isNaN(d.getTime()) ? new Date() : d;
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const startYear = month >= 3 ? year : year - 1;
+    const endYear = startYear + 1;
+    const startYY = String(startYear).substring(2);
+    const endYY = String(endYear).substring(2);
+    return `${startYY}-${endYY}`;
+  };
+
+  const getInvoiceNo = (order: any) => {
+    if (order.invoiceNo) return order.invoiceNo;
+    const idStr = order.id || "";
+    const cleanId = idStr.startsWith("mock_") ? idStr.replace("mock_", "") : idStr;
+    const shortId = cleanId.substring(0, 5).toUpperCase();
+    return `CS-${shortId}/${getFinancialYear(order.createdAt)}`;
+  };
+
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       router.push("/");
@@ -155,7 +176,7 @@ export default function InvoicePage() {
             <h3 className="font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-2">Order Details</h3>
             <table className="w-full text-left">
               <tbody>
-                <tr><th className="py-1 font-medium text-gray-600">Invoice No:</th><td className="font-mono font-bold text-gray-900">{order.invoiceNo || `INV-${order.id}`}</td></tr>
+                <tr><th className="py-1 font-medium text-gray-600">Invoice No:</th><td className="font-mono font-bold text-gray-900">{getInvoiceNo(order)}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Invoice Date:</th><td>{order.invoiceDate ? formatOrderDate(order.invoiceDate) : formatOrderDate(order.createdAt)}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Order ID:</th><td className="font-mono text-xs">{order.id}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Order Date:</th><td>{formatOrderDate(order.createdAt)}</td></tr>
