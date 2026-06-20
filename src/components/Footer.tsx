@@ -19,6 +19,7 @@ export default function Footer() {
   return (
     <footer className={`bg-gray-50 border-t border-gray-200 py-8 px-4 text-center ${pbClass} w-full max-w-md mx-auto`}>
       <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm mb-6 text-gray-600 font-medium px-4">
+        <Link href="/customer-care" className="hover:text-pink-600 transition-colors">Customer Care</Link>
         <Link href="/privacy" className="hover:text-pink-600 transition-colors">Privacy Policy</Link>
         <Link href="/terms" className="hover:text-pink-600 transition-colors">Terms & Conditions</Link>
         <Link href="/shipping" className="hover:text-pink-600 transition-colors">Shipping & Delivery</Link>
