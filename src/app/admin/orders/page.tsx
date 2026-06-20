@@ -10,6 +10,8 @@ export default function AdminOrders() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [shippingData, setShippingData] = useState<Record<string, { company: string, tracking: string }>>({});
+  const [editingDiscountOrderId, setEditingDiscountOrderId] = useState<string | null>(null);
+  const [tempDiscountPercent, setTempDiscountPercent] = useState<number>(33);
 
   // Search & Sorting States
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,8 +35,10 @@ export default function AdminOrders() {
   const filteredAndSortedOrders = orders
     .filter(order => {
       const q = searchQuery.toLowerCase();
+      const invoiceNo = (order.invoiceNo || `INV-${order.id}`).toLowerCase();
       return (
         order.id.toLowerCase().includes(q) ||
+        invoiceNo.includes(q) ||
         (order.customerName && order.customerName.toLowerCase().includes(q)) ||
         (order.customerEmail && order.customerEmail.toLowerCase().includes(q)) ||
         (order.phone && order.phone.toLowerCase().includes(q))
@@ -258,6 +262,75 @@ export default function AdminOrders() {
     } catch (err) {
       console.error("Failed to update status", err);
       alert("Failed to update order status.");
+    }
+  };
+
+  const startEditingOrderDiscount = (order: any) => {
+    const currentPercent = typeof order.discountPercent === "number" ? order.discountPercent : (
+      order.subtotal && order.subtotal > order.totalAmount ? 
+        Math.round(((order.subtotal + (order.totalGst || 0) - order.totalAmount) / (order.subtotal + (order.totalGst || 0))) * 100) : 0
+    );
+    setEditingDiscountOrderId(order.id);
+    setTempDiscountPercent(currentPercent);
+  };
+
+  const saveOrderDiscount = async (order: any) => {
+    try {
+      const originalTotal = order.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0) || order.totalAmount;
+      const newDiscountPercent = Number(tempDiscountPercent);
+      const newDiscountAmount = Math.round(originalTotal * (newDiscountPercent / 100));
+      const newTotalAmount = originalTotal - newDiscountAmount;
+
+      let totalGstAmount = 0;
+      let totalSubtotal = 0;
+      const updatedItems = order.items.map((item: any) => {
+        const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+        const discountedPrice = item.price * (1 - newDiscountPercent / 100);
+        const basePrice = discountedPrice / (1 + rate / 100);
+        const gstAmount = discountedPrice - basePrice;
+        
+        totalGstAmount += (gstAmount * item.quantity);
+        totalSubtotal += (basePrice * item.quantity);
+        
+        return {
+          ...item,
+          basePrice: Number(basePrice.toFixed(2)),
+          gstAmount: Number(gstAmount.toFixed(2))
+        };
+      });
+
+      const fieldsToUpdate = {
+        discountPercent: newDiscountPercent,
+        discountAmount: newDiscountAmount,
+        totalAmount: newTotalAmount,
+        subtotal: Number(totalSubtotal.toFixed(2)),
+        totalGst: Number(totalGstAmount.toFixed(2)),
+        items: updatedItems
+      };
+
+      const isMock = order.id.startsWith("mock_");
+      if (isMock) {
+        const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
+        const updatedLocal = localOrders.map((o: any) => {
+          if (o.id === order.id) {
+            return {
+              ...o,
+              ...fieldsToUpdate
+            };
+          }
+          return o;
+        });
+        localStorage.setItem("craftstyle_local_orders", JSON.stringify(updatedLocal));
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...fieldsToUpdate } : o));
+      } else {
+        await updateDoc(doc(db, "orders", order.id), fieldsToUpdate);
+      }
+
+      setEditingDiscountOrderId(null);
+      alert("Discount and totals updated successfully!");
+    } catch (err) {
+      console.error("Failed to save order discount:", err);
+      alert("Failed to save discount.");
     }
   };
 
@@ -523,6 +596,61 @@ export default function AdminOrders() {
                   </div>
                   
                   <div className="mt-4 pt-3.5 border-t border-slate-900 flex flex-col">
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5 font-semibold">
+                      <span>Invoice Number</span>
+                      <span className="font-mono bg-slate-950 px-1.5 py-0.5 border border-slate-850 rounded text-slate-300">
+                        {order.invoiceNo || `INV-${order.id}`}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5">
+                      <span>Subtotal (Before Discount)</span>
+                      <span className="font-bold text-slate-300">
+                        ₹{order.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0) || order.subtotal || order.totalAmount}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5">
+                      <span>Discount Applied</span>
+                      {editingDiscountOrderId === order.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-white text-[10px] focus:border-pink-500 outline-none"
+                            value={tempDiscountPercent}
+                            onChange={(e) => setTempDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                          />
+                          <span className="text-slate-400">%</span>
+                          <button
+                            onClick={() => saveOrderDiscount(order)}
+                            className="bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded hover:bg-emerald-600 text-[9px] transition-all cursor-pointer"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingDiscountOrderId(null)}
+                            className="bg-slate-800 text-slate-400 font-bold px-1.5 py-0.5 rounded hover:bg-slate-700 text-[9px] transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-pink-400">
+                            {typeof order.discountPercent === "number" ? `${order.discountPercent}%` : "0%"}
+                          </span>
+                          <button
+                            onClick={() => startEditingOrderDiscount(order)}
+                            className="text-[9px] text-pink-500 font-bold hover:underline cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {order.paymentMethod === "Online" ? (
                       <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5 font-mono">
                         <span>Paid online via Razorpay</span>

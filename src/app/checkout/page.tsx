@@ -86,7 +86,17 @@ export default function CheckoutPage() {
     fetchUserProfile();
   }, [user]);
 
-  const discount = Math.round(totalAmount * 0.33);
+  const [discountPercent, setDiscountPercent] = useState(33);
+
+  useEffect(() => {
+    getDoc(doc(db, "settings", "discount")).then((snap) => {
+      if (snap.exists() && typeof snap.data().percent === "number") {
+        setDiscountPercent(snap.data().percent);
+      }
+    });
+  }, []);
+
+  const discount = Math.round(totalAmount * (discountPercent / 100));
   const finalAmount = totalAmount - discount;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -208,9 +218,10 @@ export default function CheckoutPage() {
       let totalSubtotal = 0; // price without GST
 
       const itemsWithGst = cart.map(item => {
-        const rate = item.gstRate || 0;
-        const basePrice = item.price / (1 + (rate / 100));
-        const gstAmount = item.price - basePrice;
+        const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+        const discountedPrice = item.price * (1 - discountPercent / 100);
+        const basePrice = discountedPrice / (1 + (rate / 100));
+        const gstAmount = discountedPrice - basePrice;
         
         totalGstAmount += (gstAmount * item.quantity);
         totalSubtotal += (basePrice * item.quantity);
@@ -233,6 +244,8 @@ export default function CheckoutPage() {
         totalAmount: finalAmount,
         subtotal: Number(totalSubtotal.toFixed(2)),
         totalGst: Number(totalGstAmount.toFixed(2)),
+        discountPercent: discountPercent,
+        discountAmount: discount,
         status: "Pending",
         paymentMethod: method,
         paymentId: paymentId,
@@ -251,8 +264,17 @@ export default function CheckoutPage() {
     try {
       let orderId = "";
       try {
-        const docRef = await addDoc(collection(db, "orders"), orderData);
+        const { doc, setDoc, collection } = await import("firebase/firestore");
+        const docRef = doc(collection(db, "orders"));
         orderId = docRef.id;
+
+        const completeOrderData = {
+          ...orderData,
+          invoiceNo: `INV-${orderId}`,
+          invoiceDate: new Date().toISOString()
+        };
+
+        await setDoc(docRef, completeOrderData);
       } catch (dbErr) {
         console.error("Firestore order creation failed, saving locally", dbErr);
         orderId = `mock_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
@@ -260,7 +282,9 @@ export default function CheckoutPage() {
         const localOrders = JSON.parse(localStorage.getItem("craftstyle_local_orders") || "[]");
         localOrders.push({ 
           ...orderData, 
-          id: orderId, 
+          id: orderId,
+          invoiceNo: `INV-${orderId}`,
+          invoiceDate: new Date().toISOString(),
           createdAt: new Date().toISOString()
         });
         localStorage.setItem("craftstyle_local_orders", JSON.stringify(localOrders));

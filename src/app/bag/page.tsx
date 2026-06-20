@@ -48,7 +48,17 @@ export default function BagPage() {
   });
   const router = useRouter();
 
-  const discount = Math.round(totalAmount * 0.33); // Simulating 33% total discount
+  const [discountPercent, setDiscountPercent] = useState(33);
+
+  useEffect(() => {
+    getDoc(doc(db, "settings", "discount")).then((snap) => {
+      if (snap.exists() && typeof snap.data().percent === "number") {
+        setDiscountPercent(snap.data().percent);
+      }
+    });
+  }, []);
+
+  const discount = Math.round(totalAmount * (discountPercent / 100));
   const finalAmount = totalAmount - discount;
 
   return (

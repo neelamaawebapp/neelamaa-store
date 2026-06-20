@@ -49,6 +49,10 @@ export default function AdminDashboard() {
     "💫 CRAFT STYLE: Indulge in Premium Luxury Fashion 💫"
   ]);
   const [promoLoading, setPromoLoading] = useState(false);
+
+  // Global Discount State
+  const [discountPercent, setDiscountPercent] = useState(33);
+  const [discountLoading, setDiscountLoading] = useState(false);
   
   // Product Images States (Multiple)
   const [productImages, setProductImages] = useState<{
@@ -236,6 +240,12 @@ export default function AdminDashboard() {
           setPromoMessages(snap.data().messages);
         }
       });
+      // Fetch Store Discount
+      getDoc(doc(db, "settings", "discount")).then((snap) => {
+        if (snap.exists() && typeof snap.data().percent === "number") {
+          setDiscountPercent(snap.data().percent);
+        }
+      });
     });
 
     return () => unsubscribe();
@@ -309,6 +319,22 @@ export default function AdminDashboard() {
       setError(err.message || "Failed to update promo ticker");
     } finally {
       setPromoLoading(false);
+    }
+  };
+
+  const saveStoreDiscount = async () => {
+    setDiscountLoading(true);
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
+      await setDoc(doc(db, "settings", "discount"), {
+        percent: Number(discountPercent)
+      });
+      setSuccess("Store-wide discount updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to update store-wide discount");
+    } finally {
+      setDiscountLoading(false);
     }
   };
 
@@ -1115,6 +1141,30 @@ export default function AdminDashboard() {
                   className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800 mt-4 block"
                 >
                   {promoLoading ? "SAVING..." : "UPDATE TICKER"}
+                </button>
+              </div>
+            </div>
+
+            {/* Global Store Discount Panel */}
+            <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 mt-6 shadow-xl">
+              <h2 className="text-base font-extrabold text-white mb-4">Store Discount Settings</h2>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 text-pink-500">Global Store Discount (%)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  max="100"
+                  value={discountPercent} 
+                  onChange={(e) => setDiscountPercent(Number(e.target.value))} 
+                  className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all mb-4" 
+                  placeholder="e.g. 33"
+                />
+                <button 
+                  onClick={saveStoreDiscount} 
+                  disabled={discountLoading} 
+                  className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800"
+                >
+                  {discountLoading ? "SAVING..." : "UPDATE DISCOUNT"}
                 </button>
               </div>
             </div>

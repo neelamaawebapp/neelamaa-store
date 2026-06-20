@@ -88,6 +88,32 @@ export default function InvoicePage() {
     return <div className="p-8 text-center text-red-500">Invoice not found.</div>;
   }
 
+  const discountPercent = typeof order.discountPercent === "number" ? order.discountPercent : (
+    order.subtotal && order.subtotal > order.totalAmount ? 
+      Math.round(((order.subtotal + (order.totalGst || 0) - order.totalAmount) / (order.subtotal + (order.totalGst || 0))) * 100) : 0
+  );
+
+  const originalTotal = order.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0) || order.totalAmount;
+  const discountAmount = typeof order.discountAmount === "number" ? order.discountAmount : Math.round(originalTotal * (discountPercent / 100));
+  const finalGrandTotal = order.totalAmount || (originalTotal - discountAmount);
+
+  let calculatedTaxableSubtotal = 0;
+  let calculatedTotalGst = 0;
+
+  if (order.items && order.items.length > 0) {
+    order.items.forEach((item: any) => {
+      const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+      const discountedPrice = item.price * (1 - discountPercent / 100);
+      const basePrice = discountedPrice / (1 + (rate / 100));
+      const gstAmount = discountedPrice - basePrice;
+      calculatedTaxableSubtotal += (basePrice * item.quantity);
+      calculatedTotalGst += (gstAmount * item.quantity);
+    });
+  } else {
+    calculatedTotalGst = order.totalGst || 0;
+    calculatedTaxableSubtotal = order.subtotal || (finalGrandTotal - calculatedTotalGst);
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-8 print:p-0 print:bg-white flex flex-col items-center">
       
@@ -129,7 +155,9 @@ export default function InvoicePage() {
             <h3 className="font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-2">Order Details</h3>
             <table className="w-full text-left">
               <tbody>
-                <tr><th className="py-1 font-medium text-gray-600">Order ID:</th><td className="font-mono">{order.id}</td></tr>
+                <tr><th className="py-1 font-medium text-gray-600">Invoice No:</th><td className="font-mono font-bold text-gray-900">{order.invoiceNo || `INV-${order.id}`}</td></tr>
+                <tr><th className="py-1 font-medium text-gray-600">Invoice Date:</th><td>{order.invoiceDate ? formatOrderDate(order.invoiceDate) : formatOrderDate(order.createdAt)}</td></tr>
+                <tr><th className="py-1 font-medium text-gray-600">Order ID:</th><td className="font-mono text-xs">{order.id}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Order Date:</th><td>{formatOrderDate(order.createdAt)}</td></tr>
                 <tr><th className="py-1 font-medium text-gray-600">Payment Mode:</th><td>{order.paymentMethod || 'Cash on Delivery'}</td></tr>
                 {order.paymentId && order.paymentId !== "COD" && (
@@ -149,7 +177,9 @@ export default function InvoicePage() {
                 <th className="border border-gray-300 p-3 text-left w-10">#</th>
                 <th className="border border-gray-300 p-3 text-left">Description</th>
                 <th className="border border-gray-300 p-3 text-center">Qty</th>
-                <th className="border border-gray-300 p-3 text-right">Unit Price</th>
+                <th className="border border-gray-300 p-3 text-right">Original Price</th>
+                <th className="border border-gray-300 p-3 text-right">Discount</th>
+                <th className="border border-gray-300 p-3 text-right">Taxable Value</th>
                 <th className="border border-gray-300 p-3 text-right">GST Rate</th>
                 <th className="border border-gray-300 p-3 text-right">GST Amt</th>
                 <th className="border border-gray-300 p-3 text-right">Total</th>
@@ -157,10 +187,11 @@ export default function InvoicePage() {
             </thead>
             <tbody>
               {order.items?.map((item: any, idx: number) => {
-                // If it's an old order, basePrice and gstAmount might not exist. Fallback calculation.
-                const rate = item.gstRate || 18;
-                const basePrice = item.basePrice || Number((item.price / (1 + (rate/100))).toFixed(2));
-                const gstAmount = item.gstAmount || Number((item.price - basePrice).toFixed(2));
+                const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+                const originalPrice = item.price;
+                const discountedPrice = originalPrice * (1 - discountPercent / 100);
+                const basePrice = discountedPrice / (1 + (rate / 100));
+                const gstAmount = discountedPrice - basePrice;
 
                 return (
                   <tr key={idx} className="border-b border-gray-300">
@@ -170,10 +201,12 @@ export default function InvoicePage() {
                       <p className="text-xs text-gray-600">{item.title} {item.size ? `(Size: ${item.size})` : ''}</p>
                     </td>
                     <td className="border border-gray-300 p-3 text-center">{item.quantity}</td>
+                    <td className="border border-gray-300 p-3 text-right">₹{originalPrice.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right text-pink-600 font-semibold">{discountPercent}%</td>
                     <td className="border border-gray-300 p-3 text-right">₹{basePrice.toFixed(2)}</td>
                     <td className="border border-gray-300 p-3 text-right text-gray-600">{rate}%</td>
                     <td className="border border-gray-300 p-3 text-right text-gray-600">₹{(gstAmount * item.quantity).toFixed(2)}</td>
-                    <td className="border border-gray-300 p-3 text-right font-bold">₹{(item.price * item.quantity).toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right font-bold">₹{(discountedPrice * item.quantity).toFixed(2)}</td>
                   </tr>
                 );
               })}
@@ -183,20 +216,30 @@ export default function InvoicePage() {
 
         {/* Totals */}
         <div className="flex justify-end mb-12">
-          <div className="w-64">
-            <table className="w-full text-right">
+          <div className="w-80">
+            <table className="w-full text-right border-collapse">
               <tbody>
                 <tr className="text-gray-600">
-                  <td className="py-2 pr-4">Subtotal:</td>
-                  <td className="py-2 font-mono">₹{order.subtotal?.toFixed(2) || (order.totalAmount - (order.totalGst || 0)).toFixed(2)}</td>
+                  <td className="py-1.5 pr-4">Original Subtotal:</td>
+                  <td className="py-1.5 font-mono">₹{originalTotal.toFixed(2)}</td>
+                </tr>
+                {discountAmount > 0 && (
+                  <tr className="text-pink-600 font-semibold">
+                    <td className="py-1.5 pr-4">Discount ({discountPercent}%):</td>
+                    <td className="py-1.5 font-mono">-₹{discountAmount.toFixed(2)}</td>
+                  </tr>
+                )}
+                <tr className="text-gray-600 border-t border-gray-200">
+                  <td className="py-1.5 pr-4">Taxable Subtotal:</td>
+                  <td className="py-1.5 font-mono">₹{calculatedTaxableSubtotal.toFixed(2)}</td>
                 </tr>
                 <tr className="text-gray-600 border-b border-gray-200">
-                  <td className="py-2 pr-4">Total GST:</td>
-                  <td className="py-2 font-mono">₹{order.totalGst?.toFixed(2) || '0.00'}</td>
+                  <td className="py-1.5 pr-4">Total GST:</td>
+                  <td className="py-1.5 font-mono">₹{calculatedTotalGst.toFixed(2)}</td>
                 </tr>
                 <tr className="text-lg font-bold text-gray-900">
-                  <td className="py-3 pr-4">Grand Total:</td>
-                  <td className="py-3 font-mono">₹{order.totalAmount?.toFixed(2)}</td>
+                  <td className="py-2.5 pr-4">Grand Total:</td>
+                  <td className="py-2.5 font-mono text-xl text-pink-600">₹{finalGrandTotal.toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
