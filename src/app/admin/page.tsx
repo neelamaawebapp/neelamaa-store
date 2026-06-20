@@ -65,34 +65,118 @@ export default function AdminDashboard() {
   const [editingImageIdx, setEditingImageIdx] = useState<number | null>(null);
   const [editorImageUrl, setEditorImageUrl] = useState<string | null>(null);
   const [isEditingBulkImage, setIsEditingBulkImage] = useState(false);
+  const [cropQueue, setCropQueue] = useState<{ file: File; isBulk: boolean }[]>([]);
 
-  const handleSaveEditedImage = (editedFile: File, editedDataUrl: string) => {
-    if (editingImageIdx === null) return;
-    if (isEditingBulkImage) {
-      setBulkFiles(prev => {
-        const updated = [...prev];
-        updated[editingImageIdx] = {
-          ...updated[editingImageIdx],
-          file: editedFile,
-          preview: editedDataUrl
-        };
-        return updated;
-      });
+  const startCropQueue = (files: File[], isBulk: boolean) => {
+    const queueItems = files.map(file => ({ file, isBulk }));
+    setCropQueue(prev => {
+      const newQueue = [...prev, ...queueItems];
+      if (prev.length === 0) {
+        setEditorImageUrl(URL.createObjectURL(newQueue[0].file));
+        setIsEditingBulkImage(newQueue[0].isBulk);
+        setEditingImageIdx(0);
+      }
+      return newQueue;
+    });
+  };
+
+  const handleSaveEditedImage = async (editedFile: File, editedDataUrl: string) => {
+    const optimizedFile = await autoAdjustImage(editedFile, 3 / 4);
+    const optimizedDataUrl = URL.createObjectURL(optimizedFile);
+
+    if (cropQueue.length > 0) {
+      const currentItem = cropQueue[0];
+      if (currentItem.isBulk) {
+        setBulkFiles(prev => [
+          ...prev,
+          {
+            file: optimizedFile,
+            preview: optimizedDataUrl,
+            brand: "",
+            title: "",
+            quantity: "10",
+            purchasePrice: "",
+            packingCharges: "",
+            courierCharges: "",
+            otherExpenses: "",
+            profit: "",
+            category: availableCategories[0] || STORE_CATEGORIES[0].name,
+            homeSection: "Standard",
+            gstRate: "18"
+          }
+        ]);
+      } else {
+        setProductImages(prev => [
+          ...prev,
+          {
+            id: `img_${Date.now()}_${Math.random()}`,
+            file: optimizedFile,
+            url: "",
+            preview: optimizedDataUrl
+          }
+        ]);
+      }
+
+      const nextQueue = cropQueue.slice(1);
+      setCropQueue(nextQueue);
+
+      if (nextQueue.length > 0) {
+        setEditorImageUrl(URL.createObjectURL(nextQueue[0].file));
+        setIsEditingBulkImage(nextQueue[0].isBulk);
+        setEditingImageIdx(0);
+      } else {
+        setEditingImageIdx(null);
+        setEditorImageUrl(null);
+        setIsEditingBulkImage(false);
+      }
     } else {
-      setProductImages(prev => {
-        const updated = [...prev];
-        updated[editingImageIdx] = {
-          ...updated[editingImageIdx],
-          file: editedFile,
-          preview: editedDataUrl,
-          url: "" // Clear url to force upload of edited version
-        };
-        return updated;
-      });
+      if (editingImageIdx === null) return;
+      if (isEditingBulkImage) {
+        setBulkFiles(prev => {
+          const updated = [...prev];
+          updated[editingImageIdx] = {
+            ...updated[editingImageIdx],
+            file: optimizedFile,
+            preview: optimizedDataUrl
+          };
+          return updated;
+        });
+      } else {
+        setProductImages(prev => {
+          const updated = [...prev];
+          updated[editingImageIdx] = {
+            ...updated[editingImageIdx],
+            file: optimizedFile,
+            preview: optimizedDataUrl,
+            url: ""
+          };
+          return updated;
+        });
+      }
+      setEditingImageIdx(null);
+      setEditorImageUrl(null);
+      setIsEditingBulkImage(false);
     }
-    setEditingImageIdx(null);
-    setEditorImageUrl(null);
-    setIsEditingBulkImage(false);
+  };
+
+  const handleCloseEditor = () => {
+    if (cropQueue.length > 0) {
+      const nextQueue = cropQueue.slice(1);
+      setCropQueue(nextQueue);
+      if (nextQueue.length > 0) {
+        setEditorImageUrl(URL.createObjectURL(nextQueue[0].file));
+        setIsEditingBulkImage(nextQueue[0].isBulk);
+        setEditingImageIdx(0);
+      } else {
+        setEditingImageIdx(null);
+        setEditorImageUrl(null);
+        setIsEditingBulkImage(false);
+      }
+    } else {
+      setEditingImageIdx(null);
+      setEditorImageUrl(null);
+      setIsEditingBulkImage(false);
+    }
   };
 
   // Status State
@@ -238,17 +322,8 @@ export default function AdminDashboard() {
     setIsDragging(false);
   };
 
-  const handleMultipleFileSelection = async (files: File[]) => {
-    const adjustedFiles = await Promise.all(
-      files.map(file => autoAdjustImage(file, 3 / 4))
-    );
-    const newItems = adjustedFiles.map(file => ({
-      id: `img_${Date.now()}_${Math.random()}`,
-      file,
-      url: "",
-      preview: URL.createObjectURL(file)
-    }));
-    setProductImages(prev => [...prev, ...newItems]);
+  const handleMultipleFileSelection = (files: File[]) => {
+    startCropQueue(files, false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -501,27 +576,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleBulkFiles = async (files: File[]) => {
+  const handleBulkFiles = (files: File[]) => {
     const validFiles = files.filter(f => f.type.startsWith("image/"));
-    const adjustedFiles = await Promise.all(
-      validFiles.map(file => autoAdjustImage(file, 3 / 4))
-    );
-    const newBulkItems = adjustedFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      brand: "",
-      title: "",
-      quantity: "10",
-      purchasePrice: "",
-      packingCharges: "",
-      courierCharges: "",
-      otherExpenses: "",
-      profit: "",
-      category: STORE_CATEGORIES[0].name,
-      homeSection: "Standard",
-      gstRate: "18"
-    }));
-    setBulkFiles(prev => [...prev, ...newBulkItems]);
+    startCropQueue(validFiles, true);
   };
 
   const updateBulkItem = (index: number, field: string, value: string) => {
@@ -1383,12 +1440,8 @@ export default function AdminDashboard() {
       {editorImageUrl && (
         <ImageEditorModal
           imageUrl={editorImageUrl}
-          aspectRatio={isEditingBulkImage ? "free" : 3 / 4}
-          onClose={() => {
-            setEditingImageIdx(null);
-            setEditorImageUrl(null);
-            setIsEditingBulkImage(false);
-          }}
+          aspectRatio={3 / 4}
+          onClose={handleCloseEditor}
           onSave={handleSaveEditedImage}
         />
       )}

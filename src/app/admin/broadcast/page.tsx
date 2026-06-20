@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { autoAdjustImage } from "@/lib/imageUtils";
 import { useRef } from "react";
+import ImageEditorModal from "@/components/ImageEditorModal";
 
 export default function BroadcastDashboard() {
   const [activeTab, setActiveTab] = useState<"history" | "restock">("history");
@@ -37,6 +38,8 @@ export default function BroadcastDashboard() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editorImageUrl, setEditorImageUrl] = useState<string>("");
+  const [editingFile, setEditingFile] = useState<File | null>(null);
   
   // State for Subscriptions & Broadcast History
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -228,7 +231,8 @@ export default function BroadcastDashboard() {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        handleUploadImageFile(file);
+        setEditingFile(file);
+        setEditorImageUrl(URL.createObjectURL(file));
       } else {
         setError("Please drop a valid image file.");
       }
@@ -238,7 +242,39 @@ export default function BroadcastDashboard() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleUploadImageFile(file);
+      setEditingFile(file);
+      setEditorImageUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSaveEditedImage = async (editedFile: File) => {
+    setEditorImageUrl("");
+    setEditingFile(null);
+    setUploadingImage(true);
+    setSuccess("");
+    setError("");
+    try {
+      const adjustedFile = await autoAdjustImage(editedFile, 2 / 1);
+      const formData = new FormData();
+      formData.append("image", adjustedFile);
+      
+      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setBroadcastImage(data.data.url);
+        setSuccess("Banner image uploaded and adjusted successfully!");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError(data.error?.message || "Failed to upload image.");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during upload.");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -677,6 +713,18 @@ export default function BroadcastDashboard() {
           </div>
         </div>
       </div>
+
+      {editorImageUrl && (
+        <ImageEditorModal
+          imageUrl={editorImageUrl}
+          aspectRatio={2 / 1}
+          onClose={() => {
+            setEditorImageUrl("");
+            setEditingFile(null);
+          }}
+          onSave={handleSaveEditedImage}
+        />
+      )}
     </div>
   );
 }
