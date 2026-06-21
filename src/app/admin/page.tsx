@@ -51,7 +51,7 @@ export default function AdminDashboard() {
   const [promoLoading, setPromoLoading] = useState(false);
 
   // Global Discount State
-  const [discountPercent, setDiscountPercent] = useState(33);
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [discountLoading, setDiscountLoading] = useState(false);
   
   // Product Images States (Multiple)

@@ -48,7 +48,7 @@ export default function BagPage() {
   });
   const router = useRouter();
 
-  const [discountPercent, setDiscountPercent] = useState(33);
+  const [discountPercent, setDiscountPercent] = useState(0);
 
   useEffect(() => {
     getDoc(doc(db, "settings", "discount")).then((snap) => {

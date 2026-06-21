@@ -86,7 +86,7 @@ export default function CheckoutPage() {
     fetchUserProfile();
   }, [user]);
 
-  const [discountPercent, setDiscountPercent] = useState(33);
+  const [discountPercent, setDiscountPercent] = useState(0);
 
   useEffect(() => {
     getDoc(doc(db, "settings", "discount")).then((snap) => {

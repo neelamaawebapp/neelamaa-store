@@ -11,7 +11,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [shippingData, setShippingData] = useState<Record<string, { company: string, tracking: string }>>({});
   const [editingDiscountOrderId, setEditingDiscountOrderId] = useState<string | null>(null);
-  const [tempDiscountPercent, setTempDiscountPercent] = useState<number>(33);
+  const [tempDiscountPercent, setTempDiscountPercent] = useState<number>(0);
 
   // Search & Sorting States
   const [searchQuery, setSearchQuery] = useState("");
