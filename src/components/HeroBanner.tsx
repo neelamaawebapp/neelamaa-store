@@ -99,8 +99,17 @@ export default function HeroBanner() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setEditingIdx(idx);
-    setEditorImageUrl(URL.createObjectURL(file));
+    
+    setUploadingIdx(idx);
+    try {
+      const adjustedFile = await autoAdjustImage(file, 21 / 9);
+      await uploadAndSaveBannerImg(adjustedFile, idx);
+    } catch (err) {
+      console.error("Failed to automatically adjust banner image:", err);
+      alert("Failed to automatically adjust and upload banner image.");
+    } finally {
+      setUploadingIdx(null);
+    }
   };
 
   const handleSaveEditedBanner = async (editedFile: File) => {

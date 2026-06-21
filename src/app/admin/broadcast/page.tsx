@@ -225,25 +225,23 @@ export default function BroadcastDashboard() {
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        setEditingFile(file);
-        setEditorImageUrl(URL.createObjectURL(file));
+        await handleUploadImageFile(file);
       } else {
         setError("Please drop a valid image file.");
       }
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setEditingFile(file);
-      setEditorImageUrl(URL.createObjectURL(file));
+      await handleUploadImageFile(file);
     }
   };
 
@@ -480,8 +478,19 @@ export default function BroadcastDashboard() {
                       type="button" 
                       onClick={() => setBroadcastImage("")}
                       className="absolute top-2 right-2 bg-slate-900/90 text-slate-400 hover:text-white p-1 rounded-full border border-slate-800 transition-all z-10 cursor-pointer shadow-md"
+                      title="Delete Image"
                     >
                       <X size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorImageUrl(broadcastImage);
+                      }}
+                      className="absolute bottom-2 right-2 bg-slate-900/95 text-slate-350 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-slate-800 transition-all z-10 cursor-pointer shadow-md"
+                      title="Crop/Edit Image"
+                    >
+                      Crop
                     </button>
                     <div className="absolute bottom-2 left-2 bg-pink-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded tracking-wide uppercase">
                       Adjusted (2:1)

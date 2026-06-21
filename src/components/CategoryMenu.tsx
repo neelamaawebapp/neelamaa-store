@@ -80,8 +80,17 @@ export default function CategoryMenu() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setEditingIdx(idx);
-    setEditorImageUrl(URL.createObjectURL(file));
+    
+    setUploadingIdx(idx);
+    try {
+      const adjustedFile = await autoAdjustImage(file, 1);
+      await uploadAndSaveCategoryImg(adjustedFile, idx);
+    } catch (err) {
+      console.error("Failed to automatically adjust category image:", err);
+      alert("Failed to automatically adjust and upload category image.");
+    } finally {
+      setUploadingIdx(null);
+    }
   };
 
   const handleSaveEditedCategory = async (editedFile: File) => {

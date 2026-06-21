@@ -366,8 +366,28 @@ export default function AdminDashboard() {
     setIsDragging(false);
   };
 
-  const handleMultipleFileSelection = (files: File[]) => {
-    startCropQueue(files, false);
+  const handleMultipleFileSelection = async (files: File[]) => {
+    setLoading(true);
+    setError("");
+    try {
+      const adjustedFiles = await Promise.all(
+        files.map(file => autoAdjustImage(file, 3 / 4))
+      );
+      
+      const newImages = adjustedFiles.map(file => ({
+        id: `img_${Date.now()}_${Math.random()}`,
+        file: file,
+        url: "",
+        preview: URL.createObjectURL(file)
+      }));
+      
+      setProductImages(prev => [...prev, ...newImages]);
+    } catch (err) {
+      console.error("Failed to auto-adjust images:", err);
+      setError("Failed to automatically adjust some image files.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -650,9 +670,40 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleBulkFiles = (files: File[]) => {
+  const handleBulkFiles = async (files: File[]) => {
     const validFiles = files.filter(f => f.type.startsWith("image/"));
-    startCropQueue(validFiles, true);
+    if (validFiles.length === 0) return;
+    setLoading(true);
+    setError("");
+    try {
+      const adjustedFiles = await Promise.all(
+        validFiles.map(file => autoAdjustImage(file, 3 / 4))
+      );
+      
+      const newItems = adjustedFiles.map(file => ({
+        file: file,
+        preview: URL.createObjectURL(file),
+        brand: "",
+        title: "",
+        quantity: "10",
+        mrp: "",
+        purchasePrice: "",
+        packingCharges: "",
+        courierCharges: "",
+        otherExpenses: "",
+        profit: "",
+        category: availableCategories[0] || STORE_CATEGORIES[0].name,
+        homeSection: "Standard",
+        gstRate: "18"
+      }));
+      
+      setBulkFiles(prev => [...prev, ...newItems]);
+    } catch (err) {
+      console.error("Failed to auto-adjust bulk images:", err);
+      setError("Failed to automatically adjust some bulk images.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateBulkItem = (index: number, field: string, value: string) => {
@@ -922,32 +973,86 @@ export default function AdminDashboard() {
                   {productImages.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 mb-3">
                       {productImages.map((img, idx) => (
-                        <div key={img.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center group">
-                          <img src={img.preview} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
-                          <button 
-                            type="button" 
-                            onClick={() => removeProductImage(img.id)}
-                            className="absolute -top-1 -right-1 bg-rose-650 text-white p-0.5 rounded-full hover:bg-rose-700 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
-                          >
-                            <X size={10} />
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setEditingImageIdx(idx);
-                              setEditorImageUrl(img.preview);
-                              setIsEditingBulkImage(false);
-                            }}
-                            className="absolute bottom-1 right-1 bg-slate-900/80 backdrop-blur text-white p-1 rounded hover:bg-black opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
-                            title="Edit Image"
-                          >
-                            <Edit2 size={10} />
-                          </button>
-                          {idx === 0 && (
-                            <span className="absolute bottom-1 left-1 bg-pink-650 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                              Primary
-                            </span>
-                          )}
+                        <div key={img.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex flex-col justify-end shadow-md hover:border-pink-500/30 transition-all">
+                          <img src={img.preview} alt={`Angle ${idx + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+                          
+                          {/* Dark overlay for actions */}
+                          <div className="absolute inset-0 bg-black/45 flex flex-col justify-between p-1.5 opacity-100 transition-opacity">
+                            {/* Top row: Delete */}
+                            <div className="flex justify-between items-center w-full">
+                              {idx === 0 ? (
+                                <span className="bg-pink-650 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider shadow-sm">
+                                  Primary
+                                </span>
+                              ) : (
+                                <span></span>
+                              )}
+                              <button 
+                                type="button" 
+                                onClick={() => removeProductImage(img.id)}
+                                className="bg-rose-650 text-white p-1 rounded-full hover:bg-rose-700 transition-colors cursor-pointer shadow-sm"
+                                title="Remove photo"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                            
+                            {/* Bottom row: Crop/Rotate, Move Left, Move Right */}
+                            <div className="flex justify-between items-center w-full">
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setEditingImageIdx(idx);
+                                  setEditorImageUrl(img.preview);
+                                  setIsEditingBulkImage(false);
+                                }}
+                                className="bg-slate-900/90 text-white p-1 rounded hover:bg-black transition-colors cursor-pointer shadow-sm text-[9px] flex items-center gap-0.5"
+                                title="Crop/Edit photo"
+                              >
+                                <Edit2 size={9} />
+                                <span>Crop</span>
+                              </button>
+                              
+                              <div className="flex space-x-0.5">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setProductImages(prev => {
+                                        const updated = [...prev];
+                                        const temp = updated[idx];
+                                        updated[idx] = updated[idx - 1];
+                                        updated[idx - 1] = temp;
+                                        return updated;
+                                      });
+                                    }}
+                                    className="bg-slate-900/90 hover:bg-black text-white px-1.5 py-0.5 rounded text-[10px] font-extrabold cursor-pointer"
+                                    title="Move Left"
+                                  >
+                                    &lsaquo;
+                                  </button>
+                                )}
+                                {idx < productImages.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setProductImages(prev => {
+                                        const updated = [...prev];
+                                        const temp = updated[idx];
+                                        updated[idx] = updated[idx + 1];
+                                        updated[idx + 1] = temp;
+                                        return updated;
+                                      });
+                                    }}
+                                    className="bg-slate-900/90 hover:bg-black text-white px-1.5 py-0.5 rounded text-[10px] font-extrabold cursor-pointer"
+                                    title="Move Right"
+                                  >
+                                    &rsaquo;
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
