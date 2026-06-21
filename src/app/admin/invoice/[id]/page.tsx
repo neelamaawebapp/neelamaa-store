@@ -109,14 +109,17 @@ export default function InvoicePage() {
     return <div className="p-8 text-center text-red-500">Invoice not found.</div>;
   }
 
-  const discountPercent = typeof order.discountPercent === "number" ? order.discountPercent : (
-    order.subtotal && order.subtotal > order.totalAmount ? 
-      Math.round(((order.subtotal + (order.totalGst || 0) - order.totalAmount) / (order.subtotal + (order.totalGst || 0))) * 100) : 0
-  );
+  const storeDiscountPercent = typeof order.discountPercent === "number" ? order.discountPercent : 0;
+  
+  const totalMRP = order.items?.reduce((sum: number, it: any) => sum + (it.mrp || Math.round(it.price * 1.5)) * it.quantity, 0) || order.totalAmount;
+  const totalSellingPrice = order.items?.reduce((sum: number, it: any) => sum + it.price * it.quantity, 0) || order.totalAmount;
+  const storeDiscountAmount = typeof order.discountAmount === "number" ? order.discountAmount : Math.round(totalSellingPrice * (storeDiscountPercent / 100));
 
-  const originalTotal = order.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0) || order.totalAmount;
-  const discountAmount = typeof order.discountAmount === "number" ? order.discountAmount : Math.round(originalTotal * (discountPercent / 100));
-  const finalGrandTotal = order.totalAmount || (originalTotal - discountAmount);
+  const productDiscountAmount = totalMRP - totalSellingPrice;
+  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount;
+  const calculatedDiscountPercent = totalMRP > 0 ? Math.round((totalDiscountAmount / totalMRP) * 100) : 0;
+
+  const finalGrandTotal = order.totalAmount || (totalMRP - totalDiscountAmount);
 
   let calculatedTaxableSubtotal = 0;
   let calculatedTotalGst = 0;
@@ -124,7 +127,7 @@ export default function InvoicePage() {
   if (order.items && order.items.length > 0) {
     order.items.forEach((item: any) => {
       const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
-      const discountedPrice = item.price * (1 - discountPercent / 100);
+      const discountedPrice = item.price * (1 - storeDiscountPercent / 100);
       const basePrice = discountedPrice / (1 + (rate / 100));
       const gstAmount = discountedPrice - basePrice;
       calculatedTaxableSubtotal += (basePrice * item.quantity);
@@ -198,8 +201,9 @@ export default function InvoicePage() {
                 <th className="border border-gray-300 p-3 text-left w-10">#</th>
                 <th className="border border-gray-300 p-3 text-left">Description</th>
                 <th className="border border-gray-300 p-3 text-center">Qty</th>
-                <th className="border border-gray-300 p-3 text-right">Original Price</th>
-                <th className="border border-gray-300 p-3 text-right">Discount</th>
+                <th className="border border-gray-300 p-3 text-right">Total MRP</th>
+                <th className="border border-gray-300 p-3 text-right">Discount %</th>
+                <th className="border border-gray-300 p-3 text-right">Discount Amt</th>
                 <th className="border border-gray-300 p-3 text-right">Taxable Value</th>
                 <th className="border border-gray-300 p-3 text-right">GST Rate</th>
                 <th className="border border-gray-300 p-3 text-right">GST Amt</th>
@@ -209,10 +213,14 @@ export default function InvoicePage() {
             <tbody>
               {order.items?.map((item: any, idx: number) => {
                 const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
-                const originalPrice = item.price;
-                const discountedPrice = originalPrice * (1 - discountPercent / 100);
-                const basePrice = discountedPrice / (1 + (rate / 100));
-                const gstAmount = discountedPrice - basePrice;
+                const mrp = item.mrp || Math.round(item.price * 1.5);
+                const sellingPrice = item.price;
+                const itemDiscountPercent = mrp > sellingPrice ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
+                const itemDiscountAmt = (mrp - sellingPrice) * item.quantity;
+                
+                const storeDiscountedPrice = sellingPrice * (1 - storeDiscountPercent / 100);
+                const basePrice = storeDiscountedPrice / (1 + (rate / 100));
+                const gstAmount = storeDiscountedPrice - basePrice;
 
                 return (
                   <tr key={idx} className="border-b border-gray-300">
@@ -222,12 +230,13 @@ export default function InvoicePage() {
                       <p className="text-xs text-gray-600">{item.title} {item.size ? `(Size: ${item.size})` : ''}</p>
                     </td>
                     <td className="border border-gray-300 p-3 text-center">{item.quantity}</td>
-                    <td className="border border-gray-300 p-3 text-right">₹{originalPrice.toFixed(2)}</td>
-                    <td className="border border-gray-300 p-3 text-right text-pink-600 font-semibold">{discountPercent}%</td>
-                    <td className="border border-gray-300 p-3 text-right">₹{basePrice.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right">₹{(mrp * item.quantity).toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right text-pink-600 font-semibold">{itemDiscountPercent}%</td>
+                    <td className="border border-gray-300 p-3 text-right">₹{itemDiscountAmt.toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right">₹{(basePrice * item.quantity).toFixed(2)}</td>
                     <td className="border border-gray-300 p-3 text-right text-gray-600">{rate}%</td>
                     <td className="border border-gray-300 p-3 text-right text-gray-600">₹{(gstAmount * item.quantity).toFixed(2)}</td>
-                    <td className="border border-gray-300 p-3 text-right font-bold">₹{(discountedPrice * item.quantity).toFixed(2)}</td>
+                    <td className="border border-gray-300 p-3 text-right font-bold">₹{(storeDiscountedPrice * item.quantity).toFixed(2)}</td>
                   </tr>
                 );
               })}
@@ -241,13 +250,13 @@ export default function InvoicePage() {
             <table className="w-full text-right border-collapse">
               <tbody>
                 <tr className="text-gray-600">
-                  <td className="py-1.5 pr-4">Original Subtotal:</td>
-                  <td className="py-1.5 font-mono">₹{originalTotal.toFixed(2)}</td>
+                  <td className="py-1.5 pr-4">Total MRP:</td>
+                  <td className="py-1.5 font-mono">₹{totalMRP.toFixed(2)}</td>
                 </tr>
-                {discountAmount > 0 && (
+                {totalDiscountAmount > 0 && (
                   <tr className="text-pink-600 font-semibold">
-                    <td className="py-1.5 pr-4">Discount ({discountPercent}%):</td>
-                    <td className="py-1.5 font-mono">-₹{discountAmount.toFixed(2)}</td>
+                    <td className="py-1.5 pr-4">Discount ({calculatedDiscountPercent}%):</td>
+                    <td className="py-1.5 font-mono">-₹{totalDiscountAmount.toFixed(2)}</td>
                   </tr>
                 )}
                 <tr className="text-gray-600 border-t border-gray-200">

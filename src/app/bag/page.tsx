@@ -64,8 +64,15 @@ export default function BagPage() {
     });
   }, []);
 
-  const discount = Math.round(totalAmount * (discountPercent / 100));
-  const finalAmount = totalAmount - discount;
+  const totalMRP = cart.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
+  const totalSellingPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const productDiscountAmount = totalMRP - totalSellingPrice;
+  const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
+  
+  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount;
+  const calculatedDiscountPercent = totalMRP > 0 ? Math.round((totalDiscountAmount / totalMRP) * 100) : 0;
+
+  const finalAmount = totalMRP - totalDiscountAmount;
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
@@ -115,21 +122,36 @@ export default function BagPage() {
                 {item.size && (
                   <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>
                 )}
-                <div className="flex items-baseline space-x-2 mb-3 flex-wrap">
-                  <span className="font-bold text-sm text-gray-900">₹{item.price}</span>
-                  {(() => {
-                    const mrpVal = item.mrp || Math.round(item.price * 1.5);
-                    const discountPercent = mrpVal > item.price ? Math.round(((mrpVal - item.price) / mrpVal) * 100) : 0;
-                    return (
-                      mrpVal > item.price && (
-                        <>
-                          <span className="text-xs text-gray-400 line-through font-medium">₹{mrpVal}</span>
-                          <span className="text-[10px] font-bold text-orange-500">({discountPercent}% OFF)</span>
-                        </>
-                      )
-                    );
-                  })()}
-                </div>
+                {(() => {
+                  const mrpVal = item.mrp || Math.round(item.price * 1.5);
+                  const discountPercent = mrpVal > item.price ? Math.round(((mrpVal - item.price) / mrpVal) * 100) : 0;
+                  const discountAmount = mrpVal - item.price;
+                  return (
+                    <div className="mt-1 space-y-1">
+                      <div className="flex items-center space-x-2 text-[11px] flex-wrap text-gray-500">
+                        <span>MRP:</span>
+                        <span className="line-through">₹{mrpVal}</span>
+                        {mrpVal > item.price && (
+                          <>
+                            <span className="text-pink-600 font-bold">({discountPercent}% OFF)</span>
+                            <span className="text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded text-[10px]">
+                              Save ₹{discountAmount}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-xs text-gray-500 font-medium">Price:</span>
+                        <span className="font-extrabold text-sm text-gray-900">₹{item.price}</span>
+                        {item.quantity > 1 && (
+                          <span className="text-xs text-gray-400 font-normal">
+                            (Total: ₹{item.price * item.quantity})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {stockLevels[item.id] !== undefined && stockLevels[item.id] <= 0 && (
                   <div className="text-red-600 text-[11px] font-extrabold mb-2 bg-red-50/50 border border-red-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
@@ -188,11 +210,11 @@ export default function BagPage() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Total MRP</span>
-                <span>₹{totalAmount}</span>
+                <span>₹{totalMRP}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Discount on MRP</span>
-                <span className="text-green-600">-₹{discount}</span>
+                <span className="text-green-600">-₹{totalDiscountAmount} {calculatedDiscountPercent > 0 ? `(${calculatedDiscountPercent}% OFF)` : ""}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Platform Fee</span>

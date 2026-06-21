@@ -96,8 +96,16 @@ export default function CheckoutPage() {
     });
   }, []);
 
-  const discount = Math.round(totalAmount * (discountPercent / 100));
-  const finalAmount = totalAmount - discount;
+  const totalMRP = cart.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
+  const totalSellingPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const productDiscountAmount = totalMRP - totalSellingPrice;
+  const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
+  
+  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount;
+  const calculatedDiscountPercent = totalMRP > 0 ? Math.round((totalDiscountAmount / totalMRP) * 100) : 0;
+
+  const discount = storeDiscountAmount;
+  const finalAmount = totalMRP - totalDiscountAmount;
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
@@ -545,15 +553,17 @@ export default function CheckoutPage() {
           <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide border-b border-gray-100 pb-2">Price Summary</h3>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>₹{totalAmount}</span>
+              <span>Total MRP</span>
+              <span>₹{totalMRP}</span>
             </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-gray-600">
-                <span>Discount</span>
-                <span className="text-green-600">-₹{discount}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-gray-600">
+              <span>Discount on MRP</span>
+              <span className="text-green-600">-₹{totalDiscountAmount} {calculatedDiscountPercent > 0 ? `(${calculatedDiscountPercent}% OFF)` : ""}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Platform Fee</span>
+              <span className="text-green-600">FREE</span>
+            </div>
             <div className="flex justify-between text-gray-600">
               <span>Courier Charges</span>
               {courierCharges > 0 ? (
