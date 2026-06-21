@@ -34,10 +34,8 @@ export async function POST(req: Request) {
       `,
     };
 
-    let adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admincraftstyle@gmail.com";
-    if (adminEmail.trim().toLowerCase() === "neelsutra1@gmail.com") {
-      adminEmail = "admincraftstyle@gmail.com";
-    }
+    // Admin email is strictly admincraftstyle@gmail.com for new order notifications
+    const adminEmail = "admincraftstyle@gmail.com";
     const adminMailOptions = {
       from: `"Craft Style" <${process.env.EMAIL_USER}>`,
       to: adminEmail,
