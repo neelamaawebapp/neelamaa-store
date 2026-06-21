@@ -41,6 +41,44 @@ export default function AdminDashboard() {
   const [courierCharges, setCourierCharges] = useState("");
   const [otherExpenses, setOtherExpenses] = useState("");
   const [profit, setProfit] = useState("");
+
+  // Flexible Model Extensions
+  const [sku, setSku] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [fullDescription, setFullDescription] = useState("");
+  const [status, setStatus] = useState("Active");
+  const [countryOfOrigin, setCountryOfOrigin] = useState("India");
+  const [manufacturer, setManufacturer] = useState("");
+  const [packer, setPacker] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
+
+  // SEO Settings
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [slug, setSlug] = useState("");
+
+  // Shipping Specs
+  const [packageWeight, setPackageWeight] = useState("");
+  const [packageLength, setPackageLength] = useState("");
+  const [packageWidth, setPackageWidth] = useState("");
+  const [packageHeight, setPackageHeight] = useState("");
+
+  // Dynamic Attributes
+  const [attributeRows, setAttributeRows] = useState<{ name: string; value: string }[]>([]);
+
+  // Variants Manager
+  const [hasVariants, setHasVariants] = useState(false);
+  const [variantRows, setVariantRows] = useState<{
+    id: string;
+    size: string;
+    color: string;
+    material: string;
+    price: string;
+    mrp: string;
+    stock: string;
+    sku: string;
+  }[]>([]);
   
   // Search and Filters for product table
   const [searchQuery, setSearchQuery] = useState("");
@@ -443,6 +481,25 @@ export default function AdminDashboard() {
     setGstRate("18");
     setProductImages([]);
     setPastedUrl("");
+    setSku("");
+    setShortDescription("");
+    setFullDescription("");
+    setStatus("Active");
+    setCountryOfOrigin("India");
+    setManufacturer("");
+    setPacker("");
+    setHsnCode("");
+    setMetaTitle("");
+    setMetaDescription("");
+    setKeywords("");
+    setSlug("");
+    setPackageWeight("");
+    setPackageLength("");
+    setPackageWidth("");
+    setPackageHeight("");
+    setAttributeRows([]);
+    setHasVariants(false);
+    setVariantRows([]);
   };
 
   const handleEditClick = (product: any) => {
@@ -454,7 +511,6 @@ export default function AdminDashboard() {
     setHomeSection(product.homeSection || "Standard");
     setGstRate(product.gstRate?.toString() || "18");
     
-    // Set photos list (support images array fallback to single image string)
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       setProductImages(product.images.map((url: string, index: number) => ({
         id: `img_${Date.now()}_${index}_${Math.random()}`,
@@ -474,7 +530,6 @@ export default function AdminDashboard() {
     }
     setPastedUrl("");
 
-    // Cost breakdown fields
     setQuantity(product.quantity !== undefined && product.quantity !== null ? product.quantity.toString() : "");
     if (product.sizesInventory) {
       setSizesInventory({
@@ -493,6 +548,53 @@ export default function AdminDashboard() {
     setCourierCharges(product.courierCharges !== undefined && product.courierCharges !== null ? product.courierCharges.toString() : "");
     setOtherExpenses(product.otherExpenses !== undefined && product.otherExpenses !== null ? product.otherExpenses.toString() : "");
     setProfit(product.profit !== undefined && product.profit !== null ? product.profit.toString() : "");
+
+    setSku(product.sku || "");
+    setShortDescription(product.shortDescription || "");
+    setFullDescription(product.fullDescription || "");
+    setStatus(product.status || "Active");
+    setCountryOfOrigin(product.countryOfOrigin || "India");
+    setManufacturer(product.manufacturer || "");
+    setPacker(product.packer || "");
+    setHsnCode(product.hsnCode || "");
+
+    const seo = product.seo || {};
+    setMetaTitle(seo.metaTitle || "");
+    setMetaDescription(seo.metaDescription || "");
+    setKeywords(seo.keywords || "");
+    setSlug(seo.slug || "");
+
+    const shipping = product.shipping || {};
+    setPackageWeight(shipping.packageWeight !== undefined ? shipping.packageWeight.toString() : "");
+    setPackageLength(shipping.packageLength !== undefined ? shipping.packageLength.toString() : "");
+    setPackageWidth(shipping.packageWidth !== undefined ? shipping.packageWidth.toString() : "");
+    setPackageHeight(shipping.packageHeight !== undefined ? shipping.packageHeight.toString() : "");
+
+    if (product.attributes && typeof product.attributes === "object") {
+      setAttributeRows(Object.entries(product.attributes).map(([k, v]: any) => ({
+        name: k,
+        value: v.toString()
+      })));
+    } else {
+      setAttributeRows([]);
+    }
+
+    if (product.variants && Array.isArray(product.variants)) {
+      setHasVariants(true);
+      setVariantRows(product.variants.map((v: any, index: number) => ({
+        id: v.id || `var_${Date.now()}_${index}_${Math.random()}`,
+        size: v.size || "",
+        color: v.color || "",
+        material: v.material || "",
+        price: v.price !== undefined ? v.price.toString() : "",
+        mrp: v.mrp !== undefined ? v.mrp.toString() : "",
+        stock: v.stock !== undefined ? v.stock.toString() : "",
+        sku: v.sku || ""
+      })));
+    } else {
+      setHasVariants(false);
+      setVariantRows([]);
+    }
     
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -548,37 +650,105 @@ export default function AdminDashboard() {
 
       const primaryImage = uploadedUrls[0];
 
-      if (mrp !== "" && Number(mrp) < calculatedPrice) {
-        throw new Error(`Maximum Retail Price (MRP) cannot be less than the calculated Selling Price (₹${calculatedPrice}).`);
+      const attributesObj: any = {};
+      attributeRows.forEach(row => {
+        if (row.name.trim()) {
+          attributesObj[row.name.trim()] = row.value.trim();
+        }
+      });
+
+      const variantsList = variantRows.map(v => ({
+        id: v.id || `var_${Date.now()}_${Math.random()}`,
+        size: v.size.trim(),
+        color: v.color.trim(),
+        material: v.material.trim(),
+        price: Number(v.price || 0),
+        mrp: Number(v.mrp || 0),
+        stock: Number(v.stock || 0),
+        sku: v.sku.trim()
+      })).filter(v => v.size || v.color || v.material);
+
+      if (hasVariants) {
+        if (variantsList.length === 0) {
+          throw new Error("Please add at least one variant if Variants are enabled.");
+        }
+        for (const v of variantsList) {
+          if (v.price <= 0 || v.mrp <= 0) {
+            throw new Error(`Variant sizes/colors must have valid pricing and MRP.`);
+          }
+          if (v.mrp < v.price) {
+            throw new Error(`MRP cannot be less than Selling Price for variant (${v.size} / ${v.color} / ${v.material}).`);
+          }
+        }
+      } else {
+        if (mrp !== "" && Number(mrp) < calculatedPrice) {
+          throw new Error(`Maximum Retail Price (MRP) cannot be less than the calculated Selling Price (₹${calculatedPrice}).`);
+        }
       }
 
       const productData: any = {
         brand,
         title,
-        price: calculatedPrice,
-        mrp: mrp !== "" ? Number(mrp) : null,
+        price: hasVariants && variantsList.length > 0 ? Math.min(...variantsList.map(v => v.price)) : calculatedPrice,
+        mrp: hasVariants && variantsList.length > 0 ? Math.min(...variantsList.map(v => v.mrp)) : (mrp !== "" ? Number(mrp) : null),
         purchasePrice: purchasePrice !== "" ? Number(purchasePrice) : null,
         packingCharges: packingCharges !== "" ? Number(packingCharges) : null,
         courierCharges: courierCharges !== "" ? Number(courierCharges) : null,
         otherExpenses: otherExpenses !== "" ? Number(otherExpenses) : null,
         profit: profit !== "" ? Number(profit) : null,
-        quantity: quantity !== "" ? Number(quantity) : 0,
+        quantity: hasVariants ? variantsList.reduce((acc, curr) => acc + curr.stock, 0) : (quantity !== "" ? Number(quantity) : 0),
         category,
         homeSection,
         gstRate: Number(gstRate),
         image: primaryImage, // For backwards compatibility
         images: uploadedUrls, // The full array of angles!
+        
+        // Flexible model fields
+        sku: sku.trim(),
+        shortDescription: shortDescription.trim(),
+        fullDescription: fullDescription.trim(),
+        status,
+        countryOfOrigin: countryOfOrigin.trim(),
+        manufacturer: manufacturer.trim(),
+        packer: packer.trim(),
+        hsnCode: hsnCode.trim(),
+        seo: {
+          metaTitle: metaTitle.trim(),
+          metaDescription: metaDescription.trim(),
+          keywords: keywords.trim(),
+          slug: slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+        },
+        shipping: {
+          packageWeight: packageWeight !== "" ? Number(packageWeight) : null,
+          packageLength: packageLength !== "" ? Number(packageLength) : null,
+          packageWidth: packageWidth !== "" ? Number(packageWidth) : null,
+          packageHeight: packageHeight !== "" ? Number(packageHeight) : null
+        },
+        attributes: attributesObj,
+        variants: hasVariants && variantsList.length > 0 ? variantsList : null
       };
 
       if (category.toLowerCase() === "fashion") {
-        productData.sizesInventory = {
-          S: Number(sizesInventory.S || 0),
-          M: Number(sizesInventory.M || 0),
-          L: Number(sizesInventory.L || 0),
-          XL: Number(sizesInventory.XL || 0),
-          XXL: Number(sizesInventory.XXL || 0)
-        };
-        productData.quantity = Object.values(productData.sizesInventory).reduce((a: number, b: any) => a + Number(b), 0);
+        if (hasVariants && variantsList.length > 0) {
+          const legacySizes: any = { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
+          variantsList.forEach(v => {
+            const sizeKey = v.size.toUpperCase();
+            if (sizeKey in legacySizes) {
+              legacySizes[sizeKey] += v.stock;
+            }
+          });
+          productData.sizesInventory = legacySizes;
+          productData.quantity = Object.values(legacySizes).reduce((a: number, b: any) => a + b, 0) as number;
+        } else {
+          productData.sizesInventory = {
+            S: Number(sizesInventory.S || 0),
+            M: Number(sizesInventory.M || 0),
+            L: Number(sizesInventory.L || 0),
+            XL: Number(sizesInventory.XL || 0),
+            XXL: Number(sizesInventory.XXL || 0)
+          };
+          productData.quantity = Object.values(productData.sizesInventory).reduce((a: number, b: any) => a + Number(b), 0);
+        }
       }
 
       let savedProductId = editingId;
@@ -1092,14 +1262,60 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">SKU CODE</label>
+                    <input type="text" value={sku} onChange={(e) => setSku(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-750" placeholder="e.g. NEE-GR-001" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">STATUS</label>
+                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all">
+                      <option value="Active">Active</option>
+                      <option value="Draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">BRAND</label>
-                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" placeholder="e.g. LEVIS" />
+                  <input type="text" required value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="e.g. Neelamaa" />
                 </div>
                 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">TITLE</label>
-                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" placeholder="e.g. Men Slim Fit Jeans" />
+                  <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="e.g. Black Granite Chopping Board" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">SHORT DESCRIPTION</label>
+                  <textarea rows={2} value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="Heat resistant board" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">FULL DESCRIPTION</label>
+                  <textarea rows={4} value={fullDescription} onChange={(e) => setFullDescription(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="Detailed product specifications, materials used, size metrics, etc." />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">COUNTRY OF ORIGIN</label>
+                    <input type="text" value={countryOfOrigin} onChange={(e) => setCountryOfOrigin(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="India" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">HSN CODE</label>
+                    <input type="text" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="e.g. 6802" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">MANUFACTURER</label>
+                    <input type="text" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="Neelamaa Stones" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">PACKER</label>
+                    <input type="text" value={packer} onChange={(e) => setPacker(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="Neelamaa Stones" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3.5">
@@ -1120,8 +1336,8 @@ export default function AdminDashboard() {
                       required 
                       value={category} 
                       onChange={(e) => setCategory(e.target.value)} 
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
-                      placeholder="e.g. Fashion"
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" 
+                      placeholder="e.g. Kitchen"
                     />
                     <datalist id="category-options">
                       {availableCategories.map(c => (
@@ -1131,43 +1347,217 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Stock Quantity */}
-                {category.toLowerCase() === "fashion" ? (
-                  <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-2.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Sizes Inventory</span>
-                    <div className="grid grid-cols-5 gap-2">
-                      {["S", "M", "L", "XL", "XXL"].map((size) => (
-                        <div key={size}>
-                          <label className="block text-[9px] font-extrabold text-slate-500 text-center mb-1">{size}</label>
-                          <input 
-                            type="number" 
-                            min="0"
-                            required
-                            value={sizesInventory[size as keyof typeof sizesInventory] || ""} 
-                            onChange={(e) => handleSizeInventoryChange(size, e.target.value)} 
-                            className="w-full text-center bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs outline-none text-white focus:border-pink-500" 
-                            placeholder="0" 
-                          />
+                {/* Variants toggle */}
+                <div className="flex items-center justify-between p-3 bg-slate-950/30 border border-slate-800 rounded-xl">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-200">Enable Product Variants</label>
+                    <span className="text-[10px] text-slate-500 block">Create multiple size, color, or material options</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={hasVariants}
+                    onChange={(e) => {
+                      setHasVariants(e.target.checked);
+                      if (e.target.checked && variantRows.length === 0) {
+                        setVariantRows([{
+                          id: `var_${Date.now()}_${Math.random()}`,
+                          size: "",
+                          color: "",
+                          material: "",
+                          price: calculatedPrice ? calculatedPrice.toString() : "",
+                          mrp: mrp || "",
+                          stock: quantity || "10",
+                          sku: sku || ""
+                        }]);
+                      }
+                    }}
+                    className="w-4 h-4 text-pink-650 accent-pink-600 border-slate-800 bg-slate-950 rounded cursor-pointer"
+                  />
+                </div>
+
+                {hasVariants ? (
+                  <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Configure Variants</span>
+                    <div className="space-y-3">
+                      {variantRows.map((variant, idx) => (
+                        <div key={variant.id} className="bg-slate-950/50 p-3 border border-slate-850 rounded-lg space-y-2.5 relative">
+                          <div className="flex justify-between items-center pb-1 border-b border-slate-900">
+                            <span className="text-[9px] font-extrabold text-pink-500">Variant #{idx + 1}</span>
+                            {variantRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setVariantRows(prev => prev.filter(v => v.id !== variant.id))}
+                                className="text-[9px] font-extrabold text-rose-500 hover:text-rose-400 cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Size</label>
+                              <input
+                                type="text"
+                                value={variant.size}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].size = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="e.g. 12x18 / S"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Color</label>
+                              <input
+                                type="text"
+                                value={variant.color}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].color = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="Black"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Material</label>
+                              <input
+                                type="text"
+                                value={variant.material}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].material = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="Granite"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-2">
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Price (₹)</label>
+                              <input
+                                type="number"
+                                required
+                                value={variant.price}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].price = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="799"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">MRP (₹)</label>
+                              <input
+                                type="number"
+                                required
+                                value={variant.mrp}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].mrp = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="999"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Stock</label>
+                              <input
+                                type="number"
+                                required
+                                value={variant.stock}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].stock = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="50"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">SKU</label>
+                              <input
+                                type="text"
+                                value={variant.sku}
+                                onChange={(e) => {
+                                  const newVars = [...variantRows];
+                                  newVars[idx].sku = e.target.value;
+                                  setVariantRows(newVars);
+                                }}
+                                placeholder="SKU"
+                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                              />
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
-                    <div className="text-right text-[10px] text-slate-400 font-semibold mt-1">
-                      Total calculated stock: <span className="text-white font-extrabold">{quantity || "0"}</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setVariantRows(prev => [...prev, {
+                        id: `var_${Date.now()}_${Math.random()}`,
+                        size: "",
+                        color: "",
+                        material: "",
+                        price: calculatedPrice ? calculatedPrice.toString() : "",
+                        mrp: mrp || "",
+                        stock: "10",
+                        sku: ""
+                      }])}
+                      className="w-full py-2 bg-slate-900 border border-slate-850 hover:bg-slate-850 text-slate-350 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer block text-center"
+                    >
+                      + Add Variant Option
+                    </button>
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Stock Quantity</label>
-                    <input 
-                      type="number" 
-                      required 
-                      min="0"
-                      value={quantity} 
-                      onChange={(e) => setQuantity(e.target.value)} 
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
-                      placeholder="e.g. 50" 
-                    />
-                  </div>
+                  category.toLowerCase() === "fashion" ? (
+                    <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-2.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Sizes Inventory</span>
+                      <div className="grid grid-cols-5 gap-2">
+                        {["S", "M", "L", "XL", "XXL"].map((size) => (
+                          <div key={size}>
+                            <label className="block text-[9px] font-extrabold text-slate-500 text-center mb-1">{size}</label>
+                            <input 
+                              type="number" 
+                              min="0"
+                              required
+                              value={sizesInventory[size as keyof typeof sizesInventory] || ""} 
+                              onChange={(e) => handleSizeInventoryChange(size, e.target.value)} 
+                              className="w-full text-center bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs outline-none text-white focus:border-pink-500" 
+                              placeholder="0" 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-right text-[10px] text-slate-400 font-semibold mt-1">
+                        Total calculated stock: <span className="text-white font-extrabold">{quantity || "0"}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Stock Quantity</label>
+                      <input 
+                        type="number" 
+                        required 
+                        min="0"
+                        value={quantity} 
+                        onChange={(e) => setQuantity(e.target.value)} 
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" 
+                        placeholder="e.g. 50" 
+                      />
+                    </div>
+                  )
                 )}
 
                 {/* Costs details breakdown */}
@@ -1280,6 +1670,178 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* Collapsible Section: Technical Specifications */}
+                <details className="group border border-slate-800 rounded-xl bg-slate-950/20">
+                  <summary className="list-none flex items-center justify-between p-3.5 cursor-pointer hover:bg-slate-900/40 select-none">
+                    <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest">Technical Specifications</span>
+                    <span className="text-slate-500 text-xs font-bold transition-transform group-open:rotate-180">&darr;</span>
+                  </summary>
+                  <div className="p-3.5 border-t border-slate-900 space-y-3">
+                    <span className="text-[9px] text-slate-500 block">Add custom key-value pairs (e.g. Finish: Polished, Thickness: 20mm, Battery Type: Lithium-ion)</span>
+                    <div className="space-y-2">
+                      {attributeRows.map((row, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={row.name}
+                            onChange={(e) => {
+                              const newRows = [...attributeRows];
+                              newRows[idx].name = e.target.value;
+                              setAttributeRows(newRows);
+                            }}
+                            placeholder="Specification Key"
+                            className="flex-1 bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500"
+                          />
+                          <input
+                            type="text"
+                            required
+                            value={row.value}
+                            onChange={(e) => {
+                              const newRows = [...attributeRows];
+                              newRows[idx].value = e.target.value;
+                              setAttributeRows(newRows);
+                            }}
+                            placeholder="Specification Value"
+                            className="flex-1 bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setAttributeRows(prev => prev.filter((_, i) => i !== idx))}
+                            className="bg-rose-950/20 text-rose-400 border border-rose-900/30 px-3 py-1.5 rounded hover:bg-rose-900/30 text-xs cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setAttributeRows(prev => [...prev, { name: "", value: "" }])}
+                        className="text-xs text-pink-500 font-bold hover:underline cursor-pointer block"
+                      >
+                        + Add Custom Specification
+                      </button>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Collapsible Section: SEO Optimization */}
+                <details className="group border border-slate-800 rounded-xl bg-slate-950/20">
+                  <summary className="list-none flex items-center justify-between p-3.5 cursor-pointer hover:bg-slate-900/40 select-none">
+                    <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest">SEO Optimization</span>
+                    <span className="text-slate-500 text-xs font-bold transition-transform group-open:rotate-180">&darr;</span>
+                  </summary>
+                  <div className="p-3.5 border-t border-slate-900 space-y-3.5">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Slug / URL path</label>
+                        <button
+                          type="button"
+                          onClick={() => setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""))}
+                          className="text-[8px] font-extrabold text-pink-500 hover:text-pink-400 cursor-pointer"
+                        >
+                          Auto-generate from Title
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value)}
+                        placeholder="black-granite-chopping-board"
+                        className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1 placeholder-slate-750"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Meta Title</label>
+                      <input
+                        type="text"
+                        value={metaTitle}
+                        onChange={(e) => setMetaTitle(e.target.value)}
+                        placeholder="Premium Black Granite Chopping Board | Neelamaa"
+                        className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1 placeholder-slate-750"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Meta Description</label>
+                      <textarea
+                        rows={2}
+                        value={metaDescription}
+                        onChange={(e) => setMetaDescription(e.target.value)}
+                        placeholder="Buy heat resistant, polished natural black granite chopping boards by Neelamaa Stones."
+                        className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1 placeholder-slate-750"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Keywords (Comma separated)</label>
+                      <input
+                        type="text"
+                        value={keywords}
+                        onChange={(e) => setKeywords(e.target.value)}
+                        placeholder="chopping board, granite, kitchen tools, neelamaa"
+                        className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1 placeholder-slate-750"
+                      />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Collapsible Section: Shipping & Weight Specs */}
+                <details className="group border border-slate-800 rounded-xl bg-slate-950/20">
+                  <summary className="list-none flex items-center justify-between p-3.5 cursor-pointer hover:bg-slate-900/40 select-none">
+                    <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest">Shipping & Physical Specs</span>
+                    <span className="text-slate-500 text-xs font-bold transition-transform group-open:rotate-180">&darr;</span>
+                  </summary>
+                  <div className="p-3.5 border-t border-slate-900 space-y-3.5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Package Weight (kg)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={packageWeight}
+                          onChange={(e) => setPackageWeight(e.target.value)}
+                          placeholder="3.5"
+                          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Length (cm)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={packageLength}
+                          onChange={(e) => setPackageLength(e.target.value)}
+                          placeholder="45"
+                          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Width (cm)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={packageWidth}
+                          onChange={(e) => setPackageWidth(e.target.value)}
+                          placeholder="30"
+                          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Height (cm)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={packageHeight}
+                          onChange={(e) => setPackageHeight(e.target.value)}
+                          placeholder="2"
+                          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </details>
 
                 <div className="pt-4 border-t border-slate-900">
                   <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-3 rounded-xl hover:opacity-90 disabled:opacity-75 transition-all shadow-md shadow-pink-500/10 cursor-pointer text-xs uppercase tracking-wider">
