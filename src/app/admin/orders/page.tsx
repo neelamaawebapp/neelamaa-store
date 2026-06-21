@@ -300,7 +300,9 @@ export default function AdminOrders() {
       const originalTotal = order.items?.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0) || order.totalAmount;
       const newDiscountPercent = Number(tempDiscountPercent);
       const newDiscountAmount = Math.round(originalTotal * (newDiscountPercent / 100));
-      const newTotalAmount = originalTotal - newDiscountAmount;
+      const discountedItemsTotal = originalTotal - newDiscountAmount;
+      const courierCharges = discountedItemsTotal < 500 && discountedItemsTotal > 0 ? 100 : 0;
+      const newTotalAmount = discountedItemsTotal + courierCharges;
 
       let totalGstAmount = 0;
       let totalSubtotal = 0;
@@ -324,6 +326,7 @@ export default function AdminOrders() {
         discountPercent: newDiscountPercent,
         discountAmount: newDiscountAmount,
         totalAmount: newTotalAmount,
+        courierCharges: courierCharges,
         subtotal: Number(totalSubtotal.toFixed(2)),
         totalGst: Number(totalGstAmount.toFixed(2)),
         items: updatedItems
@@ -671,6 +674,15 @@ export default function AdminOrders() {
                         </div>
                       )}
                     </div>
+
+                    {order.courierCharges !== undefined && order.courierCharges > 0 && (
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5">
+                        <span>Courier Charges</span>
+                        <span className="font-bold text-slate-300">
+                          ₹{order.courierCharges}
+                        </span>
+                      </div>
+                    )}
 
                     {order.paymentMethod === "Online" ? (
                       <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5 font-mono">

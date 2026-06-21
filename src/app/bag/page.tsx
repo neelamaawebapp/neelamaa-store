@@ -60,6 +60,8 @@ export default function BagPage() {
 
   const discount = Math.round(totalAmount * (discountPercent / 100));
   const finalAmount = totalAmount - discount;
+  const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
+  const totalToPay = finalAmount + courierCharges;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-md mx-auto relative pb-32">
@@ -150,6 +152,19 @@ export default function BagPage() {
             </div>
           ))}
 
+          {/* Courier Charges Alert */}
+          {courierCharges > 0 && (
+            <div className="bg-amber-50 border border-amber-250 text-amber-800 text-xs font-semibold p-3.5 rounded-xl flex flex-col gap-1 mt-4">
+              <div className="flex items-center gap-1.5 font-bold">
+                <AlertTriangle size={14} className="text-amber-600" />
+                <span>Courier Charges Applicable</span>
+              </div>
+              <span className="text-[11px] text-amber-700 leading-normal">
+                An additional courier charge of ₹100 is applied for orders below ₹500. Add items worth <strong>₹{500 - finalAmount}</strong> more to get FREE shipping!
+              </span>
+            </div>
+          )}
+
           {/* Price Details */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mt-4">
             <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide">Price Details ({cart.length} Items)</h3>
@@ -168,11 +183,15 @@ export default function BagPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping Fee</span>
-                <span className="text-green-600">FREE</span>
+                {courierCharges > 0 ? (
+                  <span className="text-gray-900 font-bold">₹{courierCharges}</span>
+                ) : (
+                  <span className="text-green-600 font-bold">FREE</span>
+                )}
               </div>
               <div className="border-t border-gray-200 pt-3 mt-3 flex justify-between font-bold text-gray-900 text-base">
                 <span>Total Amount</span>
-                <span>₹{finalAmount}</span>
+                <span>₹{totalToPay}</span>
               </div>
             </div>
           </div>
@@ -195,7 +214,7 @@ export default function BagPage() {
           )}
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>
+              <span className="text-lg font-bold text-gray-900">₹{totalToPay}</span>
               <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">View Details</a>
             </div>
             <button 

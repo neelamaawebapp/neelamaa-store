@@ -258,6 +258,12 @@ export default function InvoicePage() {
                   <td className="py-1.5 pr-4">Total GST:</td>
                   <td className="py-1.5 font-mono">₹{calculatedTotalGst.toFixed(2)}</td>
                 </tr>
+                {order.courierCharges !== undefined && order.courierCharges > 0 && (
+                  <tr className="text-gray-600 border-b border-gray-200">
+                    <td className="py-1.5 pr-4">Courier Charges:</td>
+                    <td className="py-1.5 font-mono">₹{order.courierCharges.toFixed(2)}</td>
+                  </tr>
+                )}
                 <tr className="text-lg font-bold text-gray-900">
                   <td className="py-2.5 pr-4">Grand Total:</td>
                   <td className="py-2.5 font-mono text-xl text-pink-600">₹{finalGrandTotal.toFixed(2)}</td>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X } from "lucide-react";
+import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Script from "next/script";
@@ -98,6 +98,8 @@ export default function CheckoutPage() {
 
   const discount = Math.round(totalAmount * (discountPercent / 100));
   const finalAmount = totalAmount - discount;
+  const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
+  const totalToPay = finalAmount + courierCharges;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +152,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: finalAmount }),
+        body: JSON.stringify({ amount: totalToPay }),
       });
       const data = await res.json();
 
@@ -241,11 +243,12 @@ export default function CheckoutPage() {
         phone,
         address: `${street}, ${city}, ${pin}`,
         items: itemsWithGst,
-        totalAmount: finalAmount,
+        totalAmount: totalToPay,
         subtotal: Number(totalSubtotal.toFixed(2)),
         totalGst: Number(totalGstAmount.toFixed(2)),
         discountPercent: discountPercent,
         discountAmount: discount,
+        courierCharges: courierCharges,
         status: "Pending",
         paymentMethod: method,
         paymentId: paymentId,
@@ -344,7 +347,7 @@ export default function CheckoutPage() {
             email: user?.email || "",
             phone,
             orderId: orderId.slice(-8).toUpperCase(),
-            amount: finalAmount
+            amount: totalToPay
           })
         });
       } catch (e) {
@@ -509,6 +512,48 @@ export default function CheckoutPage() {
           </form>
         </div>
 
+        {/* Courier Charges Alert */}
+        {courierCharges > 0 && (
+          <div className="bg-amber-50 border border-amber-250 text-amber-800 text-xs font-semibold p-3.5 rounded-xl flex flex-col gap-1 mb-4">
+            <div className="flex items-center gap-1.5 font-bold">
+              <AlertTriangle size={14} className="text-amber-600" />
+              <span>Courier Charges Applicable</span>
+            </div>
+            <span className="text-[11px] text-amber-700 leading-normal">
+              An additional courier charge of ₹100 is applied for orders below ₹500.
+            </span>
+          </div>
+        )}
+
+        {/* Price Details */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
+          <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide border-b border-gray-100 pb-2">Price Summary</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>₹{totalAmount}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Discount</span>
+                <span className="text-green-600">-₹{discount}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-600">
+              <span>Courier Charges</span>
+              {courierCharges > 0 ? (
+                <span className="text-gray-900 font-bold">₹{courierCharges}</span>
+              ) : (
+                <span className="text-green-600 font-bold">FREE</span>
+              )}
+            </div>
+            <div className="border-t border-gray-200 pt-3 mt-3 flex justify-between font-bold text-gray-900 text-base">
+              <span>Total to Pay</span>
+              <span>₹{totalToPay}</span>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
            <h2 className="font-bold text-sm uppercase tracking-wide mb-3 text-gray-800 border-b border-gray-100 pb-2">Payment Method</h2>
            <div className="space-y-3">
@@ -545,7 +590,7 @@ export default function CheckoutPage() {
       <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-gray-900">₹{finalAmount}</span>
+            <span className="text-lg font-bold text-gray-900">₹{totalToPay}</span>
             <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">Total to pay</a>
           </div>
           <button 
@@ -589,7 +634,7 @@ export default function CheckoutPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">Amount to Pay</p>
-                <h3 className="font-extrabold text-pink-600 text-lg">₹{finalAmount}</h3>
+                <h3 className="font-extrabold text-pink-600 text-lg">₹{totalToPay}</h3>
               </div>
             </div>
 
