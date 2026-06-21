@@ -28,6 +28,13 @@ export default function AdminDashboard() {
   
   // Pricing & Stock Fields
   const [quantity, setQuantity] = useState("");
+  const [sizesInventory, setSizesInventory] = useState({
+    S: "",
+    M: "",
+    L: "",
+    XL: "",
+    XXL: ""
+  });
   const [purchasePrice, setPurchasePrice] = useState("");
   const [packingCharges, setPackingCharges] = useState("");
   const [courierCharges, setCourierCharges] = useState("");
@@ -268,6 +275,15 @@ export default function AdminDashboard() {
     return getMissingPricingFields(product).length > 0;
   };
 
+  const handleSizeInventoryChange = (size: string, value: string) => {
+    setSizesInventory(prev => {
+      const updated = { ...prev, [size]: value };
+      const total = Object.values(updated).reduce((sum, val) => sum + Number(val || 0), 0);
+      setQuantity(total.toString());
+      return updated;
+    });
+  };
+
   // Form calculated values
   const calculatedPrice = 
     Number(purchasePrice || 0) + 
@@ -393,6 +409,7 @@ export default function AdminDashboard() {
     setBrand("");
     setTitle("");
     setQuantity("");
+    setSizesInventory({ S: "", M: "", L: "", XL: "", XXL: "" });
     setPurchasePrice("");
     setPackingCharges("");
     setCourierCharges("");
@@ -436,6 +453,17 @@ export default function AdminDashboard() {
 
     // Cost breakdown fields
     setQuantity(product.quantity !== undefined && product.quantity !== null ? product.quantity.toString() : "");
+    if (product.sizesInventory) {
+      setSizesInventory({
+        S: product.sizesInventory.S !== undefined ? product.sizesInventory.S.toString() : "",
+        M: product.sizesInventory.M !== undefined ? product.sizesInventory.M.toString() : "",
+        L: product.sizesInventory.L !== undefined ? product.sizesInventory.L.toString() : "",
+        XL: product.sizesInventory.XL !== undefined ? product.sizesInventory.XL.toString() : "",
+        XXL: product.sizesInventory.XXL !== undefined ? product.sizesInventory.XXL.toString() : "",
+      });
+    } else {
+      setSizesInventory({ S: "", M: "", L: "", XL: "", XXL: "" });
+    }
     setPurchasePrice(product.purchasePrice !== undefined && product.purchasePrice !== null ? product.purchasePrice.toString() : "");
     setPackingCharges(product.packingCharges !== undefined && product.packingCharges !== null ? product.packingCharges.toString() : "");
     setCourierCharges(product.courierCharges !== undefined && product.courierCharges !== null ? product.courierCharges.toString() : "");
@@ -496,7 +524,7 @@ export default function AdminDashboard() {
 
       const primaryImage = uploadedUrls[0];
 
-      const productData = {
+      const productData: any = {
         brand,
         title,
         price: calculatedPrice,
@@ -512,6 +540,17 @@ export default function AdminDashboard() {
         image: primaryImage, // For backwards compatibility
         images: uploadedUrls, // The full array of angles!
       };
+
+      if (category.toLowerCase() === "fashion") {
+        productData.sizesInventory = {
+          S: Number(sizesInventory.S || 0),
+          M: Number(sizesInventory.M || 0),
+          L: Number(sizesInventory.L || 0),
+          XL: Number(sizesInventory.XL || 0),
+          XXL: Number(sizesInventory.XXL || 0)
+        };
+        productData.quantity = Object.values(productData.sizesInventory).reduce((a: number, b: any) => a + Number(b), 0);
+      }
 
       let savedProductId = editingId;
       if (editingId) {
@@ -650,7 +689,10 @@ export default function AdminDashboard() {
           Number(item.otherExpenses || 0) + 
           Number(item.profit || 0);
 
-        const docRef = await addDoc(collection(db, "products"), {
+        const isFashion = item.category?.toLowerCase() === "fashion";
+        const itemQuantity = Number(item.quantity || 0);
+
+        const docData: any = {
           brand: item.brand,
           title: item.title,
           price: calculatedBulkPrice,
@@ -659,13 +701,27 @@ export default function AdminDashboard() {
           courierCharges: Number(item.courierCharges),
           otherExpenses: Number(item.otherExpenses),
           profit: Number(item.profit),
-          quantity: Number(item.quantity || 0),
+          quantity: itemQuantity,
           category: item.category,
           homeSection: item.homeSection,
           gstRate: Number(item.gstRate),
           image: finalUrl,
           createdAt: serverTimestamp(),
-        });
+        };
+
+        if (isFashion) {
+          const baseQty = Math.floor(itemQuantity / 5);
+          const remainder = itemQuantity % 5;
+          docData.sizesInventory = {
+            S: baseQty,
+            M: baseQty,
+            L: baseQty + remainder,
+            XL: baseQty,
+            XXL: baseQty
+          };
+        }
+
+        const docRef = await addDoc(collection(db, "products"), docData);
 
         // Trigger notifications if restocked (bulk upload stock > 0)
         const bulkQuantity = Number(item.quantity || 0);
@@ -957,18 +1013,43 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Stock Quantity */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Stock Quantity</label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="0"
-                    value={quantity} 
-                    onChange={(e) => setQuantity(e.target.value)} 
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
-                    placeholder="e.g. 50" 
-                  />
-                </div>
+                {category.toLowerCase() === "fashion" ? (
+                  <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-2.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Sizes Inventory</span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {["S", "M", "L", "XL", "XXL"].map((size) => (
+                        <div key={size}>
+                          <label className="block text-[9px] font-extrabold text-slate-500 text-center mb-1">{size}</label>
+                          <input 
+                            type="number" 
+                            min="0"
+                            required
+                            value={sizesInventory[size as keyof typeof sizesInventory] || ""} 
+                            onChange={(e) => handleSizeInventoryChange(size, e.target.value)} 
+                            className="w-full text-center bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs outline-none text-white focus:border-pink-500" 
+                            placeholder="0" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-right text-[10px] text-slate-400 font-semibold mt-1">
+                      Total calculated stock: <span className="text-white font-extrabold">{quantity || "0"}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Stock Quantity</label>
+                    <input 
+                      type="number" 
+                      required 
+                      min="0"
+                      value={quantity} 
+                      onChange={(e) => setQuantity(e.target.value)} 
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700" 
+                      placeholder="e.g. 50" 
+                    />
+                  </div>
+                )}
 
                 {/* Costs details breakdown */}
                 <div className="bg-slate-950/30 p-4 border border-slate-900 rounded-xl space-y-3">
@@ -1254,7 +1335,26 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-5 py-4 text-slate-400 font-medium">{product.category}</td>
                             <td className="px-5 py-4">
-                              {stockQuantity <= 0 ? (
+                              {product.category?.toLowerCase() === "fashion" && product.sizesInventory ? (
+                                <div className="text-[10px] text-slate-400 font-semibold space-y-1">
+                                  <div className="flex gap-1.5 flex-wrap">
+                                    {Object.entries(product.sizesInventory).map(([size, qty]: any) => (
+                                      <span 
+                                        key={size} 
+                                        className={`px-1.5 py-0.5 rounded text-[9px] border 
+                                          ${Number(qty) <= 0 
+                                            ? 'bg-rose-950/30 text-rose-400 border-rose-900/40 line-through' 
+                                            : Number(qty) <= 2 
+                                              ? 'bg-orange-950/30 text-orange-400 border-orange-900/40' 
+                                              : 'bg-slate-800 text-slate-350 border-slate-700/50'}`}
+                                      >
+                                        {size}: {qty}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <span className="text-[9px] text-slate-500 block">Total: {stockQuantity} units</span>
+                                </div>
+                              ) : stockQuantity <= 0 ? (
                                 <span className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                                   Out of Stock
                                 </span>

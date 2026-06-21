@@ -22,9 +22,15 @@ export default function BagPage() {
             const productRef = doc(db, "products", item.productId);
             const docSnap = await getDoc(productRef);
             if (docSnap.exists()) {
-              newStockLevels[item.productId] = Number(docSnap.data().quantity || 0);
+              const prodData = docSnap.data();
+              const isFashion = prodData.category?.toLowerCase() === "fashion";
+              if (isFashion && item.size && prodData.sizesInventory) {
+                newStockLevels[item.id] = Number(prodData.sizesInventory[item.size] || 0);
+              } else {
+                newStockLevels[item.id] = Number(prodData.quantity || 0);
+              }
             } else {
-              newStockLevels[item.productId] = 0;
+              newStockLevels[item.id] = 0;
             }
           })
         );
@@ -43,7 +49,7 @@ export default function BagPage() {
   }, [cart]);
 
   const hasOutOfStockItems = cart.some(item => {
-    const stock = stockLevels[item.productId];
+    const stock = stockLevels[item.id];
     return stock !== undefined && (stock <= 0 || stock < item.quantity);
   });
   const router = useRouter();
@@ -114,14 +120,14 @@ export default function BagPage() {
                   <span className="text-xs text-gray-400 line-through">₹{Math.round(item.price * 1.5)}</span>
                 </div>
 
-                {stockLevels[item.productId] !== undefined && stockLevels[item.productId] <= 0 && (
+                {stockLevels[item.id] !== undefined && stockLevels[item.id] <= 0 && (
                   <div className="text-red-600 text-[11px] font-extrabold mb-2 bg-red-50/50 border border-red-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
                     <AlertTriangle size={11} /> Out of Stock
                   </div>
                 )}
-                {stockLevels[item.productId] !== undefined && stockLevels[item.productId] > 0 && stockLevels[item.productId] < item.quantity && (
+                {stockLevels[item.id] !== undefined && stockLevels[item.id] > 0 && stockLevels[item.id] < item.quantity && (
                   <div className="text-orange-600 text-[11px] font-extrabold mb-2 bg-orange-50/50 border border-orange-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
-                    <AlertTriangle size={11} /> Only {stockLevels[item.productId]} available
+                    <AlertTriangle size={11} /> Only {stockLevels[item.id]} available
                   </div>
                 )}
                 

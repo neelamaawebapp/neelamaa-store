@@ -226,13 +226,25 @@ export default function AdminOrders() {
         if (newStatus === "Shipped" && !wasDeducted) {
           // Deduct inventory when shipping
           if (order.items && order.items.length > 0) {
-            const { increment } = await import("firebase/firestore");
+            const { increment, getDoc } = await import("firebase/firestore");
             for (const item of order.items) {
               if (item.productId) {
                 const productRef = doc(db, "products", item.productId);
-                await updateDoc(productRef, {
-                  quantity: increment(-Number(item.quantity || 1))
-                });
+                const productSnap = await getDoc(productRef);
+                if (productSnap.exists()) {
+                  const prodData = productSnap.data();
+                  const isFashion = prodData.category?.toLowerCase() === "fashion";
+                  if (isFashion && item.size && prodData.sizesInventory) {
+                    await updateDoc(productRef, {
+                      [`sizesInventory.${item.size}`]: increment(-Number(item.quantity || 1)),
+                      quantity: increment(-Number(item.quantity || 1))
+                    });
+                  } else {
+                    await updateDoc(productRef, {
+                      quantity: increment(-Number(item.quantity || 1))
+                    });
+                  }
+                }
               }
             }
           }
@@ -240,13 +252,25 @@ export default function AdminOrders() {
         } else if (newStatus !== "Shipped" && wasDeducted) {
           // Return items to inventory if reverted from Shipped
           if (order.items && order.items.length > 0) {
-            const { increment } = await import("firebase/firestore");
+            const { increment, getDoc } = await import("firebase/firestore");
             for (const item of order.items) {
               if (item.productId) {
                 const productRef = doc(db, "products", item.productId);
-                await updateDoc(productRef, {
-                  quantity: increment(Number(item.quantity || 1))
-                });
+                const productSnap = await getDoc(productRef);
+                if (productSnap.exists()) {
+                  const prodData = productSnap.data();
+                  const isFashion = prodData.category?.toLowerCase() === "fashion";
+                  if (isFashion && item.size && prodData.sizesInventory) {
+                    await updateDoc(productRef, {
+                      [`sizesInventory.${item.size}`]: increment(Number(item.quantity || 1)),
+                      quantity: increment(Number(item.quantity || 1))
+                    });
+                  } else {
+                    await updateDoc(productRef, {
+                      quantity: increment(Number(item.quantity || 1))
+                    });
+                  }
+                }
               }
             }
           }

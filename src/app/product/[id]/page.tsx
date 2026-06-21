@@ -214,17 +214,26 @@ export default function ProductDetailPage() {
   const handleAdd = async () => {
     if (!product) return;
 
-    if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
-      setToast("This item is currently out of stock.");
-      setTimeout(() => setToast(""), 3000);
-      return;
-    }
-
     const isFashion = product.category?.toLowerCase() === "fashion";
-    if (isFashion && !selectedSize) {
-      setToast("Please select a size first!");
-      setTimeout(() => setToast(""), 3000);
-      return;
+    if (isFashion) {
+      if (!selectedSize) {
+        setToast("Please select a size first!");
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
+      const sizesInv = product.sizesInventory || {};
+      const sizeStock = Number(sizesInv[selectedSize] || 0);
+      if (sizeStock <= 0) {
+        setToast(`Size ${selectedSize} is currently out of stock.`);
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
+    } else {
+      if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
+        setToast("This item is currently out of stock.");
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
     }
 
     setAdding(true);
@@ -244,17 +253,26 @@ export default function ProductDetailPage() {
   const handleBuyNow = async () => {
     if (!product) return;
 
-    if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
-      setToast("This item is currently out of stock.");
-      setTimeout(() => setToast(""), 3000);
-      return;
-    }
-
     const isFashion = product.category?.toLowerCase() === "fashion";
-    if (isFashion && !selectedSize) {
-      setToast("Please select a size first!");
-      setTimeout(() => setToast(""), 3000);
-      return;
+    if (isFashion) {
+      if (!selectedSize) {
+        setToast("Please select a size first!");
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
+      const sizesInv = product.sizesInventory || {};
+      const sizeStock = Number(sizesInv[selectedSize] || 0);
+      if (sizeStock <= 0) {
+        setToast(`Size ${selectedSize} is currently out of stock.`);
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
+    } else {
+      if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
+        setToast("This item is currently out of stock.");
+        setTimeout(() => setToast(""), 3000);
+        return;
+      }
     }
 
     setAdding(true);
@@ -373,18 +391,49 @@ export default function ProductDetailPage() {
         <p className="text-[10px] text-green-700 font-bold tracking-widest uppercase mt-2">inclusive of all taxes</p>
         
         <div className="mt-3.5">
-          {product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0 ? (
-            <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
-              🚫 Out of Stock
-            </span>
-          ) : Number(product.quantity) <= 5 ? (
-            <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
-              ⚡ Only {product.quantity} pieces available!
-            </span>
+          {product.category?.toLowerCase() === "fashion" ? (
+            selectedSize ? (
+              (() => {
+                const sizeStock = Number((product.sizesInventory || {})[selectedSize] || 0);
+                if (sizeStock <= 0) {
+                  return (
+                    <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
+                      🚫 Size {selectedSize} is Out of Stock
+                    </span>
+                  );
+                } else if (sizeStock <= 5) {
+                  return (
+                    <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
+                      ⚡ Only {sizeStock} pieces left in size {selectedSize}!
+                    </span>
+                  );
+                } else {
+                  return (
+                    <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
+                      ✓ Size {selectedSize} in Stock ({sizeStock} units)
+                    </span>
+                  );
+                }
+              })()
+            ) : (
+              <span className="bg-slate-50 text-slate-600 border border-slate-200 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
+                👉 Select a size to check availability (Total: {product.quantity || 0} units)
+              </span>
+            )
           ) : (
-            <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-              ✓ In Stock ({product.quantity} units)
-            </span>
+            product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0 ? (
+              <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
+                🚫 Out of Stock
+              </span>
+            ) : Number(product.quantity) <= 5 ? (
+              <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
+                ⚡ Only {product.quantity} pieces available!
+              </span>
+            ) : (
+              <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
+                ✓ In Stock ({product.quantity} units)
+              </span>
+            )
           )}
         </div>
       </div>
@@ -402,18 +451,29 @@ export default function ProductDetailPage() {
         </div>
         
         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-          {sizes.map((size) => (
-            <button 
-              key={size}
-              onClick={() => setSelectedSize(size)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center font-bold transition-colors flex-shrink-0
-                ${selectedSize === size 
-                  ? 'border-pink-500 bg-slate-50 text-pink-600' 
-                  : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
-            >
-              {size}
-            </button>
-          ))}
+          {sizes.map((size) => {
+            const sizesInv = product.sizesInventory || {};
+            const stock = Number(sizesInv[size] || 0);
+            const isOutOfStock = stock <= 0;
+            return (
+              <button 
+                key={size}
+                disabled={isOutOfStock}
+                onClick={() => setSelectedSize(size)}
+                className={`w-12 h-12 rounded-full border flex flex-col items-center justify-center font-bold transition-all flex-shrink-0 relative
+                  ${isOutOfStock 
+                    ? 'border-gray-200 text-gray-300 bg-gray-50/50 cursor-not-allowed line-through' 
+                    : selectedSize === size 
+                      ? 'border-pink-500 bg-slate-50 text-pink-600 shadow-sm' 
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
+              >
+                {size}
+                {isOutOfStock && (
+                  <span className="absolute bottom-1 text-[7px] text-red-500 font-extrabold uppercase scale-90">Out</span>
+                )}
+              </button>
+            );
+          })}
         </div>
         {!selectedSize && toast === "Please select a size first!" && (
           <p className="text-red-500 text-xs font-bold mt-2 animate-bounce">Please select a size</p>

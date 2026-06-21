@@ -119,13 +119,28 @@ export default function CheckoutPage() {
         const productRef = doc(db, "products", item.productId);
         const docSnap = await getDoc(productRef);
         if (docSnap.exists()) {
-          const stock = Number(docSnap.data().quantity || 0);
-          if (stock <= 0) {
-            validationError = `The item "${item.brand} - ${item.title}" is out of stock.`;
-            break;
-          } else if (stock < item.quantity) {
-            validationError = `Only ${stock} units of "${item.brand} - ${item.title}" are available in stock (you requested ${item.quantity}).`;
-            break;
+          const prodData = docSnap.data();
+          const isFashion = prodData.category?.toLowerCase() === "fashion";
+          if (isFashion) {
+            const sizesInv = prodData.sizesInventory || {};
+            const selectedSize = item.size || "";
+            const sizeStock = Number(sizesInv[selectedSize] || 0);
+            if (sizeStock <= 0) {
+              validationError = `The item "${item.brand} - ${item.title}" is out of stock for size ${selectedSize}.`;
+              break;
+            } else if (sizeStock < item.quantity) {
+              validationError = `Only ${sizeStock} units of "${item.brand} - ${item.title}" in size ${selectedSize} are available in stock (you requested ${item.quantity}).`;
+              break;
+            }
+          } else {
+            const stock = Number(prodData.quantity || 0);
+            if (stock <= 0) {
+              validationError = `The item "${item.brand} - ${item.title}" is out of stock.`;
+              break;
+            } else if (stock < item.quantity) {
+              validationError = `Only ${stock} units of "${item.brand} - ${item.title}" are available in stock (you requested ${item.quantity}).`;
+              break;
+            }
           }
         } else {
           validationError = `The item "${item.brand} - ${item.title}" is no longer available.`;
