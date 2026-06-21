@@ -15,6 +15,7 @@ export interface CartItem {
   quantity: number;
   size?: string;
   gstRate?: number;
+  mrp?: number;
 }
 
 interface CartContextType {

@@ -245,6 +245,7 @@ export default function ProductDetailPage() {
       image: product.image,
       size: selectedSize,
       gstRate: product.gstRate || 0,
+      mrp: product.mrp || Math.round(product.price * 1.5),
     });
     setAdding(false);
     setShowAddedModal(true);
@@ -284,6 +285,7 @@ export default function ProductDetailPage() {
       image: product.image,
       size: selectedSize,
       gstRate: product.gstRate || 0,
+      mrp: product.mrp || Math.round(product.price * 1.5),
     });
     setAdding(false);
     router.push("/checkout");
@@ -384,9 +386,22 @@ export default function ProductDetailPage() {
         <h1 className="text-2xl font-serif font-bold text-pink-600">{product.brand}</h1>
         <p className="text-gray-500 mt-1 tracking-tight">{product.title}</p>
         
-        <div className="mt-4 flex items-baseline space-x-3">
+        <div className="mt-4 flex items-baseline space-x-3 flex-wrap">
           <span className="text-3xl font-extrabold text-pink-600">₹{product.price}</span>
-          <span className="text-sm text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
+          {(() => {
+            const mrpVal = product.mrp || Math.round(product.price * 1.5);
+            const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
+            return (
+              <>
+                {mrpVal > product.price && (
+                  <>
+                    <span className="text-sm text-gray-400 line-through font-medium">₹{mrpVal}</span>
+                    <span className="text-sm font-bold text-orange-500">({discountPercent}% OFF)</span>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
         <p className="text-[10px] text-green-700 font-bold tracking-widest uppercase mt-2">inclusive of all taxes</p>
         

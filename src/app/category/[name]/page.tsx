@@ -124,10 +124,20 @@ export default function CategoryProductsPage() {
               <div className="p-3">
                 <h3 className="font-bold text-sm text-gray-900 truncate">{product.brand}</h3>
                 <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
-                <div className="mt-1.5 flex items-baseline space-x-1.5">
+                <div className="mt-1.5 flex items-baseline space-x-1.5 flex-wrap">
                   <span className="font-bold text-sm text-gray-900">₹{product.price}</span>
-                  <span className="text-xs text-gray-400 line-through">₹{Math.round(product.price * 1.5)}</span>
-                  <span className="text-[10px] font-bold text-orange-500">(33% OFF)</span>
+                  {(() => {
+                    const mrpVal = product.mrp || Math.round(product.price * 1.5);
+                    const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
+                    return (
+                      mrpVal > product.price && (
+                        <>
+                          <span className="text-xs text-gray-400 line-through">₹{mrpVal}</span>
+                          <span className="text-[10px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                        </>
+                      )
+                    );
+                  })()}
                 </div>
               </div>
             </Link>

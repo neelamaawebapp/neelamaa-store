@@ -35,6 +35,7 @@ export default function AdminDashboard() {
     XL: "",
     XXL: ""
   });
+  const [mrp, setMrp] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [packingCharges, setPackingCharges] = useState("");
   const [courierCharges, setCourierCharges] = useState("");
@@ -106,6 +107,7 @@ export default function AdminDashboard() {
             brand: "",
             title: "",
             quantity: "10",
+            mrp: "",
             purchasePrice: "",
             packingCharges: "",
             courierCharges: "",
@@ -410,6 +412,7 @@ export default function AdminDashboard() {
     setTitle("");
     setQuantity("");
     setSizesInventory({ S: "", M: "", L: "", XL: "", XXL: "" });
+    setMrp("");
     setPurchasePrice("");
     setPackingCharges("");
     setCourierCharges("");
@@ -464,6 +467,7 @@ export default function AdminDashboard() {
     } else {
       setSizesInventory({ S: "", M: "", L: "", XL: "", XXL: "" });
     }
+    setMrp(product.mrp !== undefined && product.mrp !== null ? product.mrp.toString() : "");
     setPurchasePrice(product.purchasePrice !== undefined && product.purchasePrice !== null ? product.purchasePrice.toString() : "");
     setPackingCharges(product.packingCharges !== undefined && product.packingCharges !== null ? product.packingCharges.toString() : "");
     setCourierCharges(product.courierCharges !== undefined && product.courierCharges !== null ? product.courierCharges.toString() : "");
@@ -524,10 +528,15 @@ export default function AdminDashboard() {
 
       const primaryImage = uploadedUrls[0];
 
+      if (mrp !== "" && Number(mrp) < calculatedPrice) {
+        throw new Error(`Maximum Retail Price (MRP) cannot be less than the calculated Selling Price (₹${calculatedPrice}).`);
+      }
+
       const productData: any = {
         brand,
         title,
         price: calculatedPrice,
+        mrp: mrp !== "" ? Number(mrp) : null,
         purchasePrice: purchasePrice !== "" ? Number(purchasePrice) : null,
         packingCharges: packingCharges !== "" ? Number(packingCharges) : null,
         courierCharges: courierCharges !== "" ? Number(courierCharges) : null,
@@ -692,10 +701,15 @@ export default function AdminDashboard() {
         const isFashion = item.category?.toLowerCase() === "fashion";
         const itemQuantity = Number(item.quantity || 0);
 
+        if (item.mrp && Number(item.mrp) < calculatedBulkPrice) {
+          throw new Error(`MRP (₹${item.mrp}) for "${item.brand} - ${item.title}" cannot be less than calculated Selling Price (₹${calculatedBulkPrice})`);
+        }
+
         const docData: any = {
           brand: item.brand,
           title: item.title,
           price: calculatedBulkPrice,
+          mrp: item.mrp ? Number(item.mrp) : Math.round(calculatedBulkPrice * 1.5),
           purchasePrice: Number(item.purchasePrice),
           packingCharges: Number(item.packingCharges),
           courierCharges: Number(item.courierCharges),
@@ -1129,6 +1143,20 @@ export default function AdminDashboard() {
                     {profit === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
                   </div>
 
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Maximum Retail Price (MRP) (₹) *</label>
+                    <input 
+                      type="number" 
+                      required
+                      value={mrp} 
+                      onChange={(e) => setMrp(e.target.value)} 
+                      className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs outline-none text-white transition-all
+                        ${mrp === "" ? 'border-amber-500/40 focus:border-amber-500' : 'border-slate-800 focus:border-pink-500'}`} 
+                      placeholder="e.g. 1500" 
+                    />
+                    {mrp === "" && <span className="text-[8px] text-amber-500 font-bold block mt-0.5">Not Entered</span>}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3.5 pt-2 border-t border-slate-900">
                     <div>
                       <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">GST rate (%)</label>
@@ -1390,7 +1418,12 @@ export default function AdminDashboard() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-5 py-4 font-black text-white text-sm">₹{product.price}</td>
+                            <td className="px-5 py-4">
+                              <span className="font-black text-white text-sm block">₹{product.price}</span>
+                              {product.mrp && (
+                                <span className="text-[10px] text-slate-500 line-through block mt-0.5">MRP: ₹{product.mrp}</span>
+                              )}
+                            </td>
                             <td className="px-5 py-4 text-right">
                               <div className="flex justify-end space-x-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => handleEditClick(product)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white hover:bg-pink-500 rounded-lg transition-all cursor-pointer" title="Edit Item">
@@ -1515,6 +1548,18 @@ export default function AdminDashboard() {
                       <div>
                         <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Profit margin (₹) *</label>
                         <input type="number" required value={item.profit} onChange={(e) => updateBulkItem(index, "profit", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                      </div>
+
+                      {/* MRP */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">MRP (₹)</label>
+                        <input 
+                          type="number" 
+                          value={item.mrp || ""} 
+                          onChange={(e) => updateBulkItem(index, "mrp", e.target.value)} 
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" 
+                          placeholder="Leave blank for 1.5x" 
+                        />
                       </div>
 
                       <div>

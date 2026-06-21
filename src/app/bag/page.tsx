@@ -115,9 +115,20 @@ export default function BagPage() {
                 {item.size && (
                   <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>
                 )}
-                <div className="flex items-baseline space-x-2 mb-3">
+                <div className="flex items-baseline space-x-2 mb-3 flex-wrap">
                   <span className="font-bold text-sm text-gray-900">₹{item.price}</span>
-                  <span className="text-xs text-gray-400 line-through">₹{Math.round(item.price * 1.5)}</span>
+                  {(() => {
+                    const mrpVal = item.mrp || Math.round(item.price * 1.5);
+                    const discountPercent = mrpVal > item.price ? Math.round(((mrpVal - item.price) / mrpVal) * 100) : 0;
+                    return (
+                      mrpVal > item.price && (
+                        <>
+                          <span className="text-xs text-gray-400 line-through font-medium">₹{mrpVal}</span>
+                          <span className="text-[10px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                        </>
+                      )
+                    );
+                  })()}
                 </div>
 
                 {stockLevels[item.id] !== undefined && stockLevels[item.id] <= 0 && (

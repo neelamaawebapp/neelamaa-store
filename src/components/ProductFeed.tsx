@@ -159,7 +159,18 @@ export default function ProductFeed() {
           <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
           <div className="mt-2 flex items-baseline space-x-2 flex-wrap">
             <span className="font-extrabold text-[15px] text-pink-600">₹{product.price}</span>
-            <span className="text-[10px] text-gray-400 line-through font-medium">₹{Math.round(product.price * 1.5)}</span>
+            {(() => {
+              const mrpVal = product.mrp || Math.round(product.price * 1.5);
+              const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
+              return (
+                mrpVal > product.price && (
+                  <>
+                    <span className="text-[10px] text-gray-400 line-through font-medium">₹{mrpVal}</span>
+                    <span className="text-[10px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                  </>
+                )
+              );
+            })()}
           </div>
           {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) > 0 && Number(product.quantity) <= 5 && (
             <div className="mt-1.5 text-[10px] font-bold text-amber-600 uppercase tracking-wide">
