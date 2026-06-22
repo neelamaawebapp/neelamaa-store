@@ -5,6 +5,21 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 
+const getCustomerTime = (createdAt: any): number => {
+  if (!createdAt) return 0;
+  if (typeof createdAt.toDate === "function") {
+    return createdAt.toDate().getTime();
+  }
+  if (createdAt.seconds) {
+    return createdAt.seconds * 1000;
+  }
+  const dateParsed = new Date(createdAt);
+  if (!isNaN(dateParsed.getTime())) {
+    return dateParsed.getTime();
+  }
+  return 0;
+};
+
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -30,6 +45,12 @@ export default function AdminCustomers() {
       }
       if (sortBy === "name-desc") {
         return (b.name || "").localeCompare(a.name || "");
+      }
+      if (sortBy === "date-desc") {
+        return getCustomerTime(b.createdAt) - getCustomerTime(a.createdAt);
+      }
+      if (sortBy === "date-asc") {
+        return getCustomerTime(a.createdAt) - getCustomerTime(b.createdAt);
       }
       
       const ordersA = orders.filter(o => o.userId === a.id || (o.customerEmail && o.customerEmail === a.email)).length;
@@ -102,7 +123,8 @@ export default function AdminCustomers() {
               address: order.address || "",
               street: order.address?.split(",")[0] || "",
               city: order.address?.split(",")[1] || "",
-              pin: order.address?.split(",")[2] || ""
+              pin: order.address?.split(",")[2] || "",
+              createdAt: order.createdAt
             });
           } else {
             // Update address/phone if missing in the profile doc
@@ -118,6 +140,14 @@ export default function AdminCustomers() {
             }
             if ((!u.name || u.name === "Customer" || u.name === u.email?.split("@")[0]) && order.customerName) {
               u.name = order.customerName;
+            }
+            // Update/synthesize createdAt using the earliest order's createdAt
+            if (order.createdAt) {
+              if (!u.createdAt) {
+                u.createdAt = order.createdAt;
+              } else if (getCustomerTime(order.createdAt) < getCustomerTime(u.createdAt)) {
+                u.createdAt = order.createdAt;
+              }
             }
           }
         });
@@ -143,7 +173,8 @@ export default function AdminCustomers() {
                   address: mockAddr ? `${parsedAddr.street}, ${parsedAddr.city}, ${parsedAddr.pin}` : "",
                   street: parsedAddr.street,
                   city: parsedAddr.city,
-                  pin: parsedAddr.pin
+                  pin: parsedAddr.pin,
+                  createdAt: parsedUser.metadata?.createdAt || new Date().toISOString()
                 });
               }
             } catch (e) {
@@ -232,6 +263,8 @@ export default function AdminCustomers() {
             <option value="name-desc">Name (Z-A)</option>
             <option value="orders-desc">Orders (High to Low)</option>
             <option value="orders-asc">Orders (Low to High)</option>
+            <option value="date-desc">New to Old</option>
+            <option value="date-asc">Old to New</option>
           </select>
         </div>
       </div>
@@ -274,6 +307,12 @@ export default function AdminCustomers() {
                           <span className="flex items-center gap-1.5">
                             <Phone size={13} className="text-slate-500" />
                             {customer.phone}
+                          </span>
+                        )}
+                        {customer.createdAt && (
+                          <span className="flex items-center gap-1.5">
+                            <Calendar size={13} className="text-slate-500" />
+                            Joined: {formatOrderDate(customer.createdAt)}
                           </span>
                         )}
                       </div>
