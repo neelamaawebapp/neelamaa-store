@@ -25,6 +25,9 @@ export default function AdminDashboard() {
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
   const [homeSection, setHomeSection] = useState("Standard");
   const [gstRate, setGstRate] = useState("18");
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [skuEdited, setSkuEdited] = useState(false);
   
   // Pricing & Stock Fields
   const [quantity, setQuantity] = useState("");
@@ -247,6 +250,7 @@ export default function AdminDashboard() {
     courierCharges: string;
     otherExpenses: string;
     profit: string;
+    mrp: string;
     category: string;
     homeSection: string;
     gstRate: string;
@@ -464,6 +468,54 @@ export default function AdminDashboard() {
     setPastedUrl("");
   };
 
+  // Auto-generate SKU when brand or category changes (only for new products, if SKU was not manually edited)
+  useEffect(() => {
+    if (!editingId && !skuEdited) {
+      const randomNum = Math.floor(100000 + Math.random() * 900000);
+      const b = brand ? brand.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "CS";
+      const c = category ? category.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "GEN";
+      setSku(`${b || "CS"}-${c || "GEN"}-${randomNum}`);
+    }
+  }, [brand, category, editingId, skuEdited]);
+
+  const handleAddNewCategory = async (newCatName: string) => {
+    if (!newCatName.trim()) return;
+    const trimmed = newCatName.trim();
+    
+    // Check if it already exists
+    if (availableCategories.includes(trimmed)) {
+      setCategory(trimmed);
+      return;
+    }
+    
+    // 1. Update local state
+    const updatedCats = [...availableCategories, trimmed];
+    setAvailableCategories(updatedCats);
+    setCategory(trimmed);
+    
+    // 2. Save/Update Firestore settings/categories doc
+    try {
+      const { getDoc, setDoc, doc } = await import("firebase/firestore");
+      const docRef = doc(db, "settings", "categories");
+      const snap = await getDoc(docRef);
+      
+      let currentData: any[] = [];
+      if (snap.exists() && snap.data().data) {
+        currentData = snap.data().data;
+      } else {
+        currentData = STORE_CATEGORIES;
+      }
+      
+      // If category not already in Firestore doc, add it
+      if (!currentData.some((c: any) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+        const newData = [...currentData, { name: trimmed, image: "" }];
+        await setDoc(docRef, { data: newData });
+      }
+    } catch (e) {
+      console.error("Failed to add new category to Firestore settings", e);
+    }
+  };
+
   const resetForm = () => {
     setEditingId(null);
     setBrand("");
@@ -482,6 +534,9 @@ export default function AdminDashboard() {
     setProductImages([]);
     setPastedUrl("");
     setSku("");
+    setSkuEdited(false);
+    setIsAddingNewCategory(false);
+    setNewCategoryName("");
     setShortDescription("");
     setFullDescription("");
     setStatus("Active");
@@ -550,6 +605,7 @@ export default function AdminDashboard() {
     setProfit(product.profit !== undefined && product.profit !== null ? product.profit.toString() : "");
 
     setSku(product.sku || "");
+    setSkuEdited(true);
     setShortDescription(product.shortDescription || "");
     setFullDescription(product.fullDescription || "");
     setStatus(product.status || "Active");
@@ -704,7 +760,7 @@ export default function AdminDashboard() {
         images: uploadedUrls, // The full array of angles!
         
         // Flexible model fields
-        sku: sku.trim(),
+        sku: sku.trim() || `${brand ? brand.trim().substring(0, 3).toUpperCase() : "CS"}-${category ? category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
         shortDescription: shortDescription.trim(),
         fullDescription: fullDescription.trim(),
         status,
@@ -941,6 +997,7 @@ export default function AdminDashboard() {
           homeSection: item.homeSection,
           gstRate: Number(item.gstRate),
           image: finalUrl,
+          sku: `${item.brand ? item.brand.trim().substring(0, 3).toUpperCase() : "CS"}-${item.category ? item.category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
           createdAt: serverTimestamp(),
         };
 
@@ -1264,8 +1321,32 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">SKU CODE</label>
-                    <input type="text" value={sku} onChange={(e) => setSku(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-750" placeholder="e.g. NEE-GR-001" />
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">SKU CODE</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSkuEdited(false);
+                          const randomNum = Math.floor(100000 + Math.random() * 900000);
+                          const b = brand ? brand.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "CS";
+                          const c = category ? category.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "GEN";
+                          setSku(`${b || "CS"}-${c || "GEN"}-${randomNum}`);
+                        }}
+                        className="text-[9px] font-bold text-pink-500 hover:text-pink-400 cursor-pointer uppercase"
+                      >
+                        Auto-Generate
+                      </button>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={sku} 
+                      onChange={(e) => {
+                        setSku(e.target.value);
+                        setSkuEdited(true);
+                      }} 
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-750" 
+                      placeholder="e.g. NEE-GR-001" 
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">STATUS</label>
@@ -1330,20 +1411,60 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CATEGORY</label>
-                    <input 
-                      type="text" 
-                      list="category-options"
-                      required 
-                      value={category} 
-                      onChange={(e) => setCategory(e.target.value)} 
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" 
-                      placeholder="e.g. Kitchen"
-                    />
-                    <datalist id="category-options">
-                      {availableCategories.map(c => (
-                        <option key={c} value={c} />
-                      ))}
-                    </datalist>
+                    {isAddingNewCategory ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="New category name"
+                          className="flex-1 bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newCategoryName.trim()) {
+                              handleAddNewCategory(newCategoryName.trim());
+                              setNewCategoryName("");
+                              setIsAddingNewCategory(false);
+                            }
+                          }}
+                          className="bg-pink-600 hover:bg-pink-500 text-white rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewCategoryName("");
+                            setIsAddingNewCategory(false);
+                          }}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <select 
+                          value={category} 
+                          onChange={(e) => setCategory(e.target.value)} 
+                          className="flex-1 bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                        >
+                          {availableCategories.map(c => (
+                            <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingNewCategory(true)}
+                          className="bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-lg px-3.5 flex items-center justify-center text-slate-200 hover:text-pink-500 hover:border-pink-500/30 transition-all font-bold text-base cursor-pointer"
+                          title="Add New Category"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1684,7 +1805,6 @@ export default function AdminDashboard() {
                         <div key={idx} className="flex gap-2">
                           <input
                             type="text"
-                            required
                             value={row.name}
                             onChange={(e) => {
                               const newRows = [...attributeRows];
@@ -1696,7 +1816,6 @@ export default function AdminDashboard() {
                           />
                           <input
                             type="text"
-                            required
                             value={row.value}
                             onChange={(e) => {
                               const newRows = [...attributeRows];
@@ -2252,20 +2371,15 @@ export default function AdminDashboard() {
 
                       <div>
                         <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">CATEGORY *</label>
-                        <input 
-                          type="text" 
-                          list={`bulk-category-${index}`}
-                          required 
+                        <select 
                           value={item.category} 
                           onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
-                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" 
-                          placeholder="e.g. Fashion"
-                        />
-                        <datalist id={`bulk-category-${index}`}>
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none cursor-pointer"
+                        >
                           {availableCategories.map(c => (
-                            <option key={c} value={c} />
+                            <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
                           ))}
-                        </datalist>
+                        </select>
                       </div>
 
                       {/* Display calculated price for bulk item */}
