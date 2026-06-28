@@ -4,14 +4,28 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck, AlertTriangle, Tag, Check, X, Gift } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function BagPage() {
-  const { cart, removeFromBag, updateQuantity, totalAmount } = useCart();
+  const { 
+    cart, 
+    removeFromBag, 
+    updateQuantity, 
+    totalAmount,
+    couponCode,
+    couponDiscountPercent,
+    applyCouponCode,
+    removeCouponCode
+  } = useCart();
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
   const [loadingStock, setLoadingStock] = useState(true);
+
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     const fetchStock = async () => {
@@ -69,12 +83,40 @@ export default function BagPage() {
   const productDiscountAmount = totalMRP - totalSellingPrice;
   const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
   
-  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount;
+  // Coupon Discount
+  const couponDiscountAmount = Math.round(totalSellingPrice * (couponDiscountPercent / 100));
+  
+  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount + couponDiscountAmount;
   const calculatedDiscountPercent = totalMRP > 0 ? Math.round((totalDiscountAmount / totalMRP) * 100) : 0;
 
-  const finalAmount = totalMRP - totalDiscountAmount;
+  const finalAmount = Math.max(0, totalMRP - totalDiscountAmount);
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
+
+  const handleApply = async (codeToApply?: string) => {
+    const code = codeToApply || couponInput;
+    if (!code.trim()) {
+      setCouponError("Please enter a coupon code.");
+      setCouponSuccess("");
+      return;
+    }
+    setApplying(true);
+    setCouponError("");
+    setCouponSuccess("");
+    try {
+      const res = await applyCouponCode(code);
+      if (res.success) {
+        setCouponSuccess(res.message);
+        setCouponInput("");
+      } else {
+        setCouponError(res.message);
+      }
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to apply coupon.");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-md mx-auto relative pb-32">
@@ -204,6 +246,125 @@ export default function BagPage() {
             </div>
           )}
 
+          {/* Coupons Section */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mt-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+              <div className="flex items-center space-x-2 text-gray-800">
+                <Tag size={18} className="text-pink-500" />
+                <h3 className="font-bold text-sm uppercase tracking-wide">Apply Coupon</h3>
+              </div>
+              {couponCode && (
+                <span className="text-[10px] bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded border border-green-150 flex items-center gap-1">
+                  <Check size={10} className="stroke-[3]" /> Coupon Active
+                </span>
+              )}
+            </div>
+
+            {couponCode ? (
+              <div className="flex items-center justify-between bg-green-50/50 border border-green-100 rounded-xl p-3.5 animate-fade-in">
+                <div className="flex items-start space-x-2.5">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 flex-shrink-0 mt-0.5">
+                    <Gift size={16} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-gray-900 uppercase font-mono tracking-wider">{couponCode} APPLIED</h4>
+                    <p className="text-[11px] text-green-700 mt-0.5 font-medium">You saved ₹{couponDiscountAmount} ({couponDiscountPercent}% OFF)</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    removeCouponCode();
+                    setCouponSuccess("");
+                    setCouponError("");
+                  }}
+                  className="text-gray-400 hover:text-red-500 p-1.5 transition-colors cursor-pointer"
+                  title="Remove Coupon"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Enter Coupon Code (e.g. FIRSTBUY20)"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      setCouponError("");
+                      setCouponSuccess("");
+                    }}
+                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm uppercase font-mono tracking-wider focus:ring-1 focus:ring-pink-500 outline-none text-gray-900 placeholder-gray-400"
+                  />
+                  <button
+                    onClick={() => handleApply()}
+                    disabled={applying}
+                    className="bg-pink-500 text-white font-bold px-5 py-2.5 rounded-md hover:bg-pink-600 transition-colors text-xs uppercase tracking-wider disabled:opacity-75 cursor-pointer"
+                  >
+                    {applying ? "APPLYING..." : "APPLY"}
+                  </button>
+                </div>
+
+                {couponError && (
+                  <p className="text-red-500 text-[11px] font-bold flex items-center gap-1">
+                    <AlertTriangle size={12} /> {couponError}
+                  </p>
+                )}
+
+                {couponSuccess && (
+                  <p className="text-green-600 text-[11px] font-bold flex items-center gap-1">
+                    <Check size={12} className="stroke-[3]" /> {couponSuccess}
+                  </p>
+                )}
+
+                {/* Available Offers Accordion */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Available Coupons</span>
+                  <div className="space-y-2">
+                    {[
+                      { code: "FIRSTBUY20", desc: "Flat 20% OFF on your first purchase (Login Required)" },
+                      { code: "WELCOME15", desc: "Flat 15% OFF on your order" },
+                      { code: "CRAFTSTYLE10", desc: "Flat 10% OFF on your bag total" },
+                      { code: "FESTIVE25", desc: "Flat 25% OFF on orders above ₹1000" }
+                    ].map((c) => {
+                      const isDisabled = c.code === "FESTIVE25" && totalAmount < 1000;
+                      return (
+                        <div 
+                          key={c.code} 
+                          className={`flex items-center justify-between p-2.5 border rounded-lg transition-colors
+                            ${isDisabled 
+                              ? "bg-gray-50 border-gray-200 opacity-60" 
+                              : "border-gray-200 hover:border-pink-200 bg-white"}`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className={`font-mono text-[11px] font-extrabold tracking-wider px-1.5 py-0.5 rounded
+                              ${isDisabled 
+                                ? "bg-gray-200 text-gray-500" 
+                                : "bg-pink-50 text-pink-700"}`}>
+                              {c.code}
+                            </span>
+                            <p className="text-[10px] text-gray-500 mt-1 font-medium leading-tight">{c.desc}</p>
+                          </div>
+                          <button
+                            onClick={() => handleApply(c.code)}
+                            disabled={applying || isDisabled}
+                            className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded transition-colors flex-shrink-0 cursor-pointer
+                              ${isDisabled
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-pink-100 text-pink-700 hover:bg-pink-500 hover:text-white"}`}
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Price Details */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mt-4">
             <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide">Price Details ({cart.length} Items)</h3>
@@ -214,8 +375,17 @@ export default function BagPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Discount on MRP</span>
-                <span className="text-green-600">-₹{totalDiscountAmount} {calculatedDiscountPercent > 0 ? `(${calculatedDiscountPercent}% OFF)` : ""}</span>
+                <span className="text-green-600">-₹{productDiscountAmount + storeDiscountAmount}</span>
               </div>
+              {couponDiscountPercent > 0 && (
+                <div className="flex justify-between text-gray-600 animate-fade-in">
+                  <span className="flex items-center gap-1.5 text-green-600 font-medium">
+                    <Tag size={13} />
+                    <span>Coupon Discount ({couponCode})</span>
+                  </span>
+                  <span className="text-green-600 font-bold">-₹{couponDiscountAmount}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600">
                 <span>Platform Fee</span>
                 <span className="text-green-600">FREE</span>

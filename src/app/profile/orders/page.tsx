@@ -591,6 +591,14 @@ export default function CustomerOrdersPage() {
 
                   {/* Totals */}
                   <div className="border-t border-gray-100 pt-3 space-y-3">
+                    {order.couponCode && (
+                      <div className="flex justify-between items-center text-[11px] text-green-600 bg-green-50/50 border border-green-100/50 rounded-lg px-2.5 py-1.5 animate-fade-in">
+                        <span className="font-semibold flex items-center gap-1">
+                          🏷️ Coupon Applied: <span className="font-mono font-extrabold uppercase">{order.couponCode}</span>
+                        </span>
+                        <span className="font-bold">-₹{order.couponDiscountAmount}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">Ordered on: {formatOrderDate(order.createdAt)}</span>
                       <div className="text-right">

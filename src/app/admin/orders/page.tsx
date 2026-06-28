@@ -699,6 +699,15 @@ export default function AdminOrders() {
                       )}
                     </div>
 
+                    {order.couponCode && (
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5 border-t border-slate-850 pt-1.5">
+                        <span>Coupon Discount ({order.couponCode})</span>
+                        <span className="font-bold text-emerald-400">
+                          -₹{order.couponDiscountAmount || 0} ({order.couponDiscountPercent || 0}% OFF)
+                        </span>
+                      </div>
+                    )}
+
                     {order.courierCharges !== undefined && order.courierCharges > 0 && (
                       <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1.5">
                         <span>Courier Charges</span>

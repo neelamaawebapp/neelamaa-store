@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle } from "lucide-react";
+import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Script from "next/script";
 
 export default function CheckoutPage() {
-  const { cart, totalAmount, clearCart } = useCart();
+  const { cart, totalAmount, clearCart, couponCode, couponDiscountPercent } = useCart();
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -101,11 +101,14 @@ export default function CheckoutPage() {
   const productDiscountAmount = totalMRP - totalSellingPrice;
   const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
   
-  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount;
+  // Coupon Discount
+  const couponDiscountAmount = Math.round(totalSellingPrice * (couponDiscountPercent / 100));
+  
+  const totalDiscountAmount = productDiscountAmount + storeDiscountAmount + couponDiscountAmount;
   const calculatedDiscountPercent = totalMRP > 0 ? Math.round((totalDiscountAmount / totalMRP) * 100) : 0;
 
   const discount = storeDiscountAmount;
-  const finalAmount = totalMRP - totalDiscountAmount;
+  const finalAmount = Math.max(0, totalMRP - totalDiscountAmount);
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
@@ -241,10 +244,12 @@ export default function CheckoutPage() {
       // Calculate GST details
       let totalGstAmount = 0;
       let totalSubtotal = 0; // price without GST
+      
+      const totalDiscountPercent = discountPercent + couponDiscountPercent;
 
       const itemsWithGst = cart.map(item => {
         const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
-        const discountedPrice = item.price * (1 - discountPercent / 100);
+        const discountedPrice = item.price * (1 - totalDiscountPercent / 100);
         const basePrice = discountedPrice / (1 + (rate / 100));
         const gstAmount = discountedPrice - basePrice;
         
@@ -271,6 +276,9 @@ export default function CheckoutPage() {
         totalGst: Number(totalGstAmount.toFixed(2)),
         discountPercent: discountPercent,
         discountAmount: discount,
+        couponCode: couponCode || "",
+        couponDiscountPercent: couponDiscountPercent || 0,
+        couponDiscountAmount: couponDiscountAmount || 0,
         courierCharges: courierCharges,
         status: "Pending",
         paymentMethod: method,
@@ -558,8 +566,17 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Discount on MRP</span>
-              <span className="text-green-600">-₹{totalDiscountAmount} {calculatedDiscountPercent > 0 ? `(${calculatedDiscountPercent}% OFF)` : ""}</span>
+              <span className="text-green-600">-₹{productDiscountAmount + storeDiscountAmount}</span>
             </div>
+            {couponDiscountPercent > 0 && (
+              <div className="flex justify-between text-gray-600 animate-fade-in">
+                <span className="flex items-center gap-1.5 text-green-600 font-medium">
+                  <Tag size={13} />
+                  <span>Coupon Discount ({couponCode})</span>
+                </span>
+                <span className="text-green-600 font-bold">-₹{couponDiscountAmount}</span>
+              </div>
+            )}
             <div className="flex justify-between text-gray-600">
               <span>Platform Fee</span>
               <span className="text-green-600">FREE</span>

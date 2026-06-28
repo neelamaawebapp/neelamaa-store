@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { collection, doc, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, updateDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 
@@ -26,6 +26,10 @@ interface CartContextType {
   clearCart: () => Promise<void>;
   totalCount: number;
   totalAmount: number;
+  couponCode: string;
+  couponDiscountPercent: number;
+  applyCouponCode: (code: string) => Promise<{ success: boolean; message: string }>;
+  removeCouponCode: () => void;
 }
 
 const CartContext = createContext<CartContextType>({
@@ -36,11 +40,26 @@ const CartContext = createContext<CartContextType>({
   clearCart: async () => {},
   totalCount: 0,
   totalAmount: 0,
+  couponCode: "",
+  couponDiscountPercent: 0,
+  applyCouponCode: async () => ({ success: false, message: "" }),
+  removeCouponCode: () => {},
 });
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [couponDiscountPercent, setCouponDiscountPercent] = useState<number>(0);
+
+  useEffect(() => {
+    const savedCode = sessionStorage.getItem("craftstyle_applied_coupon");
+    const savedPercent = sessionStorage.getItem("craftstyle_applied_coupon_percent");
+    if (savedCode && savedPercent) {
+      setCouponCode(savedCode);
+      setCouponDiscountPercent(Number(savedPercent));
+    }
+  }, []);
 
   useEffect(() => {
     // If not logged in, load from localStorage
@@ -201,6 +220,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const clearCart = async () => {
     localStorage.removeItem("craftstyle_local_cart");
+    removeCouponCode();
     if (!user) {
       setCart([]);
       return;
@@ -219,8 +239,120 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  const checkFirstOrderEligible = async (userId: string) => {
+    try {
+      const ordersRef = collection(db, "orders");
+      const q = query(ordersRef, where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
+      
+      let hasOrders = false;
+      querySnapshot.forEach((doc) => {
+        const order = doc.data();
+        if (order.status !== "Cancelled") {
+          hasOrders = true;
+        }
+      });
+
+      if (hasOrders) return false;
+
+      // Check local storage orders too
+      const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
+      if (localOrdersStr) {
+        const localOrders = JSON.parse(localOrdersStr);
+        const activeLocalOrders = localOrders.filter((o: any) => o.status !== "Cancelled" && o.userId === userId);
+        if (activeLocalOrders.length > 0) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Error checking first order eligibility:", err);
+      return false;
+    }
+  };
+
+  const applyCouponCode = async (code: string): Promise<{ success: boolean; message: string }> => {
+    const upperCode = code.trim().toUpperCase();
+    if (!upperCode) {
+      return { success: false, message: "Please enter a coupon code." };
+    }
+
+    if (upperCode === "FIRSTBUY20") {
+      if (!user) {
+        return { success: false, message: "Please log in to apply this coupon." };
+      }
+      
+      const isEligible = await checkFirstOrderEligible(user.uid);
+      if (!isEligible) {
+        return { success: false, message: "This coupon is only valid for your first purchase." };
+      }
+
+      setCouponCode(upperCode);
+      setCouponDiscountPercent(20);
+      sessionStorage.setItem("craftstyle_applied_coupon", upperCode);
+      sessionStorage.setItem("craftstyle_applied_coupon_percent", "20");
+      return { success: true, message: "Coupon applied successfully! 20% discount on first purchase." };
+    }
+
+    if (upperCode === "WELCOME15") {
+      setCouponCode(upperCode);
+      setCouponDiscountPercent(15);
+      sessionStorage.setItem("craftstyle_applied_coupon", upperCode);
+      sessionStorage.setItem("craftstyle_applied_coupon_percent", "15");
+      return { success: true, message: "Coupon applied successfully! 15% discount applied." };
+    }
+
+    if (upperCode === "CRAFTSTYLE10") {
+      setCouponCode(upperCode);
+      setCouponDiscountPercent(10);
+      sessionStorage.setItem("craftstyle_applied_coupon", upperCode);
+      sessionStorage.setItem("craftstyle_applied_coupon_percent", "10");
+      return { success: true, message: "Coupon applied successfully! 10% discount applied." };
+    }
+
+    if (upperCode === "FESTIVE25") {
+      if (totalAmount < 1000) {
+        return { success: false, message: "This coupon is only valid for orders above ₹1000." };
+      }
+      setCouponCode(upperCode);
+      setCouponDiscountPercent(25);
+      sessionStorage.setItem("craftstyle_applied_coupon", upperCode);
+      sessionStorage.setItem("craftstyle_applied_coupon_percent", "25");
+      return { success: true, message: "Coupon applied successfully! 25% discount applied." };
+    }
+
+    return { success: false, message: "Invalid coupon code. Please try another one." };
+  };
+
+  const removeCouponCode = () => {
+    setCouponCode("");
+    setCouponDiscountPercent(0);
+    sessionStorage.removeItem("craftstyle_applied_coupon");
+    sessionStorage.removeItem("craftstyle_applied_coupon_percent");
+  };
+
+  // Automatically validate festive coupon threshold
+  useEffect(() => {
+    if (couponCode === "FESTIVE25" && totalAmount < 1000) {
+      removeCouponCode();
+    }
+  }, [totalAmount, couponCode]);
+
   return (
-    <CartContext.Provider value={{ cart, addToBag, removeFromBag, updateQuantity, clearCart, totalCount, totalAmount }}>
+    <CartContext.Provider value={{ 
+      cart, 
+      addToBag, 
+      removeFromBag, 
+      updateQuantity, 
+      clearCart, 
+      totalCount, 
+      totalAmount,
+      couponCode,
+      couponDiscountPercent,
+      applyCouponCode,
+      removeCouponCode
+    }}>
       {children}
     </CartContext.Provider>
   );
