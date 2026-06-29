@@ -134,8 +134,8 @@ export default function AdminDashboard() {
   };
 
   const handleSaveEditedImage = async (editedFile: File, editedDataUrl: string) => {
-    const optimizedFile = await autoAdjustImage(editedFile, 3 / 4);
-    const optimizedDataUrl = URL.createObjectURL(optimizedFile);
+    const optimizedFile = editedFile;
+    const optimizedDataUrl = editedDataUrl;
 
     if (cropQueue.length > 0) {
       const currentItem = cropQueue[0];

@@ -81,16 +81,9 @@ export default function CategoryMenu() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    setUploadingIdx(idx);
-    try {
-      const adjustedFile = await autoAdjustImage(file, 1);
-      await uploadAndSaveCategoryImg(adjustedFile, idx);
-    } catch (err) {
-      console.error("Failed to automatically adjust category image:", err);
-      alert("Failed to automatically adjust and upload category image.");
-    } finally {
-      setUploadingIdx(null);
-    }
+    // Open the editor immediately when a file is selected
+    setEditingIdx(idx);
+    setEditorImageUrl(URL.createObjectURL(file));
   };
 
   const handleSaveEditedCategory = async (editedFile: File) => {
@@ -98,8 +91,8 @@ export default function CategoryMenu() {
     setEditingIdx(null);
     setEditorImageUrl("");
     if (idx !== null) {
-      const adjustedFile = await autoAdjustImage(editedFile, 1);
-      await uploadAndSaveCategoryImg(adjustedFile, idx);
+      // The edited file is already properly adjusted/fitted inside the modal
+      await uploadAndSaveCategoryImg(editedFile, idx);
     }
   };
 

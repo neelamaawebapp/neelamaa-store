@@ -187,32 +187,8 @@ export default function BroadcastDashboard() {
   }, []);
 
   const handleUploadImageFile = async (file: File) => {
-    setUploadingImage(true);
-    setSuccess("");
-    setError("");
-    try {
-      const adjustedFile = await autoAdjustImage(file, 2 / 1);
-      const formData = new FormData();
-      formData.append("image", adjustedFile);
-      
-      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        setBroadcastImage(data.data.url);
-        setSuccess("Banner image uploaded and adjusted successfully!");
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        setError(data.error?.message || "Failed to upload image.");
-      }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during upload.");
-    } finally {
-      setUploadingImage(false);
-    }
+    // Deprecated direct upload - now goes through ImageEditorModal
+    setEditorImageUrl(URL.createObjectURL(file));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -231,7 +207,7 @@ export default function BroadcastDashboard() {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        await handleUploadImageFile(file);
+        setEditorImageUrl(URL.createObjectURL(file));
       } else {
         setError("Please drop a valid image file.");
       }
@@ -241,7 +217,7 @@ export default function BroadcastDashboard() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await handleUploadImageFile(file);
+      setEditorImageUrl(URL.createObjectURL(file));
     }
   };
 
@@ -252,9 +228,8 @@ export default function BroadcastDashboard() {
     setSuccess("");
     setError("");
     try {
-      const adjustedFile = await autoAdjustImage(editedFile, 2 / 1);
       const formData = new FormData();
-      formData.append("image", adjustedFile);
+      formData.append("image", editedFile);
       
       const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
         method: "POST",
@@ -275,6 +250,7 @@ export default function BroadcastDashboard() {
       setUploadingImage(false);
     }
   };
+
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();

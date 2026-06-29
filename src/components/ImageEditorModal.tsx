@@ -31,11 +31,18 @@ export default function ImageEditorModal({
   const [contrast, setContrast] = useState(100);
   const [saturation, setSaturation] = useState(100);
 
+  // Fit Modes
+  const [fitMode, setFitMode] = useState<"cover" | "contain-blur" | "contain-solid">("cover");
+  const [solidColor, setSolidColor] = useState("#ffffff");
+  const [blurRadius, setBlurRadius] = useState(20);
+
   const [isAnimated, setIsAnimated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isFixedRatio = typeof initialAspectRatio === "number" && !isNaN(initialAspectRatio);
 
   // Check if image is animated (APNG / GIF)
   useEffect(() => {
@@ -95,6 +102,17 @@ export default function ImageEditorModal({
       resetCropToRatio(aspectRatio);
     }
   }, [aspectRatio, loading]);
+
+  // Adjust aspect ratio behavior when fitMode changes
+  useEffect(() => {
+    if (isFixedRatio) {
+      if (fitMode === "cover") {
+        setAspectRatio(initialAspectRatio);
+      } else {
+        setAspectRatio("free");
+      }
+    }
+  }, [fitMode, initialAspectRatio, isFixedRatio]);
 
   // Handle Dragging / Resizing crop box
   const handlePointerDown = (e: React.PointerEvent, corner: string) => {
@@ -208,57 +226,183 @@ export default function ImageEditorModal({
     resetCropToRatio(initialAspectRatio);
   };
 
+  const drawOutput = (targetCanvas: HTMLCanvasElement, forExport: boolean) => {
+    const img = imageRef.current;
+    if (!img) return;
+
+    const ctx = targetCanvas.getContext("2d");
+    if (!ctx) return;
+
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+
+    // Convert percentage crop back to actual source image pixels
+    const cropX = (crop.x / 100) * imgWidth;
+    const cropY = (crop.y / 100) * imgHeight;
+    const cropW = (crop.width / 100) * imgWidth;
+    const cropH = (crop.height / 100) * imgHeight;
+
+    // Compute cropped source dimensions (rotated)
+    const isRotatedOrtho = rotation === 90 || rotation === 270;
+    const tempW = isRotatedOrtho ? cropH * scaleY : cropW * scaleX;
+    const tempH = isRotatedOrtho ? cropW * scaleX : cropH * scaleY;
+
+    // 1. Draw transformed cropped image onto a temporary canvas
+    const tempCanvas = document.createElement("canvas");
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) return;
+
+    tempCanvas.width = tempW;
+    tempCanvas.height = tempH;
+
+    // Apply color filters to temporary canvas
+    tempCtx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+
+    tempCtx.save();
+    tempCtx.translate(tempW / 2, tempH / 2);
+    tempCtx.rotate((rotation * Math.PI) / 180);
+    tempCtx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+
+    tempCtx.drawImage(
+      img,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+      -(cropW * scaleX) / 2,
+      -(cropH * scaleY) / 2,
+      cropW * scaleX,
+      cropH * scaleY
+    );
+    tempCtx.restore();
+
+    // 2. Compute final canvas dimensions
+    let targetRatio = 1;
+    if (typeof initialAspectRatio === "number" && !isNaN(initialAspectRatio)) {
+      targetRatio = initialAspectRatio;
+    } else {
+      targetRatio = tempW / tempH;
+    }
+
+    let finalW = tempW;
+    let finalH = tempH;
+
+    if (fitMode === "cover" || !isFixedRatio) {
+      // In cover mode, the crop box ratio matches targetRatio
+      finalW = tempW;
+      finalH = tempH;
+    } else {
+      // In contain mode, pad the canvas to match targetRatio
+      const tempRatio = tempW / tempH;
+      if (tempRatio > targetRatio) {
+        finalW = tempW;
+        finalH = tempW / targetRatio;
+      } else {
+        finalH = tempH;
+        finalW = tempH * targetRatio;
+      }
+    }
+
+    // Cap output width if exporting to keep web optimized (max width 1200px)
+    let outputW = finalW;
+    let outputH = finalH;
+    if (forExport) {
+      const maxExportWidth = 1200;
+      outputW = Math.min(maxExportWidth, finalW);
+      outputH = outputW / targetRatio;
+    } else {
+      // For preview, draw on a smaller resolution (max width 300px) for performance
+      const maxPreviewWidth = 300;
+      outputW = Math.min(maxPreviewWidth, finalW);
+      outputH = outputW / targetRatio;
+    }
+
+    targetCanvas.width = outputW;
+    targetCanvas.height = outputH;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, outputW, outputH);
+
+    // 3. Draw background / foreground based on fitMode
+    if (fitMode === "cover" || !isFixedRatio) {
+      ctx.drawImage(tempCanvas, 0, 0, outputW, outputH);
+    } else {
+      const canvasRatio = outputW / outputH;
+      const imgRatio = tempW / tempH;
+
+      // Fit scale & offset
+      let drawW = outputW;
+      let drawH = outputH;
+      if (imgRatio > canvasRatio) {
+        drawW = outputW;
+        drawH = outputW / imgRatio;
+      } else {
+        drawH = outputH;
+        drawW = outputH * imgRatio;
+      }
+      const drawX = (outputW - drawW) / 2;
+      const drawY = (outputH - drawH) / 2;
+
+      if (fitMode === "contain-blur") {
+        // Draw blurred cover background
+        ctx.save();
+        ctx.filter = `blur(${blurRadius}px) brightness(70%)`;
+        
+        let scaleCover = Math.max(outputW / tempW, outputH / tempH);
+        let covW_scaled = tempW * scaleCover;
+        let covH_scaled = tempH * scaleCover;
+        ctx.drawImage(
+          tempCanvas,
+          (outputW - covW_scaled) / 2,
+          (outputH - covH_scaled) / 2,
+          covW_scaled,
+          covH_scaled
+        );
+        ctx.restore();
+
+        // Overlay to darken slightly for text visibility & contrast
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.fillRect(0, 0, outputW, outputH);
+      } else if (fitMode === "contain-solid") {
+        ctx.fillStyle = solidColor;
+        ctx.fillRect(0, 0, outputW, outputH);
+      }
+
+      // Draw foreground centered and crisp
+      ctx.drawImage(tempCanvas, drawX, drawY, drawW, drawH);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      const canvas = previewCanvasRef.current;
+      if (canvas) {
+        drawOutput(canvas, false);
+      }
+    }
+  }, [
+    loading,
+    crop,
+    rotation,
+    flipH,
+    flipV,
+    scaleX,
+    scaleY,
+    brightness,
+    contrast,
+    saturation,
+    fitMode,
+    blurRadius,
+    solidColor,
+  ]);
+
   const handleSave = async () => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        const imgWidth = img.naturalWidth;
-        const imgHeight = img.naturalHeight;
-
-        // Convert percentage crop back to actual source image pixels
-        const cropX = (crop.x / 100) * imgWidth;
-        const cropY = (crop.y / 100) * imgHeight;
-        const cropW = (crop.width / 100) * imgWidth;
-        const cropH = (crop.height / 100) * imgHeight;
-
-        // Compute output dimension including stretching (Scale X, Scale Y)
-        const outputW = cropW * scaleX;
-        const outputH = cropH * scaleY;
-
-        // Check if rotated orthogonal (90 / 270 deg)
-        const isRotatedOrtho = rotation === 90 || rotation === 270;
-        const canvasW = isRotatedOrtho ? outputH : outputW;
-        const canvasH = isRotatedOrtho ? outputW : outputH;
-
-        canvas.width = canvasW;
-        canvas.height = canvasH;
-
-        // Apply filters (brightness, contrast, saturation)
-        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-
-        // Draw image onto canvas applying transformations
-        ctx.save();
-        ctx.translate(canvasW / 2, canvasH / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
-
-        ctx.drawImage(
-          img,
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-          -outputW / 2,
-          -outputH / 2,
-          outputW,
-          outputH
-        );
-        ctx.restore();
+        drawOutput(canvas, true);
 
         // Convert canvas to blob/file
         canvas.toBlob(
@@ -388,30 +532,132 @@ export default function ImageEditorModal({
           </div>
 
           <div className="p-4 space-y-5 flex-1">
-            {/* Aspect Ratio Presets */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Crop Aspect Ratio</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { label: "Free", value: "free" },
-                  { label: "1:1 Square", value: 1 },
-                  { label: "3:4 Item", value: 3 / 4 },
-                  { label: "16:9 Slide", value: 16 / 9 },
-                  { label: "21:9 Banner", value: 21 / 9 },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={() => setAspectRatio(item.value as any)}
-                    className={`px-2 py-1.5 rounded-lg text-[10px] font-bold border transition-all truncate cursor-pointer ${
-                      aspectRatio === item.value
-                        ? "bg-gradient-to-r from-pink-500 to-orange-500 border-transparent text-white"
-                        : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            {/* Live Output Preview */}
+            {isFixedRatio && (
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 w-full text-left">Live Output Preview</span>
+                <div className="w-full flex items-center justify-center bg-slate-900 rounded p-2 min-h-[90px]">
+                  <canvas 
+                    ref={previewCanvasRef} 
+                    className="max-w-full h-auto rounded border border-slate-800 shadow-inner" 
+                    style={{ maxHeight: "100px" }}
+                  />
+                </div>
               </div>
+            )}
+
+            {/* Fit Mode Selection */}
+            {isFixedRatio && (
+              <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fit / Layout Mode</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: "Fill & Crop", value: "cover" },
+                    { label: "Pad & Blur", value: "contain-blur" },
+                    { label: "Pad & Solid", value: "contain-solid" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setFitMode(item.value as any)}
+                      className={`px-1 py-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer text-center ${
+                        fitMode === item.value
+                          ? "bg-gradient-to-r from-pink-500 to-orange-500 border-transparent text-white"
+                          : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Blur Options */}
+            {isFixedRatio && fitMode === "contain-blur" && (
+              <div className="space-y-1.5 border-t border-slate-800/60 pt-4">
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>Blur Radius: {blurRadius}px</span>
+                  <button onClick={() => setBlurRadius(20)} className="text-pink-500 hover:underline">Reset</button>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  value={blurRadius}
+                  onChange={(e) => setBlurRadius(parseInt(e.target.value))}
+                  className="w-full accent-pink-500 bg-slate-950 rounded-lg appearance-none h-1.5 cursor-pointer"
+                />
+              </div>
+            )}
+
+            {/* Solid Color Options */}
+            {isFixedRatio && fitMode === "contain-solid" && (
+              <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Background Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={solidColor}
+                    onChange={(e) => setSolidColor(e.target.value)}
+                    className="w-8 h-8 rounded border border-slate-700 bg-transparent cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={solidColor}
+                    onChange={(e) => setSolidColor(e.target.value)}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white uppercase focus:border-pink-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-1.5">
+                  {["#ffffff", "#000000", "#f3f4f6", "#e5e7eb", "#111827"].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSolidColor(color)}
+                      className={`w-6 h-6 rounded border transition-transform ${
+                        solidColor.toLowerCase() === color.toLowerCase() ? "border-pink-500 scale-110" : "border-slate-800"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Aspect Ratio Presets */}
+            <div className="border-t border-slate-800/60 pt-4">
+              {isFixedRatio && fitMode === "cover" ? (
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-center text-xs text-slate-400">
+                  Crop ratio locked to <span className="text-pink-500 font-bold">{initialAspectRatio === 21/9 ? "21:9 Banner" : initialAspectRatio === 3/4 ? "3:4 Product" : initialAspectRatio === 2 ? "2:1 Broadcast" : initialAspectRatio === 1 ? "1:1 Square" : `${initialAspectRatio.toFixed(2)}:1`}</span> for Fill & Crop.
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Crop Aspect Ratio</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { label: "Free", value: "free" },
+                      { label: "1:1 Square", value: 1 },
+                      { label: "3:4 Item", value: 3 / 4 },
+                      { label: "16:9 Slide", value: 16 / 9 },
+                      { label: "21:9 Banner", value: 21 / 9 },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => setAspectRatio(item.value as any)}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold border transition-all truncate cursor-pointer ${
+                          aspectRatio === item.value
+                            ? "bg-gradient-to-r from-pink-500 to-orange-500 border-transparent text-white"
+                            : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Stretching / Independent Scale */}

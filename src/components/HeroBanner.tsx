@@ -100,16 +100,9 @@ export default function HeroBanner() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    setUploadingIdx(idx);
-    try {
-      const adjustedFile = await autoAdjustImage(file, 21 / 9);
-      await uploadAndSaveBannerImg(adjustedFile, idx);
-    } catch (err) {
-      console.error("Failed to automatically adjust banner image:", err);
-      alert("Failed to automatically adjust and upload banner image.");
-    } finally {
-      setUploadingIdx(null);
-    }
+    // Open the editor immediately when a file is selected
+    setEditingIdx(idx);
+    setEditorImageUrl(URL.createObjectURL(file));
   };
 
   const handleSaveEditedBanner = async (editedFile: File) => {
@@ -117,8 +110,8 @@ export default function HeroBanner() {
     setEditingIdx(null);
     setEditorImageUrl("");
     if (idx !== null) {
-      const adjustedFile = await autoAdjustImage(editedFile, 21 / 9);
-      await uploadAndSaveBannerImg(adjustedFile, idx);
+      // The edited file is already properly adjusted/fitted inside the modal
+      await uploadAndSaveBannerImg(editedFile, idx);
     }
   };
 
