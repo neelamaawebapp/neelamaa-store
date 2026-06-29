@@ -192,19 +192,28 @@ export default function HeroBanner() {
               
               {/* Banner Content Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4">
-                <div className="bg-white rounded-md w-max px-3 py-2 flex items-center space-x-3 mb-2 shadow-sm">
-                  <span className="font-bold text-sm tracking-widest text-gray-800">{banner.brand1}</span>
-                  <div className="h-4 w-px bg-gray-300"></div>
-                  <span className="font-bold text-sm text-red-600">{banner.brand2}</span>
-                  <span className="text-xs text-gray-500 font-medium">& More</span>
-                </div>
+                {(banner.brand1 || banner.brand2) && (
+                  <div className="bg-white rounded-md w-max px-3 py-2 flex items-center space-x-3 mb-2 shadow-sm">
+                    {banner.brand1 && <span className="font-bold text-sm tracking-widest text-gray-800">{banner.brand1}</span>}
+                    {banner.brand1 && banner.brand2 && <div className="h-4 w-px bg-gray-300"></div>}
+                    {banner.brand2 && <span className="font-bold text-sm text-red-600">{banner.brand2}</span>}
+                  </div>
+                )}
                 
                 <h2 className="text-white text-4xl font-serif font-bold mb-2 tracking-wide">{banner.title}</h2>
                 <div className="flex items-center justify-between w-full">
                   <p className="text-white text-sm font-medium">{banner.subtitle}</p>
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentIndex((prev) => (prev + 1) % banners.length);
+                    }}
+                    className="w-8 h-8 bg-white hover:bg-gray-100 hover:scale-105 active:scale-95 transition-all rounded-full flex items-center justify-center shadow-md cursor-pointer border-none outline-none"
+                  >
                     <ChevronRight size={20} className="text-gray-800" />
-                  </div>
+                  </button>
                 </div>
               </div>
             </Link>
