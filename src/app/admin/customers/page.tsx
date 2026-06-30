@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X, Trash2 } from "lucide-react";
 
 const getCustomerTime = (createdAt: any): number => {
   if (!createdAt) return 0;
@@ -80,6 +80,29 @@ export default function AdminCustomers() {
           console.error("Failed to fetch remote users", e);
         }
 
+        // 1b. Fetch deleted customer accounts list to filter them out
+        let deletedUserIds: string[] = [];
+        try {
+          const deletedSnap = await getDocs(collection(db, "deletedCustomers"));
+          deletedUserIds = deletedSnap.docs.map(doc => doc.id);
+        } catch (e) {
+          console.error("Failed to fetch deleted customers list", e);
+        }
+
+        if (typeof window !== "undefined") {
+          try {
+            const localDeleted = JSON.parse(localStorage.getItem("craftstyle_deleted_customers") || "[]");
+            localDeleted.forEach((id: string) => {
+              if (!deletedUserIds.includes(id)) {
+                deletedUserIds.push(id);
+              }
+            });
+          } catch (e) {}
+        }
+
+        // Filter remoteUsers
+        remoteUsers = remoteUsers.filter(u => !deletedUserIds.includes(u.id));
+
         // 2. Fetch remote orders
         let remoteOrders: any[] = [];
         try {
@@ -112,6 +135,8 @@ export default function AdminCustomers() {
         
         allOrders.forEach((order: any) => {
           if (!order.userId || order.userId === "guest") return;
+          if (deletedUserIds.includes(order.userId)) return;
+          if (order.customerEmail && deletedUserIds.some(id => id.toLowerCase() === order.customerEmail.toLowerCase())) return;
           
           const userIndex = mergedUsers.findIndex(u => u.id === order.userId || (u.email && u.email.toLowerCase() === order.customerEmail?.toLowerCase()));
           if (userIndex === -1) {
@@ -159,23 +184,25 @@ export default function AdminCustomers() {
           if (mockUser) {
             try {
               const parsedUser = JSON.parse(mockUser);
-              const exists = mergedUsers.some(u => u.email === parsedUser.email);
-              if (!exists) {
-                let parsedAddr = { street: "", city: "", pin: "", phone: "" };
-                if (mockAddr) {
-                  parsedAddr = JSON.parse(mockAddr);
+              if (!deletedUserIds.includes(parsedUser.uid)) {
+                const exists = mergedUsers.some(u => u.email === parsedUser.email);
+                if (!exists) {
+                  let parsedAddr = { street: "", city: "", pin: "", phone: "" };
+                  if (mockAddr) {
+                    parsedAddr = JSON.parse(mockAddr);
+                  }
+                  mergedUsers.push({
+                    id: parsedUser.uid,
+                    name: parsedUser.displayName || parsedUser.email.split("@")[0],
+                    email: parsedUser.email,
+                    phone: parsedAddr.phone || "",
+                    address: mockAddr ? `${parsedAddr.street}, ${parsedAddr.city}, ${parsedAddr.pin}` : "",
+                    street: parsedAddr.street,
+                    city: parsedAddr.city,
+                    pin: parsedAddr.pin,
+                    createdAt: parsedUser.metadata?.createdAt || new Date().toISOString()
+                  });
                 }
-                mergedUsers.push({
-                  id: parsedUser.uid,
-                  name: parsedUser.displayName || parsedUser.email.split("@")[0],
-                  email: parsedUser.email,
-                  phone: parsedAddr.phone || "",
-                  address: mockAddr ? `${parsedAddr.street}, ${parsedAddr.city}, ${parsedAddr.pin}` : "",
-                  street: parsedAddr.street,
-                  city: parsedAddr.city,
-                  pin: parsedAddr.pin,
-                  createdAt: parsedUser.metadata?.createdAt || new Date().toISOString()
-                });
               }
             } catch (e) {
               console.error(e);
@@ -194,6 +221,65 @@ export default function AdminCustomers() {
 
     fetchCustomersAndOrders();
   }, []);
+
+  const handleDeleteCustomer = async (e: React.MouseEvent, customer: any) => {
+    e.stopPropagation();
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete the customer account for ${customer.name || customer.email}?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      // 1. Delete user doc from Firestore
+      try {
+        await deleteDoc(doc(db, "users", customer.id));
+      } catch (err) {
+        console.error("Failed to delete user profile from Firestore:", err);
+      }
+
+      // 2. Track in Firestore deletedCustomers collection
+      try {
+        await setDoc(doc(db, "deletedCustomers", customer.id), {
+          id: customer.id,
+          email: customer.email || "",
+          deletedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Failed to set deleted customer record:", err);
+      }
+
+      // 3. Update localStorage deleted list & remove mock user if it matches
+      if (typeof window !== "undefined") {
+        try {
+          const localDeleted = JSON.parse(localStorage.getItem("craftstyle_deleted_customers") || "[]");
+          if (!localDeleted.includes(customer.id)) {
+            localDeleted.push(customer.id);
+            localStorage.setItem("craftstyle_deleted_customers", JSON.stringify(localDeleted));
+          }
+
+          // If deleting the active mock user, clear it from localStorage
+          const mockUserStr = localStorage.getItem("craftstyle_mock_user");
+          if (mockUserStr) {
+            const parsedMock = JSON.parse(mockUserStr);
+            if (parsedMock.uid === customer.id || parsedMock.email === customer.email) {
+              localStorage.removeItem("craftstyle_mock_user");
+              localStorage.removeItem("craftstyle_mock_user_address");
+            }
+          }
+        } catch (e) {
+          console.error("Failed to access local storage for deletion updates", e);
+        }
+      }
+
+      // 4. Update state to reflect change instantly
+      setCustomers(prev => prev.filter(c => c.id !== customer.id));
+      alert("Customer account successfully deleted.");
+    } catch (err) {
+      console.error("Deletion error:", err);
+      alert("Error occurred while deleting account.");
+    }
+  };
 
   const getCustomerOrders = (userId: string, email: string) => {
     return orders.filter(order => order.userId === userId || (order.customerEmail && order.customerEmail === email));
@@ -319,11 +405,21 @@ export default function AdminCustomers() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4.5 w-full md:w-auto justify-between md:justify-end">
+                  <div className="flex items-center gap-4.5 w-full md:w-auto justify-between md:justify-end" onClick={(e) => e.stopPropagation()}>
                     <span className="bg-slate-950 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-xl border border-slate-850">
                       {customerOrders.length} {customerOrders.length === 1 ? "Order" : "Orders"}
                     </span>
-                    <button className="text-slate-400 hover:text-slate-200 transition-colors">
+                    <button 
+                      onClick={(e) => handleDeleteCustomer(e, customer)}
+                      className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-2 rounded-xl transition-all border border-transparent hover:border-rose-500/20 cursor-pointer"
+                      title="Delete Customer Account"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => toggleExpand(customer.id)}
+                      className="text-slate-400 hover:text-slate-200 transition-colors p-2 cursor-pointer"
+                    >
                       {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
                   </div>
