@@ -88,6 +88,7 @@ export default function AdminDashboard() {
   const [tableFilter, setTableFilter] = useState<"all" | "lowStock" | "incomplete">("all");
 
   // Flash Sale State
+  const [flashSaleStart, setFlashSaleStart] = useState("");
   const [flashSaleEnd, setFlashSaleEnd] = useState("");
   const [flashSaleLoading, setFlashSaleLoading] = useState(false);
 
@@ -278,11 +279,20 @@ export default function AdminDashboard() {
       });
       // Fetch Flash Sale Setting
       getDoc(doc(db, "settings", "flashSale")).then((snap) => {
-        if (snap.exists() && snap.data().endTime) {
-          const date = snap.data().endTime.toDate();
-          const offset = date.getTimezoneOffset() * 60000;
-          const localISOTime = (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
-          setFlashSaleEnd(localISOTime);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.startTime) {
+            const date = data.startTime.toDate();
+            const offset = date.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
+            setFlashSaleStart(localISOTime);
+          }
+          if (data.endTime) {
+            const date = data.endTime.toDate();
+            const offset = date.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
+            setFlashSaleEnd(localISOTime);
+          }
         }
       });
       // Fetch Promo Ticker Setting
@@ -337,13 +347,22 @@ export default function AdminDashboard() {
     Number(profit || 0);
 
   const saveFlashSaleTimer = async () => {
-    if (!flashSaleEnd) return;
+    if (!flashSaleStart || !flashSaleEnd) {
+      alert("Please set both start and end times.");
+      return;
+    }
+    const startObj = new Date(flashSaleStart);
+    const endObj = new Date(flashSaleEnd);
+    if (endObj <= startObj) {
+      alert("End time must be after start time.");
+      return;
+    }
     setFlashSaleLoading(true);
     try {
       const { doc, setDoc, Timestamp } = await import("firebase/firestore");
-      const dateObj = new Date(flashSaleEnd);
       await setDoc(doc(db, "settings", "flashSale"), {
-        endTime: Timestamp.fromDate(dateObj)
+        startTime: Timestamp.fromDate(startObj),
+        endTime: Timestamp.fromDate(endObj)
       });
       setSuccess("Flash sale timer updated!");
       setTimeout(() => setSuccess(""), 3000);
@@ -1973,18 +1992,29 @@ export default function AdminDashboard() {
             {/* Flash Sale Settings Panel */}
             <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 mt-6 shadow-xl">
               <h2 className="text-base font-extrabold text-white mb-4">Flash Sale Settings</h2>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">END TIME</label>
-                <input 
-                  type="datetime-local" 
-                  value={flashSaleEnd} 
-                  onChange={(e) => setFlashSaleEnd(e.target.value)} 
-                  className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all mb-4" 
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">START TIME</label>
+                  <input 
+                    type="datetime-local" 
+                    value={flashSaleStart} 
+                    onChange={(e) => setFlashSaleStart(e.target.value)} 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">END TIME</label>
+                  <input 
+                    type="datetime-local" 
+                    value={flashSaleEnd} 
+                    onChange={(e) => setFlashSaleEnd(e.target.value)} 
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all" 
+                  />
+                </div>
                 <button 
                   onClick={saveFlashSaleTimer} 
                   disabled={flashSaleLoading} 
-                  className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800"
+                  className="w-full bg-slate-850 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl disabled:opacity-75 transition-all cursor-pointer text-xs uppercase tracking-wider border border-slate-800 mt-2"
                 >
                   {flashSaleLoading ? "SAVING..." : "SET TIMER"}
                 </button>

@@ -37,7 +37,9 @@ function seededShuffle<T>(array: T[], seed: string): T[] {
 export default function ProductFeed() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [flashSaleStartTime, setFlashSaleStartTime] = useState<number | null>(null);
   const [flashSaleEndTime, setFlashSaleEndTime] = useState<number | null>(null);
+  const [flashSaleState, setFlashSaleState] = useState<"upcoming" | "active" | "ended">("ended");
   const [flashSaleCountdown, setFlashSaleCountdown] = useState<string>("00:00:00");
   
   const searchParams = useSearchParams();
@@ -62,8 +64,14 @@ export default function ProductFeed() {
         // Fetch Flash Sale settings
         const { getDoc, doc: fdoc } = await import("firebase/firestore");
         const snap = await getDoc(fdoc(db, "settings", "flashSale"));
-        if (snap.exists() && snap.data().endTime) {
-          setFlashSaleEndTime(snap.data().endTime.toMillis());
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.startTime) {
+            setFlashSaleStartTime(data.startTime.toMillis());
+          }
+          if (data.endTime) {
+            setFlashSaleEndTime(data.endTime.toMillis());
+          }
         }
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -80,25 +88,41 @@ export default function ProductFeed() {
     
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const distance = flashSaleEndTime - now;
       
-      if (distance < 0) {
-        setFlashSaleCountdown("ENDED");
-        clearInterval(interval);
-        return;
+      if (flashSaleStartTime && now < flashSaleStartTime) {
+        setFlashSaleState("upcoming");
+        const distance = flashSaleStartTime - now;
+        
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        setFlashSaleCountdown(
+          `Starts In: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+      } else {
+        const distance = flashSaleEndTime - now;
+        
+        if (distance < 0) {
+          setFlashSaleState("ended");
+          setFlashSaleCountdown("ENDED");
+          clearInterval(interval);
+          return;
+        }
+        
+        setFlashSaleState("active");
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        setFlashSaleCountdown(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
       }
-      
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      
-      setFlashSaleCountdown(
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [flashSaleEndTime]);
+  }, [flashSaleStartTime, flashSaleEndTime]);
 
   // Filtering Logic
   let filteredProducts = products;
@@ -295,7 +319,7 @@ export default function ProductFeed() {
       </div>
 
       {/* 2. Flash Sale Section */}
-      {flashDeals.length > 0 && (
+      {flashDeals.length > 0 && flashSaleState !== "ended" && (
         <div className="bg-white/60 backdrop-blur-xl border-y border-white/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
           {/* Subtle background element for the glassmorphism to pop against */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-slate-200 rounded-full blur-3xl opacity-30 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
@@ -303,12 +327,17 @@ export default function ProductFeed() {
           <div className="flex justify-between items-end mb-5 relative z-10">
             <div>
               <div className="flex items-center space-x-1 mb-1">
-                <Zap size={16} className="text-gray-500" />
-                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Limited Time</span>
+                <Zap size={16} className={flashSaleState === 'upcoming' ? "text-amber-500" : "text-gray-500"} />
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${flashSaleState === 'upcoming' ? "text-amber-600" : "text-gray-500"}`}>
+                  {flashSaleState === 'upcoming' ? "Coming Soon" : "Limited Time"}
+                </span>
               </div>
-              <h2 className="text-2xl font-serif font-bold text-pink-600 leading-none">Flash Sale</h2>
+              <h2 className={`text-2xl font-serif font-bold leading-none ${flashSaleState === 'upcoming' ? "text-slate-800" : "text-pink-600"}`}>Flash Sale</h2>
             </div>
-            <div className="text-pink-600 bg-white px-2 py-1 rounded shadow-sm border border-slate-100 text-xs font-mono font-bold tracking-wider">
+            <div className={`px-2 py-1 rounded shadow-sm border text-xs font-mono font-bold tracking-wider transition-all duration-300
+              ${flashSaleState === 'upcoming' 
+                ? 'text-amber-600 bg-amber-50/80 border-amber-200/60 shadow-inner' 
+                : 'text-pink-600 bg-white border-slate-100'}`}>
               {flashSaleCountdown}
             </div>
           </div>
