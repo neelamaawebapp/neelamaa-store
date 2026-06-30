@@ -165,7 +165,7 @@ export default function HeroBanner() {
       )}
 
       {/* Main Banner */}
-      <div className="relative w-full h-[400px] overflow-hidden bg-gray-100">
+      <div className="relative w-full aspect-[21/9] overflow-hidden bg-gray-100">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
@@ -189,33 +189,6 @@ export default function HeroBanner() {
                   banner.image?.toLowerCase().includes(".gif")
                 }
               />
-              
-              {/* Banner Content Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4">
-                {(banner.brand1 || banner.brand2) && (
-                  <div className="bg-white rounded-md w-max px-3 py-2 flex items-center space-x-3 mb-2 shadow-sm">
-                    {banner.brand1 && <span className="font-bold text-sm tracking-widest text-gray-800">{banner.brand1}</span>}
-                    {banner.brand1 && banner.brand2 && <div className="h-4 w-px bg-gray-300"></div>}
-                    {banner.brand2 && <span className="font-bold text-sm text-red-600">{banner.brand2}</span>}
-                  </div>
-                )}
-                
-                <h2 className="text-white text-4xl font-serif font-bold mb-2 tracking-wide">{banner.title}</h2>
-                <div className="flex items-center justify-between w-full">
-                  <p className="text-white text-sm font-medium">{banner.subtitle}</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCurrentIndex((prev) => (prev + 1) % banners.length);
-                    }}
-                    className="w-8 h-8 bg-white hover:bg-gray-100 hover:scale-105 active:scale-95 transition-all rounded-full flex items-center justify-center shadow-md cursor-pointer border-none outline-none"
-                  >
-                    <ChevronRight size={20} className="text-gray-800" />
-                  </button>
-                </div>
-              </div>
             </Link>
           ))
         )}
@@ -310,62 +283,6 @@ export default function HeroBanner() {
                   </div>
 
                   <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">MAIN TITLE</label>
-                      <input 
-                        type="text" 
-                        value={banner.title} 
-                        onChange={(e) => {
-                          const newB = [...editBanners];
-                          newB[idx].title = e.target.value;
-                          setEditBanners(newB);
-                        }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
-                        placeholder="e.g. Diwali Special"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">SUBTITLE</label>
-                      <input 
-                        type="text" 
-                        value={banner.subtitle} 
-                        onChange={(e) => {
-                          const newB = [...editBanners];
-                          newB[idx].subtitle = e.target.value;
-                          setEditBanners(newB);
-                        }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500" 
-                        placeholder="e.g. FLAT 50% OFF"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">BRAND 1</label>
-                        <input 
-                          type="text" 
-                          value={banner.brand1 || ""} 
-                          onChange={(e) => {
-                            const newB = [...editBanners];
-                            newB[idx].brand1 = e.target.value;
-                            setEditBanners(newB);
-                          }}
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500 uppercase" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">BRAND 2</label>
-                        <input 
-                          type="text" 
-                          value={banner.brand2 || ""} 
-                          onChange={(e) => {
-                            const newB = [...editBanners];
-                            newB[idx].brand2 = e.target.value;
-                            setEditBanners(newB);
-                          }}
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-500 uppercase" 
-                        />
-                      </div>
-                    </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1">REDIRECT LINK</label>
                       <input 
