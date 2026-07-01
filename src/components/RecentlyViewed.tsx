@@ -100,7 +100,7 @@ export default function RecentlyViewed() {
   }
 
   return (
-    <div className="bg-[#F9F9F9] p-4 pt-6 pb-4 relative">
+    <div className="bg-transparent p-4 pt-6 pb-4 relative">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-serif font-black text-slate-800 tracking-tight flex items-center gap-1.5">
           <span>Keep Shopping For</span>

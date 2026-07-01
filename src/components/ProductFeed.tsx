@@ -304,10 +304,10 @@ export default function ProductFeed() {
   const allOtherProducts = shuffledCandidates.slice(trendingLimit);
 
   return (
-    <div className="bg-gray-50 pb-24 space-y-2">
+    <div className="bg-transparent pb-24 space-y-6">
       
       {/* 1. Explore More / Main Grid (Trending) */}
-      <div className="bg-[#F9F9F9] p-4 pt-8 pb-4 relative">
+      <div className="bg-transparent p-4 pt-8 pb-4 relative">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
         </div>
@@ -352,7 +352,7 @@ export default function ProductFeed() {
 
       {/* 3. New Arrivals Section */}
       {newArrivals.length > 0 && (
-        <div className="bg-[#F9F9F9] p-4 py-8 relative">
+        <div className="bg-transparent p-4 py-8 relative">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
             <Link href="/categories" className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
@@ -368,7 +368,7 @@ export default function ProductFeed() {
       )}
 
       {/* 4. All Other Products (Standard) */}
-      <div className="bg-[#F9F9F9] p-4 pt-4 min-h-screen">
+      <div className="bg-transparent p-4 pt-4 min-h-screen">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">More to Explore</h2>
         </div>
