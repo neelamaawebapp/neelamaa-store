@@ -100,13 +100,13 @@ export default function RecentlyViewed() {
   }
 
   return (
-    <div className="bg-transparent p-4 pt-6 pb-4 relative">
+    <div className="bg-gradient-to-b from-[#fff0f5] to-white p-4 pt-6 pb-6 border-y border-pink-100/20 relative">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-serif font-black text-slate-100 tracking-tight flex items-center gap-1.5">
+        <h2 className="text-xl font-serif font-black text-slate-800 tracking-tight flex items-center gap-1.5">
           <span>Keep Shopping For</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-pink-600 animate-pulse"></span>
         </h2>
-        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700/30">
+        <span className="text-[10px] text-pink-600 font-bold uppercase tracking-wider bg-pink-50/85 px-2 py-0.5 rounded border border-pink-100/60">
           From where you left
         </span>
       </div>

@@ -17,18 +17,18 @@ export default function Footer() {
   }
 
   return (
-    <footer className={`bg-slate-950 border-t border-slate-900 py-8 px-4 text-center ${pbClass} w-full max-w-md mx-auto`}>
-      <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm mb-6 text-slate-400 font-medium px-4">
-        <Link href="/customer-care" className="hover:text-pink-400 transition-colors">Customer Care</Link>
-        <Link href="/privacy" className="hover:text-pink-400 transition-colors">Privacy Policy</Link>
-        <Link href="/terms" className="hover:text-pink-400 transition-colors">Terms & Conditions</Link>
-        <Link href="/shipping" className="hover:text-pink-400 transition-colors">Shipping & Delivery</Link>
-        <Link href="/cancellation" className="hover:text-pink-400 transition-colors">Cancellation & Refund</Link>
+    <footer className={`bg-gray-50 border-t border-gray-200 py-8 px-4 text-center ${pbClass} w-full max-w-md mx-auto`}>
+      <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm mb-6 text-gray-600 font-medium px-4">
+        <Link href="/customer-care" className="hover:text-pink-600 transition-colors">Customer Care</Link>
+        <Link href="/privacy" className="hover:text-pink-600 transition-colors">Privacy Policy</Link>
+        <Link href="/terms" className="hover:text-pink-600 transition-colors">Terms & Conditions</Link>
+        <Link href="/shipping" className="hover:text-pink-600 transition-colors">Shipping & Delivery</Link>
+        <Link href="/cancellation" className="hover:text-pink-600 transition-colors">Cancellation & Refund</Link>
       </div>
       <div className="flex justify-center items-center space-x-2 mb-4">
-        <span className="font-bold text-lg text-pink-500 tracking-widest">CRAFT STYLE</span>
+        <span className="font-bold text-lg text-pink-600 tracking-widest">CRAFT STYLE</span>
       </div>
-      <p className="text-xs text-slate-500">© 2026 Craft Style. All rights reserved.</p>
+      <p className="text-xs text-gray-400">© 2026 Craft Style. All rights reserved.</p>
     </footer>
   );
 }

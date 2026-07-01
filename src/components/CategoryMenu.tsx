@@ -123,7 +123,7 @@ export default function CategoryMenu() {
 
   if (loading) {
     return (
-      <div className="bg-transparent pb-4 pt-4 px-4 flex space-x-6 overflow-hidden">
+      <div className="bg-gradient-to-b from-[#fff0f0] to-[#fff6f6] pb-4 pt-4 px-4 flex space-x-6 overflow-hidden">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center flex-shrink-0 animate-pulse">
             <div className="w-16 h-16 rounded-full bg-gray-200 mb-2"></div>
@@ -135,7 +135,7 @@ export default function CategoryMenu() {
   }
 
   return (
-    <div className="bg-transparent pb-4 pt-4 relative">
+    <div className="bg-gradient-to-b from-[#fff0f0] to-[#fff6f6] pb-5 pt-4 relative border-b border-pink-100/30">
       
       {/* Magic Edit Button */}
       {isAdmin && !isEditing && (
@@ -169,7 +169,7 @@ export default function CategoryMenu() {
                 <div className="w-full h-full flex items-center justify-center text-gray-400">?</div>
               )}
             </div>
-            <span className="text-xs font-bold text-slate-200 group-hover:text-pink-400 transition-colors">
+            <span className="text-xs font-bold text-gray-800 group-hover:text-pink-600 transition-colors">
               {cat.name}
             </span>
           </button>
