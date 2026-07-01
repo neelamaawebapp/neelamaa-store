@@ -27,6 +27,41 @@ export default function BagPage() {
   const [couponSuccess, setCouponSuccess] = useState("");
   const [applying, setApplying] = useState(false);
 
+  const [checkedItemIds, setCheckedItemIds] = useState<string[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Sync state with cart: initialize all checked by default when first loaded
+  useEffect(() => {
+    if (cart.length > 0 && !isInitialized) {
+      setCheckedItemIds(cart.map(item => item.id));
+      setIsInitialized(true);
+    }
+  }, [cart, isInitialized]);
+
+  // Keep state updated: auto-check new items and filter out removed items
+  useEffect(() => {
+    if (cart.length > 0 && isInitialized) {
+      setCheckedItemIds(prev => {
+        const cartIds = cart.map(item => item.id);
+        const updated = prev.filter(id => cartIds.includes(id));
+        cartIds.forEach(id => {
+          if (!prev.includes(id) && !updated.includes(id)) {
+            updated.push(id);
+          }
+        });
+        return updated;
+      });
+    }
+  }, [cart, isInitialized]);
+
+  const handleToggleCheck = (itemId: string) => {
+    setCheckedItemIds(prev =>
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
   useEffect(() => {
     const fetchStock = async () => {
       const newStockLevels: Record<string, number> = {};
@@ -62,7 +97,9 @@ export default function BagPage() {
     }
   }, [cart]);
 
-  const hasOutOfStockItems = cart.some(item => {
+  const checkedItems = cart.filter(item => checkedItemIds.includes(item.id));
+
+  const hasOutOfStockItems = checkedItems.some(item => {
     const stock = stockLevels[item.id];
     return stock !== undefined && (stock <= 0 || stock < item.quantity);
   });
@@ -78,8 +115,8 @@ export default function BagPage() {
     });
   }, []);
 
-  const totalMRP = cart.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
-  const totalSellingPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalMRP = checkedItems.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
+  const totalSellingPrice = checkedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const productDiscountAmount = totalMRP - totalSellingPrice;
   const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
   
@@ -149,10 +186,23 @@ export default function BagPage() {
         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
           {/* Cart Items */}
           {cart.map((item) => (
-            <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex space-x-4 relative">
+            <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex items-start space-x-3 relative">
+              {/* Selection Checkbox */}
+              <div 
+                className="self-center flex-shrink-0 cursor-pointer p-1.5 -ml-1.5" 
+                onClick={(e) => { e.preventDefault(); handleToggleCheck(item.id); }}
+              >
+                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+                  ${checkedItemIds.includes(item.id) 
+                    ? 'bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/25' 
+                    : 'bg-white border-gray-300 text-transparent hover:border-pink-500'}`}>
+                  <Check size={12} className="stroke-[3]" />
+                </div>
+              </div>
+
               <Link 
                 href={`/product/${item.productId}`}
-                className="w-24 h-32 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-20 h-28 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity"
               >
                 <img src={item.image} alt={item.brand} className="w-full h-full object-cover" />
               </Link>
@@ -367,7 +417,7 @@ export default function BagPage() {
 
           {/* Price Details */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mt-4">
-            <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide">Price Details ({cart.length} Items)</h3>
+            <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide">Price Details ({checkedItems.length} of {cart.length} Items Selected)</h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Total MRP</span>
@@ -418,9 +468,15 @@ export default function BagPage() {
           {hasOutOfStockItems && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-2.5 rounded-lg text-center mb-3 flex items-center justify-center gap-1.5 animate-pulse">
               <AlertTriangle size={14} />
-              <span>Out of stock items present. Please remove them.</span>
+              <span>Out of stock selected items. Please uncheck or remove them.</span>
             </div>
           )}
+          
+          <div className="text-[10px] text-gray-500 font-bold text-center mb-2.5 uppercase tracking-wider border-b border-gray-150 pb-1.5 flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-ping"></span>
+            <span>{checkedItemIds.length} of {cart.length} items to be ordered</span>
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-lg font-bold text-gray-900">₹{totalToPay}</span>
@@ -428,19 +484,25 @@ export default function BagPage() {
             </div>
             <button 
               onClick={() => {
-                if (hasOutOfStockItems) {
-                  alert("Please remove out of stock items from your bag to proceed.");
+                if (checkedItemIds.length === 0) {
+                  alert("Please select at least one item to order.");
                   return;
                 }
+                if (hasOutOfStockItems) {
+                  alert("Please uncheck or remove out of stock items to proceed.");
+                  return;
+                }
+                // Save checked items to localStorage
+                localStorage.setItem("craftstyle_checked_cart_ids", JSON.stringify(checkedItemIds));
                 router.push("/checkout");
               }}
-              disabled={hasOutOfStockItems || loadingStock}
+              disabled={hasOutOfStockItems || loadingStock || checkedItemIds.length === 0}
               className={`font-bold py-3.5 px-8 rounded-md transition-colors w-1/2 flex justify-center items-center uppercase tracking-wider text-xs cursor-pointer
-                ${hasOutOfStockItems || loadingStock
+                ${hasOutOfStockItems || loadingStock || checkedItemIds.length === 0
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
                   : "bg-pink-500 text-white hover:bg-pink-600 shadow-sm"}`}
             >
-              {loadingStock ? "CHECKING STOCK..." : "PLACE ORDER"}
+              {loadingStock ? "CHECKING STOCK..." : `PLACE ORDER (${checkedItemIds.length})`}
             </button>
           </div>
         </div>

@@ -23,7 +23,7 @@ interface CartContextType {
   addToBag: (item: Omit<CartItem, "quantity" | "id"> & { size: string }) => Promise<void>;
   removeFromBag: (id: string) => Promise<void>;
   updateQuantity: (id: string, qty: number) => Promise<void>;
-  clearCart: () => Promise<void>;
+  clearCart: (checkedIds?: string[]) => Promise<void>;
   totalCount: number;
   totalAmount: number;
   couponCode: string;
@@ -37,7 +37,7 @@ const CartContext = createContext<CartContextType>({
   addToBag: async () => {},
   removeFromBag: async () => {},
   updateQuantity: async () => {},
-  clearCart: async () => {},
+  clearCart: async (checkedIds?: string[]) => {},
   totalCount: 0,
   totalAmount: 0,
   couponCode: "",
@@ -218,21 +218,41 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const clearCart = async () => {
-    localStorage.removeItem("craftstyle_local_cart");
-    removeCouponCode();
-    if (!user) {
-      setCart([]);
-      return;
-    }
+  const clearCart = async (checkedIds?: string[]) => {
+    if (!checkedIds) {
+      localStorage.removeItem("craftstyle_local_cart");
+      removeCouponCode();
+      if (!user) {
+        setCart([]);
+        return;
+      }
 
-    try {
-      const promises = cart.map(item => deleteDoc(doc(db, `users/${user.uid}/cartItems`, item.id)));
-      await Promise.all(promises);
-      setCart([]);
-    } catch (err) {
-      console.error("Firestore clear failed, clearing local state", err);
-      setCart([]);
+      try {
+        const promises = cart.map(item => deleteDoc(doc(db, `users/${user.uid}/cartItems`, item.id)));
+        await Promise.all(promises);
+        setCart([]);
+      } catch (err) {
+        console.error("Firestore clear failed, clearing local state", err);
+        setCart([]);
+      }
+    } else {
+      const itemsToKeep = cart.filter(item => !checkedIds.includes(item.id));
+      const itemsToDelete = cart.filter(item => checkedIds.includes(item.id));
+
+      if (!user) {
+        setCart(itemsToKeep);
+        localStorage.setItem("craftstyle_local_cart", JSON.stringify(itemsToKeep));
+        return;
+      }
+
+      try {
+        const promises = itemsToDelete.map(item => deleteDoc(doc(db, `users/${user.uid}/cartItems`, item.id)));
+        await Promise.all(promises);
+        setCart(itemsToKeep);
+      } catch (err) {
+        console.error("Firestore selective clear failed, syncing with local state", err);
+        setCart(itemsToKeep);
+      }
     }
   };
 

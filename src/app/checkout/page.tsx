@@ -14,6 +14,18 @@ export default function CheckoutPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("craftstyle_checked_cart_ids");
+      if (stored) {
+        setCheckedIds(JSON.parse(stored));
+      }
+    }
+  }, []);
+
+  const checkoutItems = checkedIds.length > 0 ? cart.filter(item => checkedIds.includes(item.id)) : cart;
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [street, setStreet] = useState("");
@@ -96,8 +108,8 @@ export default function CheckoutPage() {
     });
   }, []);
 
-  const totalMRP = cart.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
-  const totalSellingPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalMRP = checkoutItems.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);
+  const totalSellingPrice = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const productDiscountAmount = totalMRP - totalSellingPrice;
   const storeDiscountAmount = Math.round(totalSellingPrice * (discountPercent / 100));
   
@@ -126,7 +138,7 @@ export default function CheckoutPage() {
       const { doc, getDoc } = await import("firebase/firestore");
       
       let validationError = "";
-      for (const item of cart) {
+      for (const item of checkoutItems) {
         const productRef = doc(db, "products", item.productId);
         const docSnap = await getDoc(productRef);
         if (docSnap.exists()) {
@@ -247,7 +259,7 @@ export default function CheckoutPage() {
       
       const totalDiscountPercent = discountPercent + couponDiscountPercent;
 
-      const itemsWithGst = cart.map(item => {
+      const itemsWithGst = checkoutItems.map(item => {
         const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
         const discountedPrice = item.price * (1 - totalDiscountPercent / 100);
         const basePrice = discountedPrice / (1 + (rate / 100));
@@ -385,7 +397,12 @@ export default function CheckoutPage() {
         console.error("Notification trigger failed", e);
       }
 
-      await clearCart();
+      if (checkedIds.length > 0) {
+        await clearCart(checkedIds);
+        localStorage.removeItem("craftstyle_checked_cart_ids");
+      } else {
+        await clearCart();
+      }
       setSuccess(true);
     } catch (err) {
       console.error(err);
