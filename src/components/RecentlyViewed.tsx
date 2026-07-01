@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { Heart, Star } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { getDailyGradients } from "@/lib/colorUtils";
 
 export default function RecentlyViewed() {
   const { user } = useAuth();
@@ -95,18 +96,21 @@ export default function RecentlyViewed() {
     fetchRecentlyViewed();
   }, [user]);
 
+  const gradients = getDailyGradients();
+  const gradient = gradients[1];
+
   if (loading || products.length === 0) {
     return null; // Don't render anything if loading or no products
   }
 
   return (
-    <div className="bg-gradient-to-r from-pink-200/60 to-purple-200/60 p-4 pt-6 pb-6 border-y border-purple-200/25 relative">
+    <div className={`p-4 pt-6 pb-6 border-y relative ${gradient.bg} ${gradient.border}`}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-serif font-black text-slate-800 tracking-tight flex items-center gap-1.5">
           <span>Keep Shopping For</span>
           <span className="w-1.5 h-1.5 rounded-full bg-pink-600 animate-pulse"></span>
         </h2>
-        <span className="text-[10px] text-pink-700 font-bold uppercase tracking-wider bg-pink-100/80 px-2 py-0.5 rounded border border-pink-200/50">
+        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${gradient.badge}`}>
           From where you left
         </span>
       </div>

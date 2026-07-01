@@ -10,6 +10,7 @@ import { Edit2, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
+import { getDailyGradients } from "@/lib/colorUtils";
 
 export default function CategoryMenu() {
   const router = useRouter();
@@ -121,9 +122,12 @@ export default function CategoryMenu() {
     }
   };
 
+  const gradients = getDailyGradients();
+  const gradient = gradients[0];
+
   if (loading) {
     return (
-      <div className="bg-gradient-to-r from-rose-200/70 to-pink-200/70 pb-4 pt-4 px-4 flex space-x-6 overflow-hidden">
+      <div className={`pb-4 pt-4 px-4 flex space-x-6 overflow-hidden ${gradient.bg}`}>
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center flex-shrink-0 animate-pulse">
             <div className="w-16 h-16 rounded-full bg-gray-200 mb-2"></div>
@@ -135,7 +139,7 @@ export default function CategoryMenu() {
   }
 
   return (
-    <div className="bg-gradient-to-r from-rose-200/70 to-pink-200/70 pb-5 pt-4 relative border-b border-pink-200/30">
+    <div className={`pb-5 pt-4 relative border-b ${gradient.bg} ${gradient.border}`}>
       
       {/* Magic Edit Button */}
       {isAdmin && !isEditing && (

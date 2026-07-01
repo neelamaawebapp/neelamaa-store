@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { Heart, SlidersHorizontal, ChevronRight, Zap, Star } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { getDailyGradients } from "@/lib/colorUtils";
 
 // Seeded pseudo-random number generator (Mulberry32 or similar)
 function seededRandom(seedStr: string) {
@@ -300,6 +301,12 @@ export default function ProductFeed() {
     trendingLimit = Math.max(1, Math.min(6, Math.floor(shuffledCandidates.length / 2)));
   }
   
+  const gradients = getDailyGradients();
+  const trendingGrad = gradients[2];
+  const flashSaleGrad = gradients[3];
+  const newArrivalsGrad = gradients[4];
+  const moreToExploreGrad = gradients[5];
+
   const trending = shuffledCandidates.slice(0, trendingLimit);
   const allOtherProducts = shuffledCandidates.slice(trendingLimit);
 
@@ -307,7 +314,7 @@ export default function ProductFeed() {
     <div className="pb-24 space-y-6 bg-white">
       
       {/* 1. Explore More / Main Grid (Trending) */}
-      <div className="bg-gradient-to-r from-violet-200/60 to-fuchsia-200/60 p-4 pt-8 pb-6 border-b border-purple-200/30 relative">
+      <div className={`p-4 pt-8 pb-6 border-b relative ${trendingGrad.bg} ${trendingGrad.border}`}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
         </div>
@@ -320,7 +327,7 @@ export default function ProductFeed() {
 
       {/* 2. Flash Sale Section */}
       {flashDeals.length > 0 && flashSaleState !== "ended" && (
-        <div className="bg-gradient-to-r from-amber-200 to-orange-200 border-y border-orange-200/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
+        <div className={`border-y shadow-sm p-4 pt-6 pb-6 relative overflow-hidden ${flashSaleGrad.bg} ${flashSaleGrad.border}`}>
           {/* Subtle background element for the glassmorphism to pop against */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-200/50 rounded-full blur-3xl opacity-35 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
           
@@ -337,7 +344,7 @@ export default function ProductFeed() {
             <div className={`px-2 py-1 rounded shadow-sm border text-xs font-mono font-bold tracking-wider transition-all duration-300
               ${flashSaleState === 'upcoming' 
                 ? 'text-amber-700 bg-amber-50 border border-amber-200 shadow-inner' 
-                : 'text-pink-600 bg-white border border-pink-200 shadow-sm'}`}>
+                : flashSaleGrad.badge}`}>
               {flashSaleCountdown}
             </div>
           </div>
@@ -352,7 +359,7 @@ export default function ProductFeed() {
 
       {/* 3. New Arrivals Section */}
       {newArrivals.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-200/70 to-teal-200/70 p-4 py-8 border-b border-teal-200/30 relative">
+        <div className={`p-4 py-8 border-b relative ${newArrivalsGrad.bg} ${newArrivalsGrad.border}`}>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
             <Link href="/categories" className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
@@ -368,7 +375,7 @@ export default function ProductFeed() {
       )}
 
       {/* 4. All Other Products (Standard) */}
-      <div className="bg-gradient-to-r from-sky-200/70 to-indigo-200/60 p-4 pt-6 min-h-screen">
+      <div className={`p-4 pt-6 min-h-screen ${moreToExploreGrad.bg}`}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">More to Explore</h2>
         </div>
