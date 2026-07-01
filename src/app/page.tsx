@@ -8,7 +8,7 @@ import { Suspense } from "react";
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex justify-center w-full pb-16">
-      <div className="w-full max-w-md bg-transparent relative shadow-md border-x border-gray-200 min-h-screen overflow-hidden">
+      <div className="w-full max-w-md bg-transparent relative shadow-md border-x border-gray-200 min-h-screen overflow-hidden isolate">
         {/* Vibrant, soothing backdrop blobs */}
         <div className="absolute inset-0 pointer-events-none -z-10 bg-slate-50/50">
           {/* Blob 1: Top Right - Pink */}
