@@ -102,11 +102,11 @@ export default function RecentlyViewed() {
   return (
     <div className="bg-transparent p-4 pt-6 pb-4 relative">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-serif font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+        <h2 className="text-xl font-serif font-black text-slate-100 tracking-tight flex items-center gap-1.5">
           <span>Keep Shopping For</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-pink-600 animate-pulse"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
         </h2>
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider bg-gray-100 px-2 py-0.5 rounded">
+        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700/30">
           From where you left
         </span>
       </div>

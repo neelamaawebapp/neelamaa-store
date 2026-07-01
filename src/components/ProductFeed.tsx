@@ -320,24 +320,24 @@ export default function ProductFeed() {
 
       {/* 2. Flash Sale Section */}
       {flashDeals.length > 0 && flashSaleState !== "ended" && (
-        <div className="bg-white/60 backdrop-blur-xl border-y border-white/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
+        <div className="bg-slate-900/40 backdrop-blur-xl border-y border-slate-800/60 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
           {/* Subtle background element for the glassmorphism to pop against */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-200 rounded-full blur-3xl opacity-30 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-900 rounded-full blur-3xl opacity-20 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
           
           <div className="flex justify-between items-end mb-5 relative z-10">
             <div>
               <div className="flex items-center space-x-1 mb-1">
-                <Zap size={16} className={flashSaleState === 'upcoming' ? "text-amber-500" : "text-gray-500"} />
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${flashSaleState === 'upcoming' ? "text-amber-600" : "text-gray-500"}`}>
+                <Zap size={16} className={flashSaleState === 'upcoming' ? "text-amber-500" : "text-pink-500"} />
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${flashSaleState === 'upcoming' ? "text-amber-400" : "text-slate-350"}`}>
                   {flashSaleState === 'upcoming' ? "Coming Soon" : "Limited Time"}
                 </span>
               </div>
-              <h2 className={`text-2xl font-serif font-bold leading-none ${flashSaleState === 'upcoming' ? "text-slate-800" : "text-pink-600"}`}>Flash Sale</h2>
+              <h2 className={`text-2xl font-serif font-bold leading-none ${flashSaleState === 'upcoming' ? "text-slate-200" : "text-pink-500"}`}>Flash Sale</h2>
             </div>
             <div className={`px-2 py-1 rounded shadow-sm border text-xs font-mono font-bold tracking-wider transition-all duration-300
               ${flashSaleState === 'upcoming' 
-                ? 'text-amber-600 bg-amber-50/80 border-amber-200/60 shadow-inner' 
-                : 'text-pink-600 bg-white border-slate-100'}`}>
+                ? 'text-amber-400 bg-amber-950/40 border-amber-900/30' 
+                : 'text-pink-500 bg-slate-950 border-slate-800'}`}>
               {flashSaleCountdown}
             </div>
           </div>
@@ -355,7 +355,7 @@ export default function ProductFeed() {
         <div className="bg-transparent p-4 py-8 relative">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
-            <Link href="/categories" className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
+            <Link href="/categories" className="text-xs font-bold text-slate-400 flex items-center hover:text-pink-400 transition-colors uppercase tracking-wider">
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
           </div>

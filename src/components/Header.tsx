@@ -69,7 +69,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[#f9f9f9] sticky top-0 z-50 border-b border-gray-100">
+    <header className="bg-slate-950/70 backdrop-blur-md sticky top-0 z-50 border-b border-slate-900 text-white">
       {/* Dynamic Promo Ticker Strip */}
       <div className="bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 text-white text-center py-2 px-4 text-[10px] font-black uppercase tracking-widest select-none min-h-[30px] flex items-center justify-center overflow-hidden shadow-inner">
         <div className={`transition-all duration-300 ease-out transform ${fadeClass} text-center`}>
@@ -83,20 +83,20 @@ export default function Header() {
           {/* Brand Logo */}
           <Link href="/" className="flex items-center flex-shrink-0">
             <div className="relative h-12 w-36 flex items-center justify-start">
-              <img src="/logo.png" alt="Craft Style Logo" className="h-full w-auto object-contain object-left" />
+              <img src="/logo.png" alt="Craft Style Logo" className="h-full w-auto object-contain object-left brightness-110" />
             </div>
           </Link>
           
           {/* Location & Points Container */}
           <div className="flex items-center space-x-2 text-xs">
-            <div className="flex items-center space-x-0.5 text-gray-650 font-semibold max-w-[120px] overflow-hidden whitespace-nowrap">
-              <MapPin size={13} className="text-gray-600 flex-shrink-0" />
+            <div className="flex items-center space-x-0.5 text-slate-300 font-semibold max-w-[120px] overflow-hidden whitespace-nowrap">
+              <MapPin size={13} className="text-slate-400 flex-shrink-0" />
               <span className="truncate">
                 {user?.displayName || user?.email?.split('@')[0] || "Guest"}
               </span>
-              <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />
+              <ChevronDown size={13} className="text-slate-500 flex-shrink-0" />
             </div>
-            <div className="flex items-center bg-[#eaffea] text-green-700 px-1.5 py-0.5 rounded-full font-bold border border-green-200">
+            <div className="flex items-center bg-green-950/40 text-green-400 px-1.5 py-0.5 rounded-full font-bold border border-green-900/30">
               <span className="mr-0.5">₹0</span>
               <div className="bg-green-600 text-white rounded-full p-0.5">
                 <Sparkles size={8} />
@@ -108,28 +108,28 @@ export default function Header() {
         {/* Second Row: Search & Icons */}
         <div className="flex items-center space-x-3">
           {/* Search Bar */}
-          <div className="flex-1 bg-white rounded-full flex items-center px-3.5 py-2 shadow-sm border border-gray-100">
-            <Search size={16} className="text-gray-400 mr-2 flex-shrink-0" />
+          <div className="flex-1 bg-slate-900/60 rounded-full flex items-center px-3.5 py-2 border border-slate-800/80 shadow-inner">
+            <Search size={16} className="text-slate-400 mr-2 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search for products, brands..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
-              className="flex-1 bg-transparent outline-none text-xs text-gray-700 placeholder-gray-400"
+              className="flex-1 bg-transparent outline-none text-xs text-slate-100 placeholder-slate-400"
             />
           </div>
 
           {/* Action Icons */}
-          <div className="flex items-center space-x-4 text-gray-700">
+          <div className="flex items-center space-x-4 text-slate-200">
             <Link href="/notifications">
-              <Bell size={22} className="hover:text-pink-600 transition-colors" />
+              <Bell size={22} className="hover:text-pink-500 transition-colors" />
             </Link>
             <Link href="/wishlist">
-              <Heart size={22} className="hover:text-pink-600 transition-colors" />
+              <Heart size={22} className="hover:text-pink-500 transition-colors" />
             </Link>
             <Link href={isAdmin ? "/admin" : user ? "/profile" : "/login"}>
-              <User size={22} className={user ? "text-pink-600" : ""} />
+              <User size={22} className={user ? "text-pink-500" : ""} />
             </Link>
           </div>
         </div>

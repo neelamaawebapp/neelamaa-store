@@ -169,7 +169,7 @@ export default function CategoryMenu() {
                 <div className="w-full h-full flex items-center justify-center text-gray-400">?</div>
               )}
             </div>
-            <span className="text-xs font-bold text-gray-800">
+            <span className="text-xs font-bold text-slate-200 group-hover:text-pink-400 transition-colors">
               {cat.name}
             </span>
           </button>
