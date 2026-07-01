@@ -307,7 +307,7 @@ export default function ProductFeed() {
     <div className="pb-24 space-y-6 bg-white">
       
       {/* 1. Explore More / Main Grid (Trending) */}
-      <div className="bg-gradient-to-b from-[#f5f3ff] to-[#faf9fe] p-4 pt-8 pb-6 border-b border-purple-100/30 relative">
+      <div className="bg-gradient-to-r from-violet-200/60 to-fuchsia-200/60 p-4 pt-8 pb-6 border-b border-purple-200/30 relative">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
         </div>
@@ -320,7 +320,7 @@ export default function ProductFeed() {
 
       {/* 2. Flash Sale Section */}
       {flashDeals.length > 0 && flashSaleState !== "ended" && (
-        <div className="bg-gradient-to-b from-[#fffbeb] to-[#fffcf0] border-y border-amber-100/70 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-200 to-orange-200 border-y border-orange-200/40 shadow-sm p-4 pt-6 pb-6 relative overflow-hidden">
           {/* Subtle background element for the glassmorphism to pop against */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-200/50 rounded-full blur-3xl opacity-35 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
           
@@ -336,8 +336,8 @@ export default function ProductFeed() {
             </div>
             <div className={`px-2 py-1 rounded shadow-sm border text-xs font-mono font-bold tracking-wider transition-all duration-300
               ${flashSaleState === 'upcoming' 
-                ? 'text-amber-600 bg-amber-50 border-amber-200/60 shadow-inner' 
-                : 'text-pink-600 bg-white border border-pink-100/60 shadow-sm'}`}>
+                ? 'text-amber-700 bg-amber-50 border border-amber-200 shadow-inner' 
+                : 'text-pink-600 bg-white border border-pink-200 shadow-sm'}`}>
               {flashSaleCountdown}
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function ProductFeed() {
 
       {/* 3. New Arrivals Section */}
       {newArrivals.length > 0 && (
-        <div className="bg-gradient-to-b from-[#f0fdf4] to-[#f9fefb] p-4 py-8 border-b border-green-100/30 relative">
+        <div className="bg-gradient-to-r from-emerald-200/70 to-teal-200/70 p-4 py-8 border-b border-teal-200/30 relative">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
             <Link href="/categories" className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
@@ -368,7 +368,7 @@ export default function ProductFeed() {
       )}
 
       {/* 4. All Other Products (Standard) */}
-      <div className="bg-gradient-to-b from-[#f0f9ff] to-white p-4 pt-6 min-h-screen">
+      <div className="bg-gradient-to-r from-sky-200/70 to-indigo-200/60 p-4 pt-6 min-h-screen">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">More to Explore</h2>
         </div>

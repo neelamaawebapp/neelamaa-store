@@ -123,7 +123,7 @@ export default function CategoryMenu() {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-b from-[#fff0f0] to-[#fff6f6] pb-4 pt-4 px-4 flex space-x-6 overflow-hidden">
+      <div className="bg-gradient-to-r from-rose-200/70 to-pink-200/70 pb-4 pt-4 px-4 flex space-x-6 overflow-hidden">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center flex-shrink-0 animate-pulse">
             <div className="w-16 h-16 rounded-full bg-gray-200 mb-2"></div>
@@ -135,7 +135,7 @@ export default function CategoryMenu() {
   }
 
   return (
-    <div className="bg-gradient-to-b from-[#fff0f0] to-[#fff6f6] pb-5 pt-4 relative border-b border-pink-100/30">
+    <div className="bg-gradient-to-r from-rose-200/70 to-pink-200/70 pb-5 pt-4 relative border-b border-pink-200/30">
       
       {/* Magic Edit Button */}
       {isAdmin && !isEditing && (
