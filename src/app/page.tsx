@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import CategoryMenu from "@/components/CategoryMenu";
 import HeroBanner from "@/components/HeroBanner";
+import RecentlyViewed from "@/components/RecentlyViewed";
 import ProductFeed, { ProductFeedSkeleton } from "@/components/ProductFeed";
 import { Suspense } from "react";
 
@@ -12,6 +13,7 @@ export default function Home() {
         <main>
           <CategoryMenu />
           <HeroBanner />
+          <RecentlyViewed />
           <Suspense fallback={<ProductFeedSkeleton />}>
             <ProductFeed />
           </Suspense>

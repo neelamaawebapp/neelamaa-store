@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -232,6 +232,41 @@ export default function ProductDetailPage() {
     };
     fetchProduct();
   }, [id]);
+
+  // Track product view in recently viewed
+  useEffect(() => {
+    if (product && product.id) {
+      const recordView = async () => {
+        try {
+          const localKey = "craftstyle_recently_viewed";
+          const localData = localStorage.getItem(localKey);
+          let list: { id: string; viewedAt: number }[] = localData ? JSON.parse(localData) : [];
+          
+          // Remove product if it's already in the list
+          list = list.filter((item) => item.id !== product.id);
+          
+          // Add to front of the list
+          list.unshift({ id: product.id, viewedAt: Date.now() });
+          
+          // Keep only the 10 most recent
+          list = list.slice(0, 10);
+          localStorage.setItem(localKey, JSON.stringify(list));
+
+          // If user logged in, sync/save to Firestore
+          if (user?.uid) {
+            const rvRef = doc(db, "users", user.uid, "recentlyViewed", product.id);
+            await setDoc(rvRef, {
+              productId: product.id,
+              viewedAt: serverTimestamp(),
+            });
+          }
+        } catch (e) {
+          console.error("Failed to record product view", e);
+        }
+      };
+      recordView();
+    }
+  }, [product, user]);
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
