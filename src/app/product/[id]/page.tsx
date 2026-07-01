@@ -233,6 +233,50 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  // Reset scroll and state when page ID changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!product) return;
+      try {
+        const { collection, getDocs } = await import("firebase/firestore");
+        const productsRef = collection(db, "products");
+        const allProductsSnap = await getDocs(productsRef);
+        const allProductsList: any[] = [];
+        allProductsSnap.forEach((doc) => {
+          if (doc.id !== product.id) {
+            allProductsList.push({ id: doc.id, ...doc.data() });
+          }
+        });
+
+        const currentCategory = product.category || "";
+        const sameCategoryItems = allProductsList.filter(item => 
+          item.category && item.category.toLowerCase() === currentCategory.toLowerCase()
+        );
+        const differentCategoryItems = allProductsList.filter(item => 
+          !item.category || item.category.toLowerCase() !== currentCategory.toLowerCase()
+        );
+
+        // Mix same category and different categories (max 5 of each)
+        const selectedSame = sameCategoryItems.sort(() => 0.5 - Math.random()).slice(0, 5);
+        const selectedDiff = differentCategoryItems.sort(() => 0.5 - Math.random()).slice(0, 5);
+
+        setSuggestions([...selectedSame, ...selectedDiff]);
+      } catch (err) {
+        console.error("Error fetching suggestions", err);
+      }
+    };
+
+    fetchSuggestions();
+  }, [product]);
+
   const handleAdd = async () => {
     if (!product) return;
 
@@ -781,6 +825,51 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Suggested Items Section */}
+      {suggestions.length > 0 && (
+        <div className="p-4 bg-white border-t border-gray-100 mt-4 pb-20">
+          <h2 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider text-gray-500 mb-3.5">You May Also Like</h2>
+          <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-3 snap-x">
+            {suggestions.map((item) => {
+              const itemMrp = item.mrp || Math.round(item.price * 1.5);
+              const discountPercent = itemMrp > item.price ? Math.round(((itemMrp - item.price) / itemMrp) * 100) : 0;
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={() => {
+                    router.push(`/product/${item.id}`);
+                    setActiveImageIdx(0);
+                    setSelectedSize("");
+                    setSelectedVariantColor("");
+                    setSelectedVariantMaterial("");
+                  }}
+                  className="w-32 flex-shrink-0 cursor-pointer snap-start group"
+                >
+                  <div className="w-32 h-44 bg-gray-150 rounded-xl overflow-hidden relative shadow-sm border border-gray-100/50 group-hover:shadow-md transition-all duration-300">
+                    <img src={item.image} alt={item.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    {discountPercent > 0 && (
+                      <div className="absolute top-2 left-2 bg-pink-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow">
+                        {discountPercent}% OFF
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-left">
+                    <h3 className="font-bold text-[11px] text-gray-900 truncate uppercase tracking-tight">{item.brand}</h3>
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5 leading-normal">{item.title}</p>
+                    <div className="mt-1 flex items-baseline space-x-1.5">
+                      <span className="text-[11px] font-extrabold text-pink-600 font-sans">₹{item.price}</span>
+                      {itemMrp > item.price && (
+                        <span className="text-[9px] text-gray-400 line-through font-sans">₹{itemMrp}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toast && toast !== "Please select a size first!" && (
