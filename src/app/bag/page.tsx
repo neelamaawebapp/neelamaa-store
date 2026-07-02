@@ -176,7 +176,7 @@ export default function BagPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-2">Hey, it feels so light!</h2>
           <p className="text-gray-500 text-sm mb-8">There is nothing in your bag. Let's add some items.</p>
           <button 
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/wishlist")}
             className="border-2 border-pink-500 text-pink-600 font-bold py-3 px-8 rounded-md hover:bg-slate-50 transition-colors"
           >
             ADD ITEMS FROM WISHLIST

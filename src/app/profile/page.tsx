@@ -289,7 +289,10 @@ export default function ProfilePage() {
             <ChevronLeft size={16} className="text-gray-400 rotate-180" />
           </button>
           
-          <button className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left cursor-pointer">
+          <button 
+            onClick={() => router.push("/wishlist")}
+            className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+          >
             <div className="flex items-center space-x-3 text-gray-800">
               <Heart size={20} className="text-gray-400" />
               <span className="font-medium text-sm">Wishlist</span>
@@ -297,7 +300,10 @@ export default function ProfilePage() {
             <ChevronLeft size={16} className="text-gray-400 rotate-180" />
           </button>
  
-          <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left cursor-pointer">
+          <button 
+            onClick={() => router.push("/settings")}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+          >
             <div className="flex items-center space-x-3 text-gray-800">
               <Settings size={20} className="text-gray-400" />
               <span className="font-medium text-sm">Settings</span>

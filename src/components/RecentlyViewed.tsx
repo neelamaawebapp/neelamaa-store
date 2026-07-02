@@ -12,6 +12,31 @@ export default function RecentlyViewed() {
   const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("craftstyle_wishlist");
+      if (stored) {
+        setWishlist(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to load wishlist", e);
+    }
+  }, []);
+
+  const toggleWishlist = (productId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let newWishlist;
+    if (wishlist.includes(productId)) {
+      newWishlist = wishlist.filter((id) => id !== productId);
+    } else {
+      newWishlist = [...wishlist, productId];
+    }
+    setWishlist(newWishlist);
+    localStorage.setItem("craftstyle_wishlist", JSON.stringify(newWishlist));
+  };
 
   useEffect(() => {
     const fetchRecentlyViewed = async () => {
@@ -137,12 +162,20 @@ export default function RecentlyViewed() {
                     </span>
                   </div>
                 )}
-                <button 
-                  className="absolute top-2 right-2 p-1 bg-white/90 backdrop-blur rounded-full shadow-sm text-gray-400 hover:text-pink-600 hover:bg-white transition-all z-20" 
-                  onClick={(e) => { e.preventDefault(); }}
-                >
-                  <Heart size={14} />
-                </button>
+                {(() => {
+                  const isWishlisted = wishlist.includes(product.id);
+                  return (
+                    <button 
+                      className="absolute top-2 right-2 p-1 bg-white/90 backdrop-blur rounded-full shadow-sm transition-all z-20 cursor-pointer"
+                      onClick={(e) => toggleWishlist(product.id, e)}
+                    >
+                      <Heart 
+                        size={14} 
+                        className={isWishlisted ? "text-pink-600 fill-pink-600" : "text-gray-400 hover:text-pink-600"} 
+                      />
+                    </button>
+                  );
+                })()}
                 {!isOutOfStock && (
                   <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-800 flex items-center space-x-0.5 z-10">
                     <Star size={9} className="text-yellow-500 fill-yellow-500" />
