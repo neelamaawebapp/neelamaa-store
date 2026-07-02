@@ -127,11 +127,11 @@ export default function CategoryMenu() {
 
   if (loading) {
     return (
-      <div className={`pb-4 pt-4 px-4 flex space-x-6 overflow-hidden ${gradient.bg}`}>
-        {[1, 2, 3, 4].map((i) => (
+      <div className={`pb-4 pt-4 px-4 flex space-x-4 overflow-hidden ${gradient.bg}`}>
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex flex-col items-center flex-shrink-0 animate-pulse">
-            <div className="w-16 h-16 rounded-full bg-gray-200 mb-2"></div>
-            <div className="w-12 h-3 bg-gray-200 rounded"></div>
+            <div className="w-[85px] h-[125px] rounded-2xl bg-gray-200 mb-2"></div>
+            <div className="w-14 h-3 bg-gray-200 rounded"></div>
           </div>
         ))}
       </div>
@@ -153,27 +153,27 @@ export default function CategoryMenu() {
       )}
 
       {/* Categories Horizontal Scroll */}
-      <div className={`flex overflow-x-auto hide-scrollbar px-4 pb-2 space-x-6 justify-between ${isAdmin ? 'pt-8' : ''}`}>
+      <div className={`flex overflow-x-auto hide-scrollbar px-4 pb-2 space-x-4 ${isAdmin ? 'pt-8' : ''}`}>
         {categories.map((cat, idx) => (
           <button 
             key={idx} 
             onClick={() => router.push(`/category/${encodeURIComponent(cat.name)}`)}
-            className="flex flex-col items-center flex-shrink-0 focus:outline-none group"
+            className="flex flex-col items-center flex-shrink-0 focus:outline-none group animate-fade-in"
           >
-            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border border-gray-200 shadow-sm group-hover:ring-2 group-hover:ring-pink-500 group-hover:ring-offset-2 transition-all bg-gray-100">
+            <div className="w-[85px] h-[125px] rounded-2xl overflow-hidden mb-2 border border-gray-200/60 shadow-sm group-hover:ring-2 group-hover:ring-pink-500 group-hover:ring-offset-2 transition-all bg-gray-100">
               {cat.image ? (
                 <Image
                   src={cat.image}
                   alt={cat.name}
-                  width={64}
-                  height={64}
-                  className="object-cover w-full h-full"
+                  width={85}
+                  height={125}
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">?</div>
               )}
             </div>
-            <span className="text-xs font-bold text-gray-800 group-hover:text-pink-600 transition-colors">
+            <span className="text-[11px] font-bold text-slate-800 group-hover:text-pink-600 transition-colors mt-1">
               {cat.name}
             </span>
           </button>
