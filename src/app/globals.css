@@ -39,3 +39,10 @@ body {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+@media (max-width: 639px) {
+  .max-w-md {
+    max-width: 100% !important;
+  }
+}
+
