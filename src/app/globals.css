@@ -10,6 +10,44 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-montserrat);
   --font-serif: var(--font-playfair);
+
+  /* Primary Brand Color: Royal Blue (replacing pink) */
+  --color-pink-50: #f0f5ff;
+  --color-pink-100: #e0ebff;
+  --color-pink-200: #bcd3ff;
+  --color-pink-300: #8cb3ff;
+  --color-pink-400: #4b88ff;
+  --color-pink-500: #003bb3;
+  --color-pink-550: #003299;
+  --color-pink-600: #002d9c;
+  --color-pink-650: #002787;
+  --color-pink-700: #00227a;
+  --color-pink-800: #001a5e;
+  --color-pink-900: #001242;
+
+  /* Accent Color: Fresh Leaf Green (replacing rose) */
+  --color-rose-50: #f1f8f3;
+  --color-rose-100: #e2f1e6;
+  --color-rose-200: #c5e3cd;
+  --color-rose-300: #9ad0aa;
+  --color-rose-400: #67b57e;
+  --color-rose-500: #2e7d32;
+  --color-rose-600: #256628;
+  --color-rose-700: #1e5020;
+  --color-rose-800: #173d19;
+  --color-rose-900: #102911;
+
+  /* Secondary Color: Golden Yellow / Amber (replacing orange) */
+  --color-orange-50: #fffdf0;
+  --color-orange-100: #fffbe0;
+  --color-orange-200: #fff7b3;
+  --color-orange-300: #fff17c;
+  --color-orange-400: #ffe83a;
+  --color-orange-500: #ffd200; /* Golden Yellow for backgrounds */
+  --color-orange-600: #d97706; /* High-contrast gold/amber for legibility on white */
+  --color-orange-700: #b45309;
+  --color-orange-800: #92400e;
+  --color-orange-900: #78350f;
 }
 
 @media (prefers-color-scheme: dark) {
