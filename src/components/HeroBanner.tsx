@@ -28,6 +28,40 @@ export default function HeroBanner() {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   
+  // Touch Swipe States
+  const [touchStartX, setTouchStartX] = useState<number>(0);
+  const [touchStartY, setTouchStartY] = useState<number>(0);
+  const [touchEndX, setTouchEndX] = useState<number>(0);
+  const [touchEndY, setTouchEndY] = useState<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+
+    // Only trigger swipe if horizontal displacement is greater than vertical
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        // swipe left -> next banner
+        setCurrentIndex((prev) => (prev + 1) % banners.length);
+      } else {
+        // swipe right -> prev banner
+        setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+      }
+    }
+  };
+  
   // Editor State
   const [isEditing, setIsEditing] = useState(false);
   const [editBanners, setEditBanners] = useState(defaultBanners);
@@ -165,7 +199,12 @@ export default function HeroBanner() {
       )}
 
       {/* Main Banner */}
-      <div className="relative w-full aspect-[21/9] overflow-hidden bg-gray-100">
+      <div 
+        className="relative w-full aspect-[21/9] overflow-hidden bg-gray-100 select-none touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>

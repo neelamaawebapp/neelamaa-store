@@ -26,6 +26,41 @@ export default function ProductDetailPage() {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+
+  // Touch Swipe States
+  const [touchStartX, setTouchStartX] = useState<number>(0);
+  const [touchStartY, setTouchStartY] = useState<number>(0);
+  const [touchEndX, setTouchEndX] = useState<number>(0);
+  const [touchEndY, setTouchEndY] = useState<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+    const imgCount = product?.images?.length || 0;
+    if (imgCount <= 1) return;
+
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        // swipe left -> next image
+        setActiveImageIdx((prev) => (prev + 1) % imgCount);
+      } else {
+        // swipe right -> prev image
+        setActiveImageIdx((prev) => (prev - 1 + imgCount) % imgCount);
+      }
+    }
+  };
   const sizes = ["S", "M", "L", "XL", "XXL"];
 
   const availableColors = product?.variants
@@ -504,7 +539,12 @@ export default function ProductDetailPage() {
 
       {/* Product Image / Carousel */}
       <div className="relative bg-gray-150">
-        <div className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden">
+        <div 
+          className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden select-none touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <img
             src={product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image}
             alt={product.brand}
