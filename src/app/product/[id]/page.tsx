@@ -75,23 +75,7 @@ export default function ProductDetailPage() {
     ? (Array.from(new Set(product.variants.map((v: any) => v.material).filter(Boolean))) as string[])
     : [];
 
-  // Auto-select first available variant on page load
-  useEffect(() => {
-    if (product && product.variants && product.variants.length > 0) {
-      const firstVar = product.variants.find((v: any) => v.stock > 0) || product.variants[0];
-      if (firstVar) {
-        if (firstVar.size) {
-          setSelectedSize(getFormattedSize(firstVar));
-        }
-        if (firstVar.color) {
-          setSelectedVariantColor(firstVar.color);
-        }
-        if (firstVar.material) {
-          setSelectedVariantMaterial(firstVar.material);
-        }
-      }
-    }
-  }, [product]);
+
 
   // Click handlers with auto-selection of compatible variant attributes
   const handleSizeClick = (formattedSize: string) => {
