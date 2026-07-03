@@ -122,6 +122,16 @@ export default function AdminDashboard() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // CSV Bulk Upload States
+  const [bulkSubMode, setBulkSubMode] = useState<"csv" | "images">("csv");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvImages, setCsvImages] = useState<File[]>([]);
+  const [csvIsUploading, setCsvIsUploading] = useState(false);
+  const [csvUploadProgress, setCsvUploadProgress] = useState(0);
+  const [csvTotalRows, setCsvTotalRows] = useState(0);
+  const [csvCurrentRow, setCsvCurrentRow] = useState(0);
+  const [csvLogs, setCsvLogs] = useState<string[]>([]);
+
   // Image Editor States
   const [editingImageIdx, setEditingImageIdx] = useState<number | null>(null);
   const [editorImageUrl, setEditorImageUrl] = useState<string | null>(null);
@@ -981,6 +991,263 @@ export default function AdminDashboard() {
 
   const removeBulkItem = (index: number) => {
     setBulkFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const downloadCSVTemplate = () => {
+    const headers = [
+      "Brand",
+      "Title",
+      "Price",
+      "MRP",
+      "Quantity",
+      "Category",
+      "SubCategory",
+      "ShortDescription",
+      "FullDescription",
+      "Size",
+      "SizeUnit",
+      "Color",
+      "Material",
+      "ImageFileNames",
+      "SKU",
+      "HSNCode",
+      "CountryOfOrigin"
+    ];
+    const sampleRow = [
+      "Neelamaa",
+      "Premium Stainless Steel Water Bottle 900ml",
+      "499",
+      "899",
+      "50",
+      "Home",
+      "Kitchen",
+      "• Lightweight steel bottle won't weigh down your bag\n• Wide mouth opening makes cleaning effortless",
+      "• High-Quality Stainless Steel – Made from durable rust-resistant material.\n• Odour-Free & Safe – Food-grade steel.",
+      "900",
+      "ml",
+      "Silver",
+      "Stainless Steel",
+      "bottle_front.jpg, bottle_side.jpg",
+      "NMA-BOT-900",
+      "7323",
+      "India"
+    ];
+    
+    const formatCSVRow = (arr: string[]) => 
+      arr.map(val => `"${val.replace(/"/g, '""')}"`).join(",");
+      
+    const csvContent = "\uFEFF" + [formatCSVRow(headers), formatCSVRow(sampleRow)].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "products_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const parseCSV = (text: string) => {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push("");
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        lines.push(row);
+        row = [""];
+      } else {
+        row[row.length - 1] += char;
+      }
+    }
+    if (row.length > 1 || row[0] !== "") {
+      lines.push(row);
+    }
+    return lines;
+  };
+
+  const handleBulkCsvUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!csvFile) {
+      setError("Please select a CSV file.");
+      return;
+    }
+    
+    const log = (msg: string) => {
+      setCsvLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+    };
+    
+    setCsvIsUploading(true);
+    setCsvLogs([]);
+    setError("");
+    setSuccess("");
+    
+    try {
+      const text = await csvFile.text();
+      const rows = parseCSV(text);
+      if (rows.length <= 1) {
+        setError("The CSV file is empty or only contains headers.");
+        setCsvIsUploading(false);
+        return;
+      }
+      
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+      const dataRows = rows.slice(1);
+      
+      setCsvTotalRows(dataRows.length);
+      setCsvCurrentRow(0);
+      setCsvUploadProgress(0);
+      
+      log(`Found ${dataRows.length} products to process in CSV.`);
+      
+      let successCount = 0;
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        if (row.length === 0 || row.join("").trim() === "") {
+          log(`Skipping empty row ${i + 2}`);
+          continue;
+        }
+        
+        setCsvCurrentRow(i + 1);
+        setCsvUploadProgress(Math.round(((i) / dataRows.length) * 100));
+        
+        const getVal = (headerName: string) => {
+          const idx = headers.indexOf(headerName.toLowerCase());
+          return idx !== -1 ? row[idx] : "";
+        };
+        
+        const rowBrand = getVal("brand");
+        const rowTitle = getVal("title");
+        const rowPrice = getVal("price");
+        const rowMrp = getVal("mrp");
+        const rowQuantity = getVal("quantity");
+        const rowCategory = getVal("category");
+        const rowSubCategory = getVal("subcategory");
+        const rowShortDesc = getVal("shortdescription");
+        const rowFullDesc = getVal("fulldescription");
+        const rowSize = getVal("size");
+        const rowSizeUnit = getVal("sizeunit");
+        const rowColor = getVal("color");
+        const rowMaterial = getVal("material");
+        const rowImageFileNames = getVal("imagefilenames");
+        const rowSku = getVal("sku");
+        const rowHsn = getVal("hsncode");
+        const rowOrigin = getVal("countryoforigin");
+        
+        if (!rowBrand || !rowTitle || !rowPrice) {
+          log(`Row ${i + 2}: Skipping - Brand, Title, and Price are required.`);
+          continue;
+        }
+        
+        log(`Processing "${rowBrand} - ${rowTitle}"...`);
+        
+        const imageList = rowImageFileNames
+          .split(",")
+          .map(name => name.trim())
+          .filter(Boolean);
+          
+        const uploadedUrls: string[] = [];
+        
+        for (const filename of imageList) {
+          const matchedFile = csvImages.find(f => f.name.toLowerCase() === filename.toLowerCase());
+          if (matchedFile) {
+            log(`Compressing and uploading image "${filename}"...`);
+            try {
+              const adjustedFile = await autoAdjustImage(matchedFile, 3 / 4);
+              const formData = new FormData();
+              formData.append("image", adjustedFile);
+              
+              const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+                method: "POST",
+                body: formData
+              });
+              const uploadData = await uploadRes.json();
+              if (uploadData.success) {
+                uploadedUrls.push(uploadData.data.url);
+              } else {
+                log(`Failed uploading image "${filename}": ${uploadData.error?.message || "Unknown error"}`);
+              }
+            } catch (err) {
+              log(`Error uploading image "${filename}": ${err instanceof Error ? err.message : String(err)}`);
+            }
+          } else {
+            log(`Warning: Local image file "${filename}" not found in selected photos.`);
+          }
+        }
+        
+        const priceNum = Number(rowPrice);
+        const mrpNum = rowMrp ? Number(rowMrp) : Math.round(priceNum * 1.5);
+        
+        const docData = {
+          brand: rowBrand.trim(),
+          title: rowTitle.trim(),
+          category: rowCategory.trim() || availableCategories[0] || "Home",
+          subCategory: rowSubCategory.trim(),
+          homeSection: "Standard",
+          gstRate: 18,
+          price: priceNum,
+          mrp: mrpNum,
+          quantity: Number(rowQuantity) || 0,
+          purchasePrice: null,
+          packingCharges: null,
+          courierCharges: null,
+          otherExpenses: null,
+          profit: null,
+          sku: rowSku.trim(),
+          shortDescription: rowShortDesc.trim(),
+          fullDescription: rowFullDesc.trim(),
+          status: "Active",
+          countryOfOrigin: rowOrigin.trim() || "India",
+          manufacturer: "",
+          packer: "",
+          hsnCode: rowHsn.trim(),
+          metaTitle: "",
+          metaDescription: "",
+          keywords: "",
+          slug: "",
+          shipping: { weight: null, length: null, width: null, height: null },
+          size: rowSize.trim(),
+          sizeUnit: rowSizeUnit.trim(),
+          color: rowColor.trim(),
+          material: rowMaterial.trim(),
+          hasVariants: false,
+          variants: [],
+          images: uploadedUrls,
+          image: uploadedUrls[0] || "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        await addDoc(collection(db, "products"), docData);
+        log(`Product "${rowTitle}" added successfully!`);
+        successCount++;
+      }
+      
+      setCsvUploadProgress(100);
+      setSuccess(`Bulk upload complete! Successfully added ${successCount} products.`);
+      log(`Bulk upload finished! Total added: ${successCount}`);
+      setCsvFile(null);
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred during bulk parsing or uploading.");
+      log(`Fatal Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setCsvIsUploading(false);
+    }
   };
 
   const submitBulk = async () => {
@@ -2354,183 +2621,323 @@ export default function AdminDashboard() {
         </div>
       ) : (
         /* BULK UPLOAD VIEW */
-        <div className="max-w-4xl mx-auto">
-          {/* Main Dropzone */}
-          <div 
-            onDragOver={handleBulkDrop}
-            onDragLeave={(e) => { e.preventDefault(); setIsDraggingBulk(false); }}
-            onDrop={handleBulkDrop}
-            onClick={() => bulkFileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-14 flex flex-col items-center justify-center cursor-pointer transition-all mb-8
-              ${isDraggingBulk ? 'border-pink-500 bg-pink-500/5 scale-[1.01]' : 'border-slate-800 bg-slate-900/20 hover:border-slate-700 hover:bg-slate-900/40'}
-            `}
-          >
-            <UploadCloud size={52} className={`mb-3 ${isDraggingBulk ? 'text-pink-500' : 'text-slate-500'}`} />
-            <h3 className="text-lg font-extrabold text-white mb-1">Drop multiple images here</h3>
-            <p className="text-slate-400 text-xs font-semibold">Or click to select files from your computer</p>
-            <input type="file" ref={bulkFileInputRef} onChange={handleBulkFileChange} accept="image/*" multiple className="hidden" />
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Sub-tab selection inside Bulk view */}
+          <div className="bg-slate-900/60 p-1 rounded-xl flex space-x-1 border border-slate-800 max-w-sm mb-6">
+            <button 
+              type="button"
+              onClick={() => setBulkSubMode("csv")}
+              className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${bulkSubMode === "csv" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md" : "text-slate-400 hover:text-slate-200"}`}
+            >
+              Spreadsheet (CSV) Upload
+            </button>
+            <button 
+              type="button"
+              onClick={() => setBulkSubMode("images")}
+              className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${bulkSubMode === "images" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md" : "text-slate-400 hover:text-slate-200"}`}
+            >
+              Image Files List
+            </button>
           </div>
 
-          {/* Pending List */}
-          {bulkFiles.length > 0 && (
-            <div className="space-y-6 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-base font-extrabold text-white">Pending Upload Items ({bulkFiles.length})</h3>
-                <button onClick={() => setBulkFiles([])} className="text-xs font-bold text-rose-500 hover:text-rose-450 cursor-pointer">Clear All</button>
+          {bulkSubMode === "csv" ? (
+            /* CSV SPREADSHEET UPLOADER CONTENT */
+            <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-6 shadow-xl text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Bulk Spreadsheet Upload</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">Upload product details in bulk using Excel/CSV templates.</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={downloadCSVTemplate}
+                  className="bg-slate-800 hover:bg-slate-700 text-pink-500 font-extrabold px-4 py-2.5 rounded-lg text-xs uppercase tracking-wider transition-all border border-slate-700 cursor-pointer text-center"
+                >
+                  Download CSV Template
+                </button>
               </div>
-              
-              {bulkFiles.map((item, index) => {
-                const calculatedBulkPrice = 
-                  Number(item.purchasePrice || 0) + 
-                  Number(item.packingCharges || 0) + 
-                  Number(item.courierCharges || 0) + 
-                  Number(item.otherExpenses || 0) + 
-                  Number(item.profit || 0);
 
-                return (
-                  <div key={index} className="bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col sm:flex-row gap-6 relative">
-                    <button onClick={() => removeBulkItem(index)} className="absolute -top-2.5 -right-2.5 bg-rose-600 text-white p-1 rounded-full shadow hover:bg-rose-700 transition-colors z-10 cursor-pointer">
-                      <X size={14} />
-                    </button>
-                    
-                    {/* Image Preview */}
-                    <div className="w-full sm:w-40 h-40 sm:h-auto bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-850 relative group">
-                      <img src={item.preview} alt={`Upload ${index}`} className="w-full h-full object-contain" />
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          setEditingImageIdx(index);
-                          setEditorImageUrl(item.preview);
-                          setIsEditingBulkImage(true);
-                        }}
-                        className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white p-1.5 rounded-lg hover:bg-black opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer flex items-center gap-1 text-[10px] font-bold"
-                        title="Edit Image"
-                      >
-                        <Edit2 size={12} />
-                        <span>Edit</span>
-                      </button>
+              <form onSubmit={handleBulkCsvUploadSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* CSV spreadsheet file selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select CSV Spreadsheet *</label>
+                    <div className="relative border border-slate-850 bg-slate-950 rounded-xl px-4 py-6 text-center hover:border-slate-700 transition-all">
+                      <input 
+                        type="file" 
+                        required={!csvFile}
+                        accept=".csv" 
+                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <UploadCloud size={28} className="mx-auto mb-2 text-slate-500" />
+                      <span className="text-xs font-bold text-slate-300 block">
+                        {csvFile ? csvFile.name : "Choose CSV File"}
+                      </span>
+                      <span className="text-[10px] text-slate-500 mt-1 block">Supported format: .csv</span>
+                    </div>
+                  </div>
+
+                  {/* Photos selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Product Photos (Multiple)</label>
+                    <div className="relative border border-slate-850 bg-slate-950 rounded-xl px-4 py-6 text-center hover:border-slate-700 transition-all">
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept="image/*" 
+                        onChange={(e) => setCsvImages(Array.from(e.target.files || []))}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <UploadCloud size={28} className="mx-auto mb-2 text-slate-500" />
+                      <span className="text-xs font-bold text-slate-300 block">
+                        {csvImages.length > 0 ? `${csvImages.length} photos selected` : "Choose Image Files"}
+                      </span>
+                      <span className="text-[10px] text-slate-500 mt-1 block">File names should match CSV ImageFileNames column</span>
+                    </div>
+                  </div>
+                </div>
+
+                {csvImages.length > 0 && (
+                  <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-850">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-2 tracking-wider">Selected Image List:</span>
+                    <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-2">
+                      {csvImages.map((f, idx) => (
+                        <span key={idx} className="bg-slate-900 border border-slate-800 text-[10px] font-semibold text-slate-300 px-2 py-1 rounded">
+                          {f.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress reporting & console logs */}
+                {csvIsUploading && (
+                  <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 space-y-3.5">
+                    <div className="flex justify-between items-center text-xs font-bold text-white">
+                      <span>Uploading product {csvCurrentRow} of {csvTotalRows}...</span>
+                      <span>{csvUploadProgress}%</span>
+                    </div>
+                    {/* Progress bar container */}
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-pink-500 to-orange-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${csvUploadProgress}%` }}
+                      ></div>
                     </div>
                     
-                    {/* Form Fields */}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">BRAND *</label>
-                        <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. LEVIS" />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">TITLE *</label>
-                        <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. Slim Fit Jeans" />
-                      </div>
-                      
-                      {/* Quantity */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Quantity *</label>
-                        <input type="number" required min="0" value={item.quantity} onChange={(e) => updateBulkItem(index, "quantity", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="10" />
-                      </div>
-
-                      {/* Purchase Cost */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Purchase Cost (₹) *</label>
-                        <input type="number" required value={item.purchasePrice} onChange={(e) => updateBulkItem(index, "purchasePrice", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
-                      </div>
-
-                      {/* Packing Cost */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Packing charges (₹) *</label>
-                        <input type="number" required value={item.packingCharges} onChange={(e) => updateBulkItem(index, "packingCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
-                      </div>
-
-                      {/* Courier Cost */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Courier charges (₹) *</label>
-                        <input type="number" required value={item.courierCharges} onChange={(e) => updateBulkItem(index, "courierCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
-                      </div>
-
-                      {/* Other expenses */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Other expenses (₹) *</label>
-                        <input type="number" required value={item.otherExpenses} onChange={(e) => updateBulkItem(index, "otherExpenses", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
-                      </div>
-
-                      {/* Profit */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Profit margin (₹) *</label>
-                        <input type="number" required value={item.profit} onChange={(e) => updateBulkItem(index, "profit", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
-                      </div>
-
-                      {/* MRP */}
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">MRP (₹)</label>
-                        <input 
-                          type="number" 
-                          value={item.mrp || ""} 
-                          onChange={(e) => updateBulkItem(index, "mrp", e.target.value)} 
-                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" 
-                          placeholder="Leave blank for 1.5x" 
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">HOME SECTION</label>
-                        <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
-                          <option value="Standard">Standard</option>
-                          <option value="Flash Sale">Flash Sale</option>
-                          <option value="New Arrivals">New Arrivals</option>
-                          <option value="Trending">Trending</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">GST RATE (%)</label>
-                        <select value={item.gstRate} onChange={(e) => updateBulkItem(index, "gstRate", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
-                          <option value="0">0%</option>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">CATEGORY *</label>
-                        <select 
-                          value={item.category} 
-                          onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
-                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none cursor-pointer"
-                        >
-                          {availableCategories.map(c => (
-                            <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Display calculated price for bulk item */}
-                      <div className="flex flex-col justify-center text-right bg-pink-500/5 border border-pink-500/10 p-2.5 rounded-xl">
-                        <span className="text-[8px] font-bold text-pink-500 uppercase tracking-wider block">Calculated Price</span>
-                        <span className="text-sm font-black text-white block mt-0.5">₹{calculatedBulkPrice}</span>
+                    {/* Console Logs */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Activity logs:</span>
+                      <div className="bg-black border border-slate-905 rounded-lg p-3 max-h-36 overflow-y-auto text-[10px] font-mono text-slate-400 space-y-1 select-text scrollbar-thin">
+                        {csvLogs.slice().reverse().map((l, idx) => (
+                          <div key={idx} className="leading-relaxed">{l}</div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                )}
 
-              <div className="pt-4 sticky bottom-6 z-20">
                 <button 
-                  onClick={submitBulk} 
-                  disabled={loading} 
+                  type="submit" 
+                  disabled={csvIsUploading}
                   className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-4 rounded-xl shadow-xl hover:opacity-95 disabled:opacity-75 transition-all text-xs uppercase tracking-wider flex items-center justify-center space-x-2 cursor-pointer"
                 >
-                  {loading ? (
+                  {csvIsUploading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>UPLOADING IMAGES & SAVING...</span>
+                      <span>UPLOADING & CREATING PRODUCTS...</span>
                     </>
                   ) : (
-                    <span>SAVE ALL {bulkFiles.length} PRODUCTS</span>
+                    <span>START BULK UPLOAD</span>
                   )}
                 </button>
-              </div>
+              </form>
             </div>
+          ) : (
+            /* ORIGINAL BULK IMAGE UPLOAD VIEW */
+            <>
+              {/* Main Dropzone */}
+              <div 
+                onDragOver={handleBulkDrop}
+                onDragLeave={(e) => { e.preventDefault(); setIsDraggingBulk(false); }}
+                onDrop={handleBulkDrop}
+                onClick={() => bulkFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-14 flex flex-col items-center justify-center cursor-pointer transition-all mb-8
+                  ${isDraggingBulk ? 'border-pink-500 bg-pink-500/5 scale-[1.01]' : 'border-slate-800 bg-slate-900/20 hover:border-slate-700 hover:bg-slate-900/40'}
+                `}
+              >
+                <UploadCloud size={52} className={`mb-3 ${isDraggingBulk ? 'text-pink-500' : 'text-slate-500'}`} />
+                <h3 className="text-lg font-extrabold text-white mb-1">Drop multiple images here</h3>
+                <p className="text-slate-400 text-xs font-semibold">Or click to select files from your computer</p>
+                <input type="file" ref={bulkFileInputRef} onChange={handleBulkFileChange} accept="image/*" multiple className="hidden" />
+              </div>
+
+              {/* Pending List */}
+              {bulkFiles.length > 0 && (
+                <div className="space-y-6 mb-8 text-left">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-extrabold text-white">Pending Upload Items ({bulkFiles.length})</h3>
+                    <button onClick={() => setBulkFiles([])} className="text-xs font-bold text-rose-500 hover:text-rose-450 cursor-pointer">Clear All</button>
+                  </div>
+                  
+                  {bulkFiles.map((item, index) => {
+                    const calculatedBulkPrice = 
+                      Number(item.purchasePrice || 0) + 
+                      Number(item.packingCharges || 0) + 
+                      Number(item.courierCharges || 0) + 
+                      Number(item.otherExpenses || 0) + 
+                      Number(item.profit || 0);
+
+                    return (
+                      <div key={index} className="bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col sm:flex-row gap-6 relative">
+                        <button onClick={() => removeBulkItem(index)} className="absolute -top-2.5 -right-2.5 bg-rose-600 text-white p-1 rounded-full shadow hover:bg-rose-700 transition-colors z-10 cursor-pointer">
+                          <X size={14} />
+                        </button>
+                        
+                        {/* Image Preview */}
+                        <div className="w-full sm:w-40 h-40 sm:h-auto bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-850 relative group">
+                          <img src={item.preview} alt={`Upload ${index}`} className="w-full h-full object-contain" />
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setEditingImageIdx(index);
+                              setEditorImageUrl(item.preview);
+                              setIsEditingBulkImage(true);
+                            }}
+                            className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white p-1.5 rounded-lg hover:bg-black opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                            title="Edit Image"
+                          >
+                            <Edit2 size={12} />
+                            <span>Edit</span>
+                          </button>
+                        </div>
+                        
+                        {/* Form Fields */}
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">BRAND *</label>
+                            <input type="text" required value={item.brand} onChange={(e) => updateBulkItem(index, "brand", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. LEVIS" />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">TITLE *</label>
+                            <input type="text" required value={item.title} onChange={(e) => updateBulkItem(index, "title", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="e.g. Slim Fit Jeans" />
+                          </div>
+                          
+                          {/* Quantity */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Quantity *</label>
+                            <input type="number" required min="0" value={item.quantity} onChange={(e) => updateBulkItem(index, "quantity", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="10" />
+                          </div>
+
+                          {/* Purchase Cost */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Purchase Cost (₹) *</label>
+                            <input type="number" required value={item.purchasePrice} onChange={(e) => updateBulkItem(index, "purchasePrice", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                          </div>
+
+                          {/* Packing Cost */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Packing charges (₹) *</label>
+                            <input type="number" required value={item.packingCharges} onChange={(e) => updateBulkItem(index, "packingCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                          </div>
+
+                          {/* Courier Cost */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Courier charges (₹) *</label>
+                            <input type="number" required value={item.courierCharges} onChange={(e) => updateBulkItem(index, "courierCharges", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                          </div>
+
+                          {/* Other expenses */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Other expenses (₹) *</label>
+                            <input type="number" required value={item.otherExpenses} onChange={(e) => updateBulkItem(index, "otherExpenses", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                          </div>
+
+                          {/* Profit */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">Profit margin (₹) *</label>
+                            <input type="number" required value={item.profit} onChange={(e) => updateBulkItem(index, "profit", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" placeholder="0" />
+                          </div>
+
+                          {/* MRP */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">MRP (₹)</label>
+                            <input 
+                              type="number" 
+                              value={item.mrp || ""} 
+                              onChange={(e) => updateBulkItem(index, "mrp", e.target.value)} 
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none" 
+                              placeholder="Leave blank for 1.5x" 
+                            />
+                          </div>
+
+                          {/* Home Section */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">HOME SECTION</label>
+                            <select value={item.homeSection} onChange={(e) => updateBulkItem(index, "homeSection", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                              <option value="Standard">Standard</option>
+                              <option value="Flash Sale">Flash Sale</option>
+                              <option value="New Arrivals">New Arrivals</option>
+                              <option value="Trending">Trending</option>
+                            </select>
+                          </div>
+
+                          {/* GST Rate */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">GST RATE (%)</label>
+                            <select value={item.gstRate} onChange={(e) => updateBulkItem(index, "gstRate", e.target.value)} className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                              <option value="0">0%</option>
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18">18%</option>
+                              <option value="28">28%</option>
+                            </select>
+                          </div>
+
+                          {/* Category */}
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 mb-1 uppercase">CATEGORY *</label>
+                            <select 
+                              value={item.category} 
+                              onChange={(e) => updateBulkItem(index, "category", e.target.value)} 
+                              className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-1.5 text-xs text-white focus:border-pink-500 outline-none cursor-pointer"
+                            >
+                              {availableCategories.map(c => (
+                                <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Display calculated price */}
+                          <div className="flex flex-col justify-center text-right bg-pink-500/5 border border-pink-500/10 p-2.5 rounded-xl">
+                            <span className="text-[8px] font-bold text-pink-500 uppercase tracking-wider block">Calculated Price</span>
+                            <span className="text-sm font-black text-white block mt-0.5">₹{calculatedBulkPrice}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="pt-4 sticky bottom-6 z-20">
+                    <button 
+                      onClick={submitBulk} 
+                      disabled={loading} 
+                      className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-extrabold py-4 rounded-xl shadow-xl hover:opacity-95 disabled:opacity-75 transition-all text-xs uppercase tracking-wider flex items-center justify-center space-x-2 cursor-pointer"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>UPLOADING IMAGES & SAVING...</span>
+                        </>
+                      ) : (
+                        <span>SAVE ALL {bulkFiles.length} PRODUCTS</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
