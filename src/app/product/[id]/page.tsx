@@ -935,20 +935,97 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
-          {/* Product Descriptions Section */}
+      {/* Product Highlights & Descriptions Section */}
       {(product.shortDescription || product.fullDescription) && (
-        <div className="p-4 bg-white border-b border-gray-100 space-y-2">
-          <h2 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider text-gray-500">Product Description</h2>
-          {product.shortDescription && (
-            <p className="text-gray-800 text-xs font-semibold leading-relaxed">
-              {product.shortDescription}
-            </p>
+        <div className="p-5 bg-white border-b border-gray-100 space-y-5">
+          {/* Short highlights block */}
+          {product.shortDescription && (() => {
+            const highlightPoints = parseShortDescription(product.shortDescription);
+            if (highlightPoints.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <h2 className="font-extrabold text-gray-950 text-[15px] tracking-tight">Top highlights</h2>
+                <ul className="space-y-2">
+                  {highlightPoints.map((pt, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-[13px] text-slate-800 font-medium leading-relaxed">
+                      <span className="text-emerald-600 font-black text-sm mt-0.5 flex-shrink-0">✓</span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-gray-400 flex items-center gap-1 font-semibold italic">
+                  Summarized from seller-provided product information ✨
+                </p>
+              </div>
+            );
+          })()}
+
+          {/* Divider if both exist */}
+          {product.shortDescription && product.fullDescription && (
+            <div className="border-t border-gray-100 my-2"></div>
           )}
-          {product.fullDescription && (
-            <p className="text-gray-650 text-[11px] leading-relaxed whitespace-pre-line">
-              {product.fullDescription}
-            </p>
-          )}
+
+          {/* Full description block */}
+          {product.fullDescription && (() => {
+            const rawLines = product.fullDescription.split(/\r?\n/).filter((l: string) => l.trim().length > 0);
+            if (rawLines.length === 0) return null;
+            return (
+              <div className="space-y-3.5">
+                <h2 className="font-extrabold text-gray-950 text-[15px] tracking-tight">Product Details</h2>
+                <ul className="space-y-2.5">
+                  {rawLines.map((line: string, idx: number) => {
+                    const cleanLine = line.replace(/^([•\*\-\d\.\)\s])+/, "").trim();
+                    if (!cleanLine) return null;
+                    
+                    let prefix = "";
+                    let content = cleanLine;
+                    let separator = "";
+                    
+                    // Look for common separators inside first 40 chars
+                    const colonIdx = cleanLine.indexOf(":");
+                    const emDashIdx = cleanLine.indexOf("–");
+                    const enDashIdx = cleanLine.indexOf(" - ");
+                    
+                    if (colonIdx !== -1 && (emDashIdx === -1 || colonIdx < emDashIdx) && (enDashIdx === -1 || colonIdx < enDashIdx)) {
+                      if (colonIdx < 40) {
+                        prefix = cleanLine.substring(0, colonIdx).trim();
+                        content = cleanLine.substring(colonIdx + 1).trim();
+                        separator = ":";
+                      }
+                    } else if (emDashIdx !== -1 && (enDashIdx === -1 || emDashIdx < enDashIdx)) {
+                      if (emDashIdx < 40) {
+                        prefix = cleanLine.substring(0, emDashIdx).trim();
+                        content = cleanLine.substring(emDashIdx + 1).trim();
+                        separator = "–";
+                      }
+                    } else if (enDashIdx !== -1) {
+                      if (enDashIdx < 40) {
+                        prefix = cleanLine.substring(0, enDashIdx).trim();
+                        content = cleanLine.substring(enDashIdx + 3).trim();
+                        separator = "–";
+                      }
+                    }
+                    
+                    return (
+                      <li key={idx} className="flex items-start gap-2 text-[13px] leading-relaxed">
+                        <span className="text-gray-400 mt-1 flex-shrink-0 text-xs">•</span>
+                        <span className="text-gray-850">
+                          {prefix ? (
+                            <>
+                              <strong className="font-extrabold text-gray-905">{prefix}</strong>
+                              {separator} {content}
+                            </>
+                          ) : (
+                            cleanLine
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
         </div>
       )}
 
