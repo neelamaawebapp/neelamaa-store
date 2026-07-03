@@ -91,8 +91,19 @@ export default function WishlistPage() {
   const handleMoveToBag = async (product: any, size: string = "Default") => {
     try {
       // Calculate price and MRP
-      const price = product.price;
-      const mrp = product.mrp || Math.round(product.price * 1.5);
+      let price = product.price;
+      let mrp = product.mrp || Math.round(product.price * 1.5);
+
+      if (product.variants && Array.isArray(product.variants)) {
+        const matched = product.variants.find((v: any) => {
+          const formattedSize = `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`;
+          return formattedSize === size;
+        });
+        if (matched) {
+          price = matched.price;
+          mrp = matched.mrp;
+        }
+      }
 
       await addToBag({
         productId: product.id,
@@ -118,7 +129,7 @@ export default function WishlistPage() {
   const handleAddToBagClick = (product: any) => {
     const isFashion = product.category?.toLowerCase() === "fashion";
     const availableSizes = product.variants
-      ? Array.from(new Set(product.variants.map((v: any) => v.size).filter(Boolean))) as string[]
+      ? Array.from(new Set(product.variants.map((v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`).filter(Boolean))) as string[]
       : (product.sizes || ["S", "M", "L", "XL", "XXL"]);
 
     // If it's fashion and there are multiple sizes, prompt for size
@@ -174,7 +185,7 @@ export default function WishlistPage() {
             const isSelectingSize = selectingSizeProductId === product.id;
             
             const availableSizes = product.variants
-              ? Array.from(new Set(product.variants.map((v: any) => v.size).filter(Boolean))) as string[]
+              ? Array.from(new Set(product.variants.map((v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`).filter(Boolean))) as string[]
               : (product.sizes || ["S", "M", "L", "XL", "XXL"]);
 
             return (

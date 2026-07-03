@@ -63,18 +63,85 @@ export default function ProductDetailPage() {
   };
   const sizes = ["S", "M", "L", "XL", "XXL"];
 
+  const getFormattedSize = (v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`;
+
   const availableColors = product?.variants
     ? (Array.from(new Set(product.variants.map((v: any) => v.color).filter(Boolean))) as string[])
     : [];
   const availableSizes = product?.variants
-    ? (Array.from(new Set(product.variants.map((v: any) => v.size).filter(Boolean))) as string[])
+    ? (Array.from(new Set(product.variants.map(getFormattedSize).filter(Boolean))) as string[])
     : [];
   const availableMaterials = product?.variants
     ? (Array.from(new Set(product.variants.map((v: any) => v.material).filter(Boolean))) as string[])
     : [];
 
+  // Auto-select first available variant on page load
+  useEffect(() => {
+    if (product && product.variants && product.variants.length > 0) {
+      const firstVar = product.variants.find((v: any) => v.stock > 0) || product.variants[0];
+      if (firstVar) {
+        if (firstVar.size) {
+          setSelectedSize(getFormattedSize(firstVar));
+        }
+        if (firstVar.color) {
+          setSelectedVariantColor(firstVar.color);
+        }
+        if (firstVar.material) {
+          setSelectedVariantMaterial(firstVar.material);
+        }
+      }
+    }
+  }, [product]);
+
+  // Click handlers with auto-selection of compatible variant attributes
+  const handleSizeClick = (formattedSize: string) => {
+    setSelectedSize(formattedSize);
+    if (product?.variants && product.variants.length > 0) {
+      const matchingVars = product.variants.filter((v: any) => getFormattedSize(v) === formattedSize);
+      if (matchingVars.length > 0) {
+        const isColorValid = matchingVars.some((v: any) => v.color === selectedVariantColor);
+        if (!isColorValid) {
+          const firstCompatible = matchingVars.find((v: any) => v.stock > 0) || matchingVars[0];
+          setSelectedVariantColor(firstCompatible.color || "");
+          setSelectedVariantMaterial(firstCompatible.material || "");
+        }
+      }
+    }
+  };
+
+  const handleColorClick = (color: string) => {
+    setSelectedVariantColor(color);
+    if (product?.variants && product.variants.length > 0) {
+      const matchingVars = product.variants.filter((v: any) => v.color === color);
+      if (matchingVars.length > 0) {
+        const isSizeValid = matchingVars.some((v: any) => getFormattedSize(v) === selectedSize);
+        if (!isSizeValid) {
+          const firstCompatible = matchingVars.find((v: any) => v.stock > 0) || matchingVars[0];
+          setSelectedSize(firstCompatible.size ? getFormattedSize(firstCompatible) : "");
+          setSelectedVariantMaterial(firstCompatible.material || "");
+        }
+      }
+    }
+  };
+
+  const handleMaterialClick = (material: string) => {
+    setSelectedVariantMaterial(material);
+    if (product?.variants && product.variants.length > 0) {
+      const matchingVars = product.variants.filter((v: any) => v.material === material);
+      if (matchingVars.length > 0) {
+        const isSizeValid = matchingVars.some((v: any) => getFormattedSize(v) === selectedSize);
+        const isColorValid = matchingVars.some((v: any) => v.color === selectedVariantColor);
+        if (!isSizeValid || !isColorValid) {
+          const firstCompatible = matchingVars.find((v: any) => v.stock > 0) || matchingVars[0];
+          setSelectedSize(firstCompatible.size ? getFormattedSize(firstCompatible) : "");
+          setSelectedVariantColor(firstCompatible.color || "");
+        }
+      }
+    }
+  };
+
   const matchedVariant = product?.variants?.find((v: any) => {
-    const matchSize = !v.size || v.size === selectedSize;
+    const matchSize = !v.size || getFormattedSize(v) === selectedSize;
     const matchColor = !v.color || v.color === selectedVariantColor;
     const matchMaterial = !v.material || v.material === selectedVariantMaterial;
     return matchSize && matchColor && matchMaterial;
@@ -82,6 +149,12 @@ export default function ProductDetailPage() {
 
   const displayPrice = matchedVariant ? matchedVariant.price : (product?.price || 0);
   const displayMrp = matchedVariant ? matchedVariant.mrp : (product?.mrp || Math.round((product?.price || 0) * 1.5));
+
+  const currentSize = matchedVariant 
+    ? `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}` 
+    : `${product?.size || ''}${product?.sizeUnit ? ' ' + product?.sizeUnit : ''}`;
+  const currentColor = matchedVariant ? matchedVariant.color : (product?.color || '');
+  const currentMaterial = matchedVariant ? matchedVariant.material : (product?.material || '');
 
   // Stock Subscription States
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -385,7 +458,8 @@ export default function ProductDetailPage() {
 
       finalPrice = matchedVariant.price;
       finalMrp = matchedVariant.mrp;
-      finalSizeString = [matchedVariant.size, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+      const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
+      finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion";
       if (isFashion) {
@@ -406,6 +480,10 @@ export default function ProductDetailPage() {
           setToast("This item is currently out of stock.");
           setTimeout(() => setToast(""), 3000);
           return;
+        }
+        const formattedBaseSize = `${product.size || ''}${product.sizeUnit ? ' ' + product.sizeUnit : ''}`;
+        if (formattedBaseSize) {
+          finalSizeString = formattedBaseSize;
         }
       }
     }
@@ -463,7 +541,8 @@ export default function ProductDetailPage() {
 
       finalPrice = matchedVariant.price;
       finalMrp = matchedVariant.mrp;
-      finalSizeString = [matchedVariant.size, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+      const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
+      finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion";
       if (isFashion) {
@@ -484,6 +563,10 @@ export default function ProductDetailPage() {
           setToast("This item is currently out of stock.");
           setTimeout(() => setToast(""), 3000);
           return;
+        }
+        const formattedBaseSize = `${product.size || ''}${product.sizeUnit ? ' ' + product.sizeUnit : ''}`;
+        if (formattedBaseSize) {
+          finalSizeString = formattedBaseSize;
         }
       }
     }
@@ -622,6 +705,27 @@ export default function ProductDetailPage() {
         </div>
         <p className="text-[10px] text-green-700 font-bold tracking-widest uppercase mt-2">inclusive of all taxes</p>
         
+        {/* Dynamic Variant / Base Specs Display */}
+        {(currentSize || currentColor || currentMaterial) && (
+          <div className="mt-3 flex gap-1.5 flex-wrap">
+            {currentSize && (
+              <span className="bg-pink-50 text-pink-700 border border-pink-100/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
+                Size: {currentSize}
+              </span>
+            )}
+            {currentColor && (
+              <span className="bg-slate-50 text-slate-750 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
+                Color: {currentColor}
+              </span>
+            )}
+            {currentMaterial && (
+              <span className="bg-slate-50 text-slate-750 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
+                Material: {currentMaterial}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-3.5">
           {product.variants && product.variants.length > 0 ? (
             matchedVariant ? (
@@ -691,8 +795,7 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
-      {/* Size Selection / Options Selection */}
-      {product.variants && product.variants.length > 0 ? (
+      {/* Size Sele      {product.variants && product.variants.length > 0 ? (
         <div className="p-4 bg-white border-b border-gray-100 space-y-4">
           <h2 className="font-bold text-gray-905 text-sm">Select Custom Options</h2>
           
@@ -703,11 +806,11 @@ export default function ProductDetailPage() {
                 {availableColors.map(color => (
                   <button
                     key={color}
-                    onClick={() => setSelectedVariantColor(color)}
+                    onClick={() => handleColorClick(color)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
                       ${selectedVariantColor === color
                         ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-350 text-gray-750 hover:border-gray-400'}`}
+                        : 'border-gray-350 text-gray-755 hover:border-gray-400'}`}
                   >
                     {color}
                   </button>
@@ -723,7 +826,7 @@ export default function ProductDetailPage() {
                 {availableSizes.map(size => (
                   <button
                     key={size}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() => handleSizeClick(size)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
                       ${selectedSize === size
                         ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
@@ -743,7 +846,7 @@ export default function ProductDetailPage() {
                 {availableMaterials.map(material => (
                   <button
                     key={material}
-                    onClick={() => setSelectedVariantMaterial(material)}
+                    onClick={() => handleMaterialClick(material)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
                       ${selectedVariantMaterial === material
                         ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
@@ -752,7 +855,6 @@ export default function ProductDetailPage() {
                     {material}
                   </button>
                 ))}
-              </div>
             </div>
           )}
         </div>
