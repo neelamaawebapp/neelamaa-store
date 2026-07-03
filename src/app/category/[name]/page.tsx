@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { Heart, ChevronLeft, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import OptimizedImage from "@/components/OptimizedImage";
 
 export default function CategoryProductsPage() {
   const params = useParams();
@@ -112,9 +113,10 @@ export default function CategoryProductsPage() {
           {filteredProducts.map((product) => (
             <Link href={`/product/${product.id}`} key={product.id} className="bg-white flex flex-col relative group cursor-pointer block">
               <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50">
-                <img
+                <OptimizedImage
                   src={product.image}
                   alt={product.brand}
+                  fill
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <button className="absolute bottom-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm text-gray-600 hover:text-pink-600 transition-colors">

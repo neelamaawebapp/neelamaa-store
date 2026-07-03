@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { ChevronLeft, Share2, Heart, ShoppingBag, Info, Truck, ShieldCheck, Bell, X } from "lucide-react";
+import OptimizedImage from "@/components/OptimizedImage";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -612,9 +613,11 @@ export default function ProductDetailPage() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <img
+          <OptimizedImage
             src={product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image}
             alt={product.brand}
+            fill
+            priority={activeImageIdx === 0}
             className="w-full h-full object-cover transition-all duration-305"
           />
           
@@ -655,10 +658,10 @@ export default function ProductDetailPage() {
               <button
                 key={idx}
                 onClick={() => setActiveImageIdx(idx)}
-                className={`w-10 h-14 rounded-md overflow-hidden bg-gray-100 border-2 transition-all flex-shrink-0 cursor-pointer
+                className={`w-10 h-14 rounded-md overflow-hidden bg-gray-100 border-2 transition-all flex-shrink-0 cursor-pointer relative
                   ${activeImageIdx === idx ? 'border-pink-500 scale-95 shadow-sm' : 'border-transparent'}`}
               >
-                <img src={imgUrl} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
+                <OptimizedImage src={imgUrl} alt={`Angle ${idx + 1}`} fill className="object-cover" />
               </button>
             ))}
           </div>
@@ -1008,7 +1011,7 @@ export default function ProductDetailPage() {
                   className="w-32 flex-shrink-0 cursor-pointer snap-start group"
                 >
                   <div className="w-32 h-44 bg-gray-150 rounded-xl overflow-hidden relative shadow-sm border border-gray-100/50 group-hover:shadow-md transition-all duration-300">
-                    <img src={item.image} alt={item.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <OptimizedImage src={item.image} alt={item.brand} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     {discountPercent > 0 && (
                       <div className="absolute top-2 left-2 bg-pink-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow">
                         {discountPercent}% OFF
@@ -1136,8 +1139,8 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex space-x-4 mb-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="w-16 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
-                <img src={product.image} alt={product.brand} className="w-full h-full object-cover" />
+              <div className="w-16 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
+                <OptimizedImage src={product.image} alt={product.brand} fill className="object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-sm text-gray-900 truncate">{product.brand}</h4>

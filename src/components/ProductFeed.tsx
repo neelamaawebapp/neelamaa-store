@@ -7,6 +7,7 @@ import { Heart, SlidersHorizontal, ChevronRight, Zap, Star } from "lucide-react"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getDailyGradients } from "@/lib/colorUtils";
+import OptimizedImage from "./OptimizedImage";
 
 // Seeded pseudo-random number generator (Mulberry32 or similar)
 function seededRandom(seedStr: string) {
@@ -183,9 +184,10 @@ export default function ProductFeed() {
           ${isHorizontal ? 'w-44 flex-shrink-0' : 'w-full'}`}
       >
         <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
-          <img
+          <OptimizedImage
             src={product.image}
             alt={product.brand}
+            fill
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'opacity-40 grayscale' : ''}`}
           />
           {isOutOfStock && (

@@ -5,6 +5,7 @@ import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Trash2, Plus, Minus, ShieldCheck, AlertTriangle, Tag, Check, X, Gift } from "lucide-react";
+import OptimizedImage from "@/components/OptimizedImage";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -202,9 +203,9 @@ export default function BagPage() {
 
               <Link 
                 href={`/product/${item.productId}`}
-                className="w-20 h-28 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-20 h-28 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity relative"
               >
-                <img src={item.image} alt={item.brand} className="w-full h-full object-cover" />
+                <OptimizedImage src={item.image} alt={item.brand} fill className="object-cover" />
               </Link>
               <div className="flex-1 flex flex-col pt-1">
                 <Link href={`/product/${item.productId}`} className="group cursor-pointer block">

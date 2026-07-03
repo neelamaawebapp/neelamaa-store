@@ -7,6 +7,7 @@ import { Heart, Star } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { getDailyGradients } from "@/lib/colorUtils";
+import OptimizedImage from "./OptimizedImage";
 
 export default function RecentlyViewed() {
   const { user } = useAuth();
@@ -150,9 +151,10 @@ export default function RecentlyViewed() {
               className="bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 border border-gray-100/40 w-36 flex-shrink-0"
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
-                <img
+                <OptimizedImage
                   src={product.image}
                   alt={product.brand}
+                  fill
                   className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'opacity-40 grayscale' : ''}`}
                 />
                 {isOutOfStock && (

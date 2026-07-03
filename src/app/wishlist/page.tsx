@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import { ChevronLeft, Heart, ShoppingBag, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import OptimizedImage from "@/components/OptimizedImage";
 
 export default function WishlistPage() {
   const router = useRouter();
@@ -204,9 +205,10 @@ export default function WishlistPage() {
 
                 {/* Product Image Link */}
                 <Link href={`/product/${product.id}`} className="block relative aspect-[4/5] bg-gray-50 overflow-hidden">
-                  <img 
+                  <OptimizedImage 
                     src={product.image} 
                     alt={product.title} 
+                    fill
                     className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                   />
                   {isOutOfStock && (
