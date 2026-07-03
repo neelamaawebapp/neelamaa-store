@@ -1410,7 +1410,8 @@ export default function AdminDashboard() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">SHORT DESCRIPTION</label>
-                  <textarea rows={2} value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="Heat resistant board" />
+                  <textarea rows={3} value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="• Heat resistant board&#10;• Non-slip silicone base&#10;• Easy grip handle" />
+                  <span className="text-[10px] text-slate-500 mt-1 block leading-normal">Enter each point on a new line or start with a bullet (•, -, *). They will be separated by a vertical line '|' for customers.</span>
                 </div>
 
                 <div>

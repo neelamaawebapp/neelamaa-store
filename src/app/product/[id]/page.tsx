@@ -9,6 +9,32 @@ import { useAuth } from "@/context/AuthContext";
 import { ChevronLeft, Share2, Heart, ShoppingBag, Info, Truck, ShieldCheck, Bell, X } from "lucide-react";
 import OptimizedImage from "@/components/OptimizedImage";
 
+const parseShortDescription = (text: string): string[] => {
+  if (!text) return [];
+  const rawLines = text.split(/\r?\n/);
+  const points: string[] = [];
+  
+  for (const line of rawLines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    if (trimmed.includes("•") || trimmed.includes("*") || trimmed.includes("- ")) {
+      const parts = trimmed
+        .split(/[•\*\-]/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      points.push(...parts);
+    } else {
+      points.push(trimmed);
+    }
+  }
+  
+  return points
+    .map(p => p.replace(/^([•\*\-\d\.\)\s])+/, ""))
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+};
+
 export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -590,19 +616,40 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-white w-full max-w-md mx-auto relative pb-36">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10">
-        <button onClick={() => router.back()} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+      {/* Header (Relative to not overlap with text) */}
+      <div className="p-4 flex justify-between items-center bg-white border-b border-gray-100">
+        <button onClick={() => router.back()} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center transition-all cursor-pointer">
           <ChevronLeft size={24} className="text-gray-800" />
         </button>
         <div className="flex space-x-2">
-          <button onClick={handleShare} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+          <button onClick={handleShare} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center transition-all cursor-pointer">
             <Share2 size={20} className="text-gray-800" />
           </button>
-          <button onClick={toggleWishlist} className="w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm">
+          <button onClick={toggleWishlist} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center transition-all cursor-pointer">
             <Heart size={20} className={isWishlisted ? "text-pink-600 fill-slate-900" : "text-gray-800"} />
           </button>
         </div>
+      </div>
+
+      {/* Top Section: Product Name and Short Description with divider lines */}
+      <div className="p-4 bg-white border-b border-gray-100">
+        <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.brand}</h1>
+        <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight">{product.title}</h2>
+        
+        {(() => {
+          const points = parseShortDescription(product.shortDescription || "");
+          if (points.length === 0) return null;
+          return (
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5 leading-normal">
+              {points.map((point, index) => (
+                <span key={index} className="flex items-center">
+                  {index > 0 && <span className="text-gray-300 mr-2.5 font-normal">|</span>}
+                  <span className="text-gray-650">{point}</span>
+                </span>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Product Image / Carousel */}
@@ -668,12 +715,118 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      {/* Product Info */}
+      {/* Size Selection / Options Selection (Variant Selector) */}
+      {product.variants && product.variants.length > 0 ? (
+        <div className="p-4 bg-white border-b border-gray-100 space-y-4">
+          <h2 className="font-bold text-gray-905 text-sm">Select Custom Options</h2>
+          
+          {availableColors.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Color</span>
+              <div className="flex gap-2 flex-wrap">
+                {availableColors.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => handleColorClick(color)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
+                      ${selectedVariantColor === color
+                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
+                        : 'border-gray-350 text-gray-755 hover:border-gray-400'}`}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {availableSizes.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Size</span>
+              <div className="flex gap-2 flex-wrap">
+                {availableSizes.map(size => (
+                  <button
+                    key={size}
+                    onClick={() => handleSizeClick(size)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
+                      ${selectedSize === size
+                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
+                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {availableMaterials.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Material</span>
+              <div className="flex gap-2 flex-wrap">
+                {availableMaterials.map(material => (
+                  <button
+                    key={material}
+                    onClick={() => handleMaterialClick(material)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
+                      ${selectedVariantMaterial === material
+                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
+                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
+                  >
+                    {material}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        product.category?.toLowerCase() === "fashion" && (
+          <div className="p-4 bg-white border-b border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                Select Size
+              </h2>
+              <button onClick={() => setShowSizeGuide(true)} className="text-pink-600 font-bold text-sm uppercase flex items-center gap-1 hover:underline">
+                Size Guide
+              </button>
+            </div>
+            
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+              {sizes.map((size) => {
+                const sizesInv = product.sizesInventory || {};
+                const stock = Number(sizesInv[size] || 0);
+                const isOutOfStock = stock <= 0;
+                return (
+                  <button 
+                    key={size}
+                    disabled={isOutOfStock}
+                    onClick={() => setSelectedSize(size)}
+                    className={`w-12 h-12 rounded-full border flex flex-col items-center justify-center font-bold transition-all flex-shrink-0 relative cursor-pointer
+                      ${isOutOfStock 
+                        ? 'border-gray-200 text-gray-300 bg-gray-50/50 cursor-not-allowed line-through' 
+                        : selectedSize === size 
+                          ? 'border-pink-500 bg-slate-50 text-pink-600 shadow-sm' 
+                          : 'border-gray-305 text-gray-700 hover:border-gray-400'}`}
+                  >
+                    {size}
+                    {isOutOfStock && (
+                      <span className="absolute bottom-1 text-[7px] text-red-500 font-extrabold uppercase scale-90">Out</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {!selectedSize && toast === "Please select a size first!" && (
+              <p className="text-red-500 text-xs font-bold mt-2 animate-bounce">Please select a size</p>
+            )}
+          </div>
+        )
+      )}
+
+      {/* Price & Option Details */}
       <div className="p-4 bg-white border-b border-gray-100">
-        <h1 className="text-2xl font-serif font-bold text-pink-600">{product.brand}</h1>
-        <p className="text-gray-500 mt-1 tracking-tight">{product.title}</p>
-        
-        <div className="mt-4 flex items-baseline space-x-3 flex-wrap">
+        <div className="flex items-baseline space-x-3 flex-wrap">
           <span className="text-3xl font-extrabold text-pink-600">₹{displayPrice}</span>
           {(() => {
             const mrpVal = displayMrp;
@@ -782,112 +935,7 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
-      {/* Size Sele      {product.variants && product.variants.length > 0 ? (
-        <div className="p-4 bg-white border-b border-gray-100 space-y-4">
-          <h2 className="font-bold text-gray-905 text-sm">Select Custom Options</h2>
-          
-          {availableColors.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Color</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableColors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => handleColorClick(color)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedVariantColor === color
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-350 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {availableSizes.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Size</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableSizes.map(size => (
-                  <button
-                    key={size}
-                    onClick={() => handleSizeClick(size)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedSize === size
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {availableMaterials.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Material</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableMaterials.map(material => (
-                  <button
-                    key={material}
-                    onClick={() => handleMaterialClick(material)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedVariantMaterial === material
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {material}
-                  </button>
-                ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        product.category?.toLowerCase() === "fashion" && (
-          <div className="p-4 bg-white border-b border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                Select Size
-              </h2>
-              <button onClick={() => setShowSizeGuide(true)} className="text-pink-600 font-bold text-sm uppercase flex items-center gap-1 hover:underline">
-                Size Guide
-              </button>
-            </div>
-            
-            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-              {sizes.map((size) => {
-                const sizesInv = product.sizesInventory || {};
-                const stock = Number(sizesInv[size] || 0);
-                const isOutOfStock = stock <= 0;
-                return (
-                  <button 
-                    key={size}
-                    disabled={isOutOfStock}
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-12 h-12 rounded-full border flex flex-col items-center justify-center font-bold transition-all flex-shrink-0 relative cursor-pointer
-                      ${isOutOfStock 
-                        ? 'border-gray-200 text-gray-300 bg-gray-50/50 cursor-not-allowed line-through' 
-                        : selectedSize === size 
-                          ? 'border-pink-500 bg-slate-50 text-pink-600 shadow-sm' 
-                          : 'border-gray-305 text-gray-700 hover:border-gray-400'}`}
-                  >
-                    {size}
-                    {isOutOfStock && (
-                      <span className="absolute bottom-1 text-[7px] text-red-500 font-extrabold uppercase scale-90">Out</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {!selectedSize && toast === "Please select a size first!" && (
-              <p className="text-red-500 text-xs font-bold mt-2 animate-bounce">Please select a size</p>
-            )}
-          </div>
-        )
-      )}          {/* Product Descriptions Section */}
+          {/* Product Descriptions Section */}
       {(product.shortDescription || product.fullDescription) && (
         <div className="p-4 bg-white border-b border-gray-100 space-y-2">
           <h2 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider text-gray-500">Product Description</h2>
