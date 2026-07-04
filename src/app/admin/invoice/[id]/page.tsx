@@ -68,7 +68,11 @@ export default function InvoicePage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const orderData = { id: docSnap.id, ...docSnap.data() };
-          if (isAdmin || orderData.userId === user.uid) {
+          const isAllowed = isAdmin || 
+                            orderData.userId === user.uid || 
+                            (user.email && orderData.customerEmail?.toLowerCase() === user.email?.toLowerCase()) || 
+                            orderData.userId === "guest";
+          if (isAllowed) {
             setOrder(orderData);
           } else {
             router.push("/");
@@ -88,7 +92,11 @@ export default function InvoicePage() {
             const localOrders = JSON.parse(localOrdersStr);
             const found = localOrders.find((o: any) => o.id === id);
             if (found) {
-              if (isAdmin || found.userId === user.uid) {
+              const isAllowed = isAdmin || 
+                                found.userId === user.uid || 
+                                (user.email && found.customerEmail?.toLowerCase() === user.email?.toLowerCase()) || 
+                                found.userId === "guest";
+              if (isAllowed) {
                 setOrder({
                   ...found,
                   createdAt: {
@@ -111,6 +119,19 @@ export default function InvoicePage() {
       fetchOrder();
     }
   }, [id, isAdmin, user, authLoading, router]);
+
+  // Check if we should trigger download/print dialog automatically
+  useEffect(() => {
+    if (order && typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("download") === "true") {
+        const timer = setTimeout(() => {
+          window.print();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [order]);
 
   if (authLoading || loading) {
     return <div className="p-8 text-center text-gray-500">Loading Invoice...</div>;

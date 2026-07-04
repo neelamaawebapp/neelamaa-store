@@ -626,7 +626,7 @@ export default function CustomerOrdersPage() {
                       </button>
                       {order.status === "Delivered" && (
                         <a
-                          href={`/admin/invoice/${order.id}`}
+                          href={`/admin/invoice/${order.id}?download=true`}
                           target="_blank"
                           rel="noreferrer"
                           className="flex-1 bg-pink-500 hover:bg-pink-650 text-white font-bold py-2.5 rounded-lg transition-all text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
