@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function InvoicePage() {
   const { id } = useParams();
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,19 +55,24 @@ export default function InvoicePage() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      router.push("/");
+    if (!authLoading && !user) {
+      router.push("/login");
     }
-  }, [isAdmin, authLoading, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const fetchOrder = async () => {
-      if (!isAdmin || !id) return;
+      if (!user || !id) return;
       try {
         const docRef = doc(db, "orders", id as string);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setOrder({ id: docSnap.id, ...docSnap.data() });
+          const orderData = { id: docSnap.id, ...docSnap.data() };
+          if (isAdmin || orderData.userId === user.uid) {
+            setOrder(orderData);
+          } else {
+            router.push("/");
+          }
           setLoading(false);
           return;
         }
@@ -83,13 +88,17 @@ export default function InvoicePage() {
             const localOrders = JSON.parse(localOrdersStr);
             const found = localOrders.find((o: any) => o.id === id);
             if (found) {
-              setOrder({
-                ...found,
-                createdAt: {
-                  toDate: () => new Date(),
-                  toLocaleDateString: () => new Date().toLocaleDateString()
-                }
-              });
+              if (isAdmin || found.userId === user.uid) {
+                setOrder({
+                  ...found,
+                  createdAt: {
+                    toDate: () => new Date(),
+                    toLocaleDateString: () => new Date().toLocaleDateString()
+                  }
+                });
+              } else {
+                router.push("/");
+              }
             }
           } catch (e) {
             console.error("Failed to parse local orders in invoice", e);
@@ -98,8 +107,10 @@ export default function InvoicePage() {
       }
       setLoading(false);
     };
-    fetchOrder();
-  }, [id, isAdmin]);
+    if (!authLoading) {
+      fetchOrder();
+    }
+  }, [id, isAdmin, user, authLoading, router]);
 
   if (authLoading || loading) {
     return <div className="p-8 text-center text-gray-500">Loading Invoice...</div>;

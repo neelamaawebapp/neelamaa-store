@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle, Camera, Image as ImageIcon, Copy, Edit, Phone, Mail, ExternalLink, MessageSquare, Check, HelpCircle } from "lucide-react";
+import { ChevronLeft, Package, Truck, CheckCircle, XCircle, Clock, X, Upload, AlertTriangle, Camera, Image as ImageIcon, Copy, Edit, Phone, Mail, ExternalLink, MessageSquare, Check, HelpCircle, FileText } from "lucide-react";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -607,7 +607,7 @@ export default function CustomerOrdersPage() {
                       </div>
                     </div>
 
-                    <div className="flex pt-1">
+                    <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => {
                           setTrackingOrder(order);
@@ -616,11 +616,25 @@ export default function CustomerOrdersPage() {
                           setShowCancelConfirm(false);
                           setShowEditAddress(false);
                         }}
-                        className="w-full bg-pink-500 text-white font-bold py-2.5 rounded-lg hover:bg-pink-600 transition-all text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        className={`font-bold py-2.5 rounded-lg transition-all text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5 cursor-pointer
+                          ${order.status === "Delivered" 
+                            ? "flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800" 
+                            : "w-full bg-pink-500 hover:bg-pink-650 text-white"}`}
                       >
                         <Truck size={14} />
                         Track Order
                       </button>
+                      {order.status === "Delivered" && (
+                        <a
+                          href={`/admin/invoice/${order.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 bg-pink-500 hover:bg-pink-650 text-white font-bold py-2.5 rounded-lg transition-all text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <FileText size={14} />
+                          Invoice
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
