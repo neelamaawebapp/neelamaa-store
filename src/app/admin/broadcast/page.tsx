@@ -21,7 +21,8 @@ import {
   Clock,
   UserCheck,
   UploadCloud,
-  X
+  X,
+  ExternalLink
 } from "lucide-react";
 import { autoAdjustImage } from "@/lib/imageUtils";
 import { useRef } from "react";
@@ -648,10 +649,21 @@ export default function BroadcastDashboard() {
                           return (
                             <tr key={sub.id} className="hover:bg-slate-900/30 transition-all group">
                               <td className="px-5 py-4 font-bold text-white">
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-extrabold text-slate-100">{sub.productBrand}</span>
-                                  <span className="text-[10px] text-slate-400 mt-0.5">{sub.productName}</span>
-                                </div>
+                                <a 
+                                  href={`/product/${sub.productId}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-3 hover:text-pink-500 transition-colors cursor-pointer group/item"
+                                  title="View Product Page"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-extrabold text-slate-100 group-hover/item:text-pink-500 transition-colors flex items-center gap-1">
+                                      {sub.productBrand}
+                                      <ExternalLink size={10} className="opacity-40 group-hover/item:opacity-100 transition-opacity" />
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 mt-0.5 font-normal truncate max-w-[200px]">{sub.productName}</span>
+                                  </div>
+                                </a>
                               </td>
                               <td className="px-5 py-4">
                                 <div className="flex flex-col text-slate-350">
