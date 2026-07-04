@@ -1072,7 +1072,7 @@ export default function ProductDetailPage() {
               <button 
                 onClick={handleAdd}
                 disabled={adding}
-                className="w-full py-3 bg-[#FFD814] hover:bg-[#F7CA00] border border-[#F2C200] text-black font-semibold rounded-full flex items-center justify-center hover:shadow-md disabled:opacity-70 transition-all text-sm cursor-pointer"
+                className="w-full py-3 border border-pink-500 text-pink-600 bg-white rounded-full font-bold flex items-center justify-center hover:bg-slate-50 disabled:opacity-70 transition-all text-sm cursor-pointer shadow-sm"
               >
                 Add to cart
               </button>
@@ -1081,32 +1081,10 @@ export default function ProductDetailPage() {
               <button 
                 onClick={handleBuyNow}
                 disabled={adding}
-                className="w-full py-3 bg-[#FFA41C] hover:bg-[#F28D05] border border-[#DE8200] text-black font-semibold rounded-full flex items-center justify-center hover:shadow-md disabled:opacity-70 transition-all text-sm cursor-pointer"
+                className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-full flex items-center justify-center hover:shadow-md disabled:opacity-70 transition-all text-sm cursor-pointer shadow-md hover:shadow-lg"
               >
                 {adding ? "Processing..." : "Buy Now"}
               </button>
-            </div>
-          );
-        })()}
-
-        {/* Earn diamonds reward block */}
-        {(() => {
-          const price = displayPrice;
-          const diamonds = Math.round(price * 0.3);
-          const worth = (diamonds / 10).toFixed(1);
-          return (
-            <div className="space-y-1.5 pt-2 text-xs border-t border-gray-100">
-              <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                <span>Earn</span>
-                <span className="flex items-center gap-0.5 text-blue-600 font-bold">
-                  💎 {diamonds}
-                </span>
-                <span>worth ₹{worth} on this item</span>
-              </div>
-              <div className="flex items-center gap-1 text-[11px] font-semibold text-[#00A8E1] italic">
-                <span className="font-extrabold uppercase scale-95 not-italic tracking-wider mr-1 text-[#005A9C]">prime</span>
-                <span>| On all UPI payments</span>
-              </div>
             </div>
           );
         })()}
