@@ -704,7 +704,7 @@ export default function ProductDetailPage() {
           onTouchEnd={handleTouchEnd}
         >
           <OptimizedImage
-            src={product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image}
+            src={(matchedVariant && matchedVariant.image) ? matchedVariant.image : (product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image)}
             alt={product.brand}
             fill
             priority={activeImageIdx === 0}

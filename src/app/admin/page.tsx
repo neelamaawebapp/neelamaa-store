@@ -88,7 +88,35 @@ export default function AdminDashboard() {
     mrp: string;
     stock: string;
     sku: string;
+    image: string;
   }[]>([]);
+  const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
+
+  const handleVariantImageChange = async (idx: number, file: File) => {
+    if (!file) return;
+    setUploadingVariantIdx(idx);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newVars = [...variantRows];
+        newVars[idx].image = data.data.url;
+        setVariantRows(newVars);
+      } else {
+        alert("Image upload failed: " + (data.error?.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading image");
+    } finally {
+      setUploadingVariantIdx(null);
+    }
+  };
   
   // Search and Filters for product table
   const [searchQuery, setSearchQuery] = useState("");
@@ -686,7 +714,8 @@ export default function AdminDashboard() {
         price: v.price !== undefined ? v.price.toString() : "",
         mrp: v.mrp !== undefined ? v.mrp.toString() : "",
         stock: v.stock !== undefined ? v.stock.toString() : "",
-        sku: v.sku || ""
+        sku: v.sku || "",
+        image: v.image || ""
       })));
     } else {
       setHasVariants(false);
@@ -768,7 +797,8 @@ export default function AdminDashboard() {
         price: Number(v.price || 0),
         mrp: Number(v.mrp || 0),
         stock: Number(v.stock || 0),
-        sku: v.sku.trim()
+        sku: v.sku.trim(),
+        image: v.image || ""
       })).filter(v => v.size || v.color || v.material);
 
       if (hasVariants) {
@@ -1778,11 +1808,11 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Base Product Options (Size, Size Unit, Color, Material) */}
-                <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-3">
+                <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-3.5">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Base Product Options</span>
-                  <div className="grid grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Size</label>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Size & Unit</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -1794,7 +1824,7 @@ export default function AdminDashboard() {
                         <select
                           value={sizeUnit}
                           onChange={(e) => setSizeUnit(e.target.value)}
-                          className="bg-slate-950/60 border border-slate-800 rounded-lg px-2 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer w-24"
+                          className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer w-28"
                         >
                           <option value="">None</option>
                           <option value="cm">cm</option>
@@ -1848,7 +1878,8 @@ export default function AdminDashboard() {
                           price: calculatedPrice ? calculatedPrice.toString() : "",
                           mrp: mrp || "",
                           stock: quantity || "10",
-                          sku: sku || ""
+                          sku: "",
+                          image: ""
                         }]);
                       }
                     }}
@@ -1857,89 +1888,148 @@ export default function AdminDashboard() {
                 </div>
 
                 {hasVariants ? (
-                  <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-3">
+                  <div className="bg-slate-950/30 p-4 border border-slate-900 rounded-xl space-y-4">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Configure Variants</span>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {variantRows.map((variant, idx) => (
-                        <div key={variant.id} className="bg-slate-950/50 p-3 border border-slate-850 rounded-lg space-y-2.5 relative">
-                          <div className="flex justify-between items-center pb-1 border-b border-slate-900">
-                            <span className="text-[9px] font-extrabold text-pink-500">Variant #{idx + 1}</span>
+                        <div key={variant.id} className="bg-slate-950/50 p-4 border border-slate-850 rounded-xl space-y-3.5 relative shadow-inner">
+                          {/* Variant header */}
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-900">
+                            <span className="text-xs font-bold text-pink-500 uppercase tracking-wider">Variant #{idx + 1}</span>
                             {variantRows.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => setVariantRows(prev => prev.filter(v => v.id !== variant.id))}
-                                className="text-[9px] font-extrabold text-rose-500 hover:text-rose-400 cursor-pointer"
+                                className="text-xs font-bold text-rose-500 hover:text-rose-400 cursor-pointer transition-colors"
                               >
-                                Remove
+                                Remove Option
                               </button>
                             )}
                           </div>
                           
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Size & Unit</label>
-                              <div className="flex gap-1">
-                                <input
-                                  type="text"
-                                  value={variant.size}
-                                  onChange={(e) => {
-                                    const newVars = [...variantRows];
-                                    newVars[idx].size = e.target.value;
-                                    setVariantRows(newVars);
-                                  }}
-                                  placeholder="e.g. 12 / S"
-                                  className="flex-1 min-w-0 bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
-                                />
-                                <select
-                                  value={variant.sizeUnit || ""}
-                                  onChange={(e) => {
-                                    const newVars = [...variantRows];
-                                    newVars[idx].sizeUnit = e.target.value;
-                                    setVariantRows(newVars);
-                                  }}
-                                  className="bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500 w-16 cursor-pointer"
-                                >
-                                  <option value="">None</option>
-                                  <option value="cm">cm</option>
-                                  <option value="mm">mm</option>
-                                  <option value="inches">inches</option>
-                                  <option value="ft.">ft.</option>
-                                </select>
+                          {/* Spaced out grid for Variant Details */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            {/* Column 1: Option Specifications */}
+                            <div className="space-y-3">
+                              {/* Size & Unit in its own row */}
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Size & Unit</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={variant.size}
+                                    onChange={(e) => {
+                                      const newVars = [...variantRows];
+                                      newVars[idx].size = e.target.value;
+                                      setVariantRows(newVars);
+                                    }}
+                                    placeholder="e.g. 12 / S"
+                                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all"
+                                  />
+                                  <select
+                                    value={variant.sizeUnit || ""}
+                                    onChange={(e) => {
+                                      const newVars = [...variantRows];
+                                      newVars[idx].sizeUnit = e.target.value;
+                                      setVariantRows(newVars);
+                                    }}
+                                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 w-28 cursor-pointer transition-all"
+                                  >
+                                    <option value="">None</option>
+                                    <option value="cm">cm</option>
+                                    <option value="mm">mm</option>
+                                    <option value="inches">inches</option>
+                                    <option value="ft.">ft.</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Color and Material side by side */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Color</label>
+                                  <input
+                                    type="text"
+                                    value={variant.color}
+                                    onChange={(e) => {
+                                      const newVars = [...variantRows];
+                                      newVars[idx].color = e.target.value;
+                                      setVariantRows(newVars);
+                                    }}
+                                    placeholder="Black"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Material</label>
+                                  <input
+                                    type="text"
+                                    value={variant.material}
+                                    onChange={(e) => {
+                                      const newVars = [...variantRows];
+                                      newVars[idx].material = e.target.value;
+                                      setVariantRows(newVars);
+                                    }}
+                                    placeholder="Granite"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all"
+                                  />
+                                </div>
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Color</label>
-                              <input
-                                type="text"
-                                value={variant.color}
-                                onChange={(e) => {
-                                  const newVars = [...variantRows];
-                                  newVars[idx].color = e.target.value;
-                                  setVariantRows(newVars);
-                                }}
-                                placeholder="Black"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Material</label>
-                              <input
-                                type="text"
-                                value={variant.material}
-                                onChange={(e) => {
-                                  const newVars = [...variantRows];
-                                  newVars[idx].material = e.target.value;
-                                  setVariantRows(newVars);
-                                }}
-                                placeholder="Granite"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-2 py-1 text-xs text-white outline-none focus:border-pink-500"
-                              />
+
+                            {/* Column 2: Variant Image Uploader (Optional) */}
+                            <div className="space-y-1.5 flex flex-col justify-between">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Variant Photo (Optional)</label>
+                              <div className="flex items-center gap-3 bg-slate-950/20 border border-slate-900 rounded-xl p-3 flex-1 min-h-[90px]">
+                                {variant.image ? (
+                                  <div className="relative w-16 h-20 rounded-lg overflow-hidden border border-slate-800 bg-black shadow-inner flex-shrink-0 group">
+                                    <img src={variant.image} alt={`Variant #${idx + 1}`} className="w-full h-full object-cover" />
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        const newVars = [...variantRows];
+                                        newVars[idx].image = "";
+                                        setVariantRows(newVars);
+                                      }}
+                                      className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5 transition-colors cursor-pointer"
+                                      title="Remove Image"
+                                    >
+                                      &times;
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="w-16 h-20 rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-650 flex-shrink-0 bg-slate-950/40">
+                                    <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                  </div>
+                                )}
+                                
+                                <div className="flex-1 flex flex-col gap-1.5 justify-center">
+                                  <label className="bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-pink-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-center cursor-pointer transition-all">
+                                    {uploadingVariantIdx === idx ? "Uploading..." : "Upload Photo"}
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleVariantImageChange(idx, file);
+                                      }}
+                                      className="hidden" 
+                                      disabled={uploadingVariantIdx !== null}
+                                    />
+                                  </label>
+                                  <span className="text-[9px] text-slate-500 leading-normal">Allows displaying correct photo color when selected</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-4 gap-2">
+                          {/* Price, MRP, Stock, SKU */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                             <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Price (₹)</label>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Price (₹)</label>
                               <input
                                 type="number"
                                 required
@@ -1950,11 +2040,11 @@ export default function AdminDashboard() {
                                   setVariantRows(newVars);
                                 }}
                                 placeholder="799"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">MRP (₹)</label>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">MRP (₹)</label>
                               <input
                                 type="number"
                                 required
@@ -1965,11 +2055,11 @@ export default function AdminDashboard() {
                                   setVariantRows(newVars);
                                 }}
                                 placeholder="999"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">Stock</label>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">Stock</label>
                               <input
                                 type="number"
                                 required
@@ -1980,11 +2070,11 @@ export default function AdminDashboard() {
                                   setVariantRows(newVars);
                                 }}
                                 placeholder="50"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-[8px] font-extrabold text-slate-500 mb-0.5 uppercase">SKU</label>
+                              <label className="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wide">SKU</label>
                               <input
                                 type="text"
                                 value={variant.sku}
@@ -1994,7 +2084,7 @@ export default function AdminDashboard() {
                                   setVariantRows(newVars);
                                 }}
                                 placeholder="SKU"
-                                className="w-full bg-slate-950 border border-slate-850 rounded px-1.5 py-1 text-xs text-white outline-none focus:border-pink-500"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-pink-500 transition-all font-mono"
                               />
                             </div>
                           </div>
@@ -2012,9 +2102,10 @@ export default function AdminDashboard() {
                         price: calculatedPrice ? calculatedPrice.toString() : "",
                         mrp: mrp || "",
                         stock: "10",
-                        sku: ""
+                        sku: "",
+                        image: ""
                       }])}
-                      className="w-full py-2 bg-slate-900 border border-slate-850 hover:bg-slate-850 text-slate-350 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer block text-center"
+                      className="w-full py-2.5 bg-slate-900 border border-slate-850 hover:bg-slate-850 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer block text-center uppercase tracking-wide shadow-sm"
                     >
                       + Add Variant Option
                     </button>
