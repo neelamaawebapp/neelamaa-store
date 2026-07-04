@@ -53,6 +53,49 @@ export default function ProductDetailPage() {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [deliveryInfo, setDeliveryInfo] = useState("Deliver to Mukesh - Jodhpur 342008");
+
+  // Dynamically load delivery information
+  useEffect(() => {
+    const fetchDeliveryInfo = async () => {
+      let name = user?.displayName || user?.email?.split("@")[0] || "Mukesh";
+      let pin = "342008";
+      let city = "Jodhpur";
+
+      const localAddr = localStorage.getItem("craftstyle_mock_user_address");
+      if (localAddr) {
+        try {
+          const parsed = JSON.parse(localAddr);
+          if (parsed.city) city = parsed.city;
+          if (parsed.pin) pin = parsed.pin;
+        } catch (e) {
+          console.error(e);
+        }
+      } else if (user) {
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.city) city = data.city;
+            if (data.pin) pin = data.pin;
+          }
+        } catch (err) {
+          console.error("Failed to fetch profile", err);
+        }
+      }
+
+      setDeliveryInfo(`Deliver to ${name} - ${city} ${pin}`);
+    };
+    
+    fetchDeliveryInfo();
+  }, [user]);
+
+  // Reset quantity to 1 when options change
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedSize, selectedVariantColor, selectedVariantMaterial, id]);
 
   // Touch Swipe States
   const [touchStartX, setTouchStartX] = useState<number>(0);
@@ -509,7 +552,7 @@ export default function ProductDetailPage() {
       size: finalSizeString || "Default",
       gstRate: product.gstRate || 0,
       mrp: finalMrp,
-    });
+    }, quantity);
     setAdding(false);
     setShowAddedModal(true);
   };
@@ -592,7 +635,7 @@ export default function ProductDetailPage() {
       size: finalSizeString || "Default",
       gstRate: product.gstRate || 0,
       mrp: finalMrp,
-    });
+    }, quantity);
     setAdding(false);
     router.push("/checkout");
   };
@@ -615,7 +658,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white w-full max-w-md mx-auto relative pb-36">
+    <div className="min-h-screen bg-white w-full max-w-md mx-auto relative pb-24">
       {/* Header (Relative to not overlap with text) */}
       <div className="p-4 flex justify-between items-center bg-white border-b border-gray-100">
         <button onClick={() => router.back()} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center transition-all cursor-pointer">
@@ -854,85 +897,250 @@ export default function ProductDetailPage() {
               </span>
             )}
             {currentColor && (
-              <span className="bg-slate-50 text-slate-750 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
+              <span className="bg-slate-50 text-slate-755 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
                 Color: {currentColor}
               </span>
             )}
             {currentMaterial && (
-              <span className="bg-slate-50 text-slate-750 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
+              <span className="bg-slate-50 text-slate-755 border border-slate-200/50 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase">
                 Material: {currentMaterial}
               </span>
             )}
           </div>
         )}
+      </div>
 
-        <div className="mt-3.5">
-          {product.variants && product.variants.length > 0 ? (
-            matchedVariant ? (
-              matchedVariant.stock <= 0 ? (
-                <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
-                  🚫 Out of Stock
+      {/* Amazon-style Buying Block */}
+      <div className="p-4 bg-white border-b border-gray-100 space-y-4">
+        {/* Deliver to address line */}
+        <div className="flex items-center gap-1.5 text-xs text-slate-650 font-medium">
+          <svg className="w-4.5 h-4.5 text-slate-750 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span className="truncate">{deliveryInfo}</span>
+        </div>
+
+        {/* Availability Status */}
+        <div>
+          {(() => {
+            const isFashion = product.category?.toLowerCase() === "fashion";
+            let stock = product.quantity !== undefined && product.quantity !== null ? Number(product.quantity) : 10;
+            let hasSelectedOptions = true;
+
+            if (product.variants && product.variants.length > 0) {
+              if (!matchedVariant) {
+                hasSelectedOptions = false;
+                stock = 10;
+              } else {
+                stock = matchedVariant.stock;
+              }
+            } else if (isFashion) {
+              if (!selectedSize) {
+                hasSelectedOptions = false;
+                stock = 10;
+              } else {
+                stock = Number(product.sizesInventory?.[selectedSize] || 0);
+              }
+            }
+
+            if (!hasSelectedOptions) {
+              return (
+                <span className="text-sm font-semibold text-[#007185]">
+                  Select options to check availability
                 </span>
-              ) : matchedVariant.stock <= 5 ? (
-                <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
-                  ⚡ Only {matchedVariant.stock} pieces left in this combination!
+              );
+            }
+
+            if (stock <= 0) {
+              return (
+                <span className="text-lg font-bold text-red-650">
+                  Out of Stock
                 </span>
-              ) : (
-                <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-                  ✓ Option in Stock ({matchedVariant.stock} units available)
+              );
+            }
+
+            if (stock <= 5) {
+              return (
+                <span className="text-sm font-bold text-amber-700 animate-pulse">
+                  ⚡ Only {stock} left in stock - order soon.
                 </span>
-              )
-            ) : (
-              <span className="bg-slate-50 text-slate-600 border border-slate-200 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-                👉 Select options to check availability (Total: {product.quantity || 0} units)
+              );
+            }
+
+            return (
+              <span className="text-lg font-bold text-green-700">
+                In stock
               </span>
-            )
-          ) : (
-            product.category?.toLowerCase() === "fashion" ? (
-              selectedSize ? (
-                (() => {
-                  const sizeStock = Number((product.sizesInventory || {})[selectedSize] || 0);
-                  if (sizeStock <= 0) {
-                    return (
-                      <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
-                        🚫 Size {selectedSize} is Out of Stock
-                      </span>
-                    );
-                  } else if (sizeStock <= 5) {
-                    return (
-                      <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
-                        ⚡ Only {sizeStock} pieces left in size {selectedSize}!
-                      </span>
-                    );
-                  } else {
-                    return (
-                      <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-                        ✓ Size {selectedSize} in Stock ({sizeStock} units)
-                      </span>
-                    );
-                  }
-                })()
-              ) : (
-                <span className="bg-slate-50 text-slate-600 border border-slate-200 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-                  👉 Select a size to check availability (Total: {product.quantity || 0} units)
+            );
+          })()}
+        </div>
+
+        {/* Cashback Banner: "Up to ₹90 cash back | ₹30 per unit on buying 2+" */}
+        {(() => {
+          const price = displayPrice;
+          const cashbackLimit = Math.round(price * 0.45);
+          const cashbackPerUnit = Math.round(price * 0.15);
+          return (
+            <div className="flex flex-wrap items-center gap-2 text-xs py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg">
+              <span className="bg-[#cbf4c9] text-[#0e5210] font-bold px-2 py-0.5 rounded text-[11px]">
+                Up to ₹{cashbackLimit} cash back
+              </span>
+              <span className="text-gray-700 font-medium">
+                ₹{cashbackPerUnit} per unit on buying 2+
+              </span>
+            </div>
+          );
+        })()}
+
+        {/* Quantity and Actions Block */}
+        {(() => {
+          const isFashion = product.category?.toLowerCase() === "fashion";
+          let stock = product.quantity !== undefined && product.quantity !== null ? Number(product.quantity) : 10;
+          let hasSelectedOptions = true;
+
+          if (product.variants && product.variants.length > 0) {
+            if (!matchedVariant) {
+              hasSelectedOptions = false;
+              stock = 10;
+            } else {
+              stock = matchedVariant.stock;
+            }
+          } else if (isFashion) {
+            if (!selectedSize) {
+              hasSelectedOptions = false;
+              stock = 10;
+            } else {
+              stock = Number(product.sizesInventory?.[selectedSize] || 0);
+            }
+          }
+
+          const outOfStock = hasSelectedOptions && stock <= 0;
+
+          if (outOfStock) {
+            return (
+              <div className="space-y-3 pt-2">
+                <p className="text-sm text-gray-500 font-medium">
+                  We'll notify you as soon as this item is back in stock.
+                </p>
+                {isSubscribed ? (
+                  <button 
+                    disabled
+                    className="w-full py-3.5 bg-emerald-50 text-emerald-600 border border-emerald-250 rounded-full font-bold flex items-center justify-center gap-1.5 text-sm uppercase cursor-not-allowed shadow-sm"
+                  >
+                    <Bell size={16} className="fill-emerald-600" />
+                    <span>✓ ON THE LIST</span>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setShowNotifyModal(true)}
+                    className="w-full py-3.5 bg-slate-900 text-white rounded-full font-bold flex items-center justify-center gap-1.5 hover:bg-slate-800 transition-colors text-sm cursor-pointer uppercase tracking-wider shadow-md hover:shadow-lg"
+                  >
+                    <Bell size={16} />
+                    <span>Notify Me</span>
+                  </button>
+                )}
+              </div>
+            );
+          }
+
+          const selectLimit = Math.min(10, stock);
+
+          return (
+            <div className="space-y-3 pt-1">
+              {/* Quantity Select dropdown */}
+              <div className="relative">
+                <select
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  className="w-full bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] text-sm text-gray-900 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all focus:outline-none focus:ring-1 focus:ring-[#007185] focus:border-[#007185] appearance-none cursor-pointer pr-10"
+                >
+                  {[...Array(selectLimit > 0 ? selectLimit : 1)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Quantity: {i + 1}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Add to Cart button */}
+              <button 
+                onClick={handleAdd}
+                disabled={adding}
+                className="w-full py-3 bg-[#FFD814] hover:bg-[#F7CA00] border border-[#F2C200] text-black font-semibold rounded-full flex items-center justify-center hover:shadow-md disabled:opacity-70 transition-all text-sm cursor-pointer"
+              >
+                Add to cart
+              </button>
+
+              {/* Buy Now button */}
+              <button 
+                onClick={handleBuyNow}
+                disabled={adding}
+                className="w-full py-3 bg-[#FFA41C] hover:bg-[#F28D05] border border-[#DE8200] text-black font-semibold rounded-full flex items-center justify-center hover:shadow-md disabled:opacity-70 transition-all text-sm cursor-pointer"
+              >
+                {adding ? "Processing..." : "Buy Now"}
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Earn diamonds reward block */}
+        {(() => {
+          const price = displayPrice;
+          const diamonds = Math.round(price * 0.3);
+          const worth = (diamonds / 10).toFixed(1);
+          return (
+            <div className="space-y-1.5 pt-2 text-xs border-t border-gray-100">
+              <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                <span>Earn</span>
+                <span className="flex items-center gap-0.5 text-blue-600 font-bold">
+                  💎 {diamonds}
                 </span>
-              )
-            ) : (
-              product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0 ? (
-                <span className="bg-red-50 text-red-700 border border-red-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
-                  🚫 Out of Stock
-                </span>
-              ) : Number(product.quantity) <= 5 ? (
-                <span className="bg-amber-50 text-amber-700 border border-amber-100 rounded px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 animate-pulse">
-                  ⚡ Only {product.quantity} pieces available!
-                </span>
-              ) : (
-                <span className="bg-green-50 text-green-700 border border-green-100 rounded px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1">
-                  ✓ In Stock ({product.quantity} units)
-                </span>
-              )
-            )
-          )}
+                <span>worth ₹{worth} on this item</span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-[#00A8E1] italic">
+                <span className="font-extrabold uppercase scale-95 not-italic tracking-wider mr-1 text-[#005A9C]">prime</span>
+                <span>| On all UPI payments</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Shipment Details Table */}
+        <div className="border-t border-gray-100 pt-3 text-[12px] font-medium text-slate-700">
+          <table className="w-full border-collapse">
+            <tbody>
+              <tr>
+                <td className="py-1 w-24 text-gray-500 font-normal">Ships from</td>
+                <td className="py-1 text-slate-800">Craft Style</td>
+              </tr>
+              <tr>
+                <td className="py-1 w-24 text-gray-500 font-normal">Sold by</td>
+                <td className="py-1 text-[#007185] hover:underline cursor-pointer">{product.brand || "Craft Style"}</td>
+              </tr>
+              <tr>
+                <td className="py-1 w-24 text-gray-500 font-normal">Gift options</td>
+                <td className="py-1 text-[#007185] hover:underline cursor-pointer">Available at checkout</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Inline Save this item / Wishlist block */}
+        <div className="pt-3 border-t border-gray-100">
+          <p className="text-xs font-bold text-gray-900 mb-2">Save this item</p>
+          <button
+            onClick={toggleWishlist}
+            className="w-full py-2.5 px-4 bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] rounded-full text-xs font-medium text-gray-900 flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+          >
+            <Heart size={14} className={isWishlisted ? "text-pink-650 fill-pink-650" : "text-gray-500"} />
+            <span>{isWishlisted ? "Remove from Wish List" : "Add to Wish List"}</span>
+          </button>
         </div>
       </div>
       {/* Product Highlights & Descriptions Section */}
@@ -1167,51 +1375,7 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Bottom Action Bar */}
-      <div 
-        className="fixed w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 flex space-x-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
-        style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
-      >
-        <button onClick={toggleWishlist} className={`p-3.5 border rounded-md flex items-center justify-center transition-colors ${isWishlisted ? "border-pink-500 text-pink-600 bg-slate-50" : "border-gray-300 text-gray-800"}`} title="Wishlist">
-          <Heart size={20} className={isWishlisted ? "fill-slate-900" : ""} />
-        </button>
-        {product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0 ? (
-          isSubscribed ? (
-            <button 
-              disabled
-              className="flex-1 py-3.5 bg-emerald-50 text-emerald-600 border border-emerald-250 rounded-md font-bold flex items-center justify-center gap-1.5 text-sm uppercase cursor-not-allowed"
-            >
-              <Bell size={16} className="fill-emerald-600" />
-              <span>✓ ON THE LIST</span>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setShowNotifyModal(true)}
-              className="flex-1 py-3.5 bg-slate-900 text-white rounded-md font-bold flex items-center justify-center gap-1.5 hover:bg-slate-800 transition-colors text-sm cursor-pointer uppercase tracking-wider shadow-md hover:shadow-lg"
-            >
-              <Bell size={16} />
-              <span>Notify Me</span>
-            </button>
-          )
-        ) : (
-          <>
-            <button 
-              onClick={handleAdd}
-              disabled={adding}
-              className="flex-1 py-3.5 border border-pink-500 text-pink-600 bg-white rounded-md font-bold flex items-center justify-center hover:bg-slate-50 disabled:opacity-70 transition-colors text-sm cursor-pointer"
-            >
-              ADD TO BAG
-            </button>
-            <button 
-              onClick={handleBuyNow}
-              disabled={adding}
-              className="flex-1 py-3.5 bg-pink-500 rounded-md font-bold text-white flex items-center justify-center hover:bg-pink-600 disabled:opacity-70 transition-colors text-sm cursor-pointer"
-            >
-              {adding ? "PROCESSING..." : "BUY NOW"}
-            </button>
-          </>
-        )}
-      </div>
+      {/* Bottom Action Bar removed to use the inline Amazon-style Buying Block */}
 
       {/* Size Guide Modal */}
       {showSizeGuide && product.category?.toLowerCase() === "fashion" && (

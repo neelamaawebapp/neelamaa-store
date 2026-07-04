@@ -20,7 +20,7 @@ export interface CartItem {
 
 interface CartContextType {
   cart: CartItem[];
-  addToBag: (item: Omit<CartItem, "quantity" | "id"> & { size: string }) => Promise<void>;
+  addToBag: (item: Omit<CartItem, "quantity" | "id"> & { size: string }, quantity?: number) => Promise<void>;
   removeFromBag: (id: string) => Promise<void>;
   updateQuantity: (id: string, qty: number) => Promise<void>;
   clearCart: (checkedIds?: string[]) => Promise<void>;
@@ -126,12 +126,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [user]);
 
-  const addToBag = async (product: Omit<CartItem, "quantity" | "id"> & { size: string }) => {
+  const addToBag = async (product: Omit<CartItem, "quantity" | "id"> & { size: string }, quantity: number = 1) => {
     const cartItemId = `${product.productId}_${product.size}`;
     const newCartItem: CartItem = {
       ...product,
       id: cartItemId,
-      quantity: 1,
+      quantity,
     };
 
     if (!user) {
@@ -139,7 +139,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const currentCart = [...cart];
       const existingIdx = currentCart.findIndex(item => item.id === cartItemId);
       if (existingIdx > -1) {
-        currentCart[existingIdx].quantity += 1;
+        currentCart[existingIdx].quantity += quantity;
       } else {
         currentCart.push(newCartItem);
       }
@@ -155,7 +155,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (existingItem) {
         await updateDoc(itemRef, {
-          quantity: existingItem.quantity + 1
+          quantity: existingItem.quantity + quantity
         });
       } else {
         await setDoc(itemRef, newCartItem);
@@ -166,7 +166,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const currentCart = [...cart];
       const existingIdx = currentCart.findIndex(item => item.id === cartItemId);
       if (existingIdx > -1) {
-        currentCart[existingIdx].quantity += 1;
+        currentCart[existingIdx].quantity += quantity;
       } else {
         currentCart.push(newCartItem);
       }
