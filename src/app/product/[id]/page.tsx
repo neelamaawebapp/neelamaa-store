@@ -134,6 +134,13 @@ export default function ProductDetailPage() {
   const sizes = ["S", "M", "L", "XL", "XXL"];
 
   const getFormattedSize = (v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`;
+  const getVariantLabel = (v: any) => {
+    const parts = [];
+    if (v.color) parts.push(v.color);
+    const formattedSize = getFormattedSize(v);
+    if (formattedSize) parts.push(formattedSize);
+    return parts.join(" / ");
+  };
 
   const availableColors = product?.variants
     ? (Array.from(new Set(product.variants.map((v: any) => v.color).filter(Boolean))) as string[])
@@ -758,70 +765,107 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      {/* Size Selection / Options Selection (Variant Selector) */}
+      {/* Size Selection / Options Selection (Variant Selector Cards Scroll) */}
       {product.variants && product.variants.length > 0 ? (
-        <div className="p-4 bg-white border-b border-gray-100 space-y-4">
-          <h2 className="font-bold text-gray-905 text-sm">Select Custom Options</h2>
-          
-          {availableColors.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Color</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableColors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => handleColorClick(color)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedVariantColor === color
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-350 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="p-4 bg-white border-b border-gray-100 space-y-3">
+          {/* Heading */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
+              {(() => {
+                const parts = [];
+                const colors = Array.from(new Set(product.variants.map((v: any) => v.color).filter(Boolean)));
+                const sizes = Array.from(new Set(product.variants.map((v: any) => v.size).filter(Boolean)));
+                const hasColorVar = colors.length > 1;
+                const hasSizeVar = sizes.length > 1;
+                
+                if (hasColorVar) {
+                  parts.push(
+                    <span>
+                      Color: <strong className="text-gray-900">{selectedVariantColor || "Select"}</strong>
+                    </span>
+                  );
+                }
+                if (hasSizeVar) {
+                  parts.push(
+                    <span>
+                      Size: <strong className="text-gray-900">{selectedSize || "Select"}</strong>
+                    </span>
+                  );
+                }
+                
+                if (parts.length === 0) {
+                  return "Available Options";
+                }
+                
+                return (
+                  <div className="flex items-center gap-2">
+                    {parts.map((p, i) => (
+                      <span key={i} className="flex items-center gap-2">
+                        {i > 0 && <span className="text-gray-300">|</span>}
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+            </span>
+          </div>
 
-          {availableSizes.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Size</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableSizes.map(size => (
-                  <button
-                    key={size}
-                    onClick={() => handleSizeClick(size)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedSize === size
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {availableMaterials.length > 0 && (
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Material</span>
-              <div className="flex gap-2 flex-wrap">
-                {availableMaterials.map(material => (
-                  <button
-                    key={material}
-                    onClick={() => handleMaterialClick(material)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer
-                      ${selectedVariantMaterial === material
-                        ? 'border-pink-500 bg-pink-50 text-pink-650 font-bold shadow-sm'
-                        : 'border-gray-355 text-gray-755 hover:border-gray-400'}`}
-                  >
-                    {material}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Cards Scrollable Strip */}
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1">
+            {product.variants.map((v: any) => {
+              const formattedSize = getFormattedSize(v);
+              const isActive = (!v.size || formattedSize === selectedSize) &&
+                               (!v.color || v.color === selectedVariantColor) &&
+                               (!v.material || v.material === selectedVariantMaterial);
+              
+              // Calculate discount percent
+              const discountPercent = v.mrp > v.price ? Math.round(((v.mrp - v.price) / v.mrp) * 100) : 0;
+              
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    if (v.size) setSelectedSize(formattedSize);
+                    if (v.color) setSelectedVariantColor(v.color);
+                    if (v.material) setSelectedVariantMaterial(v.material);
+                  }}
+                  className={`w-28 flex-shrink-0 bg-white border rounded-xl overflow-hidden text-left transition-all cursor-pointer shadow-sm
+                    ${isActive 
+                      ? 'border-pink-500 ring-2 ring-pink-500/20 scale-[0.98]' 
+                      : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  {/* Variant Image */}
+                  <div className="w-full aspect-[3/4] bg-gray-50 relative border-b border-gray-100">
+                    <OptimizedImage
+                      src={v.image || product.image}
+                      alt={getVariantLabel(v)}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  
+                  {/* Variant info metadata */}
+                  <div className="p-2 space-y-1">
+                    <p className="text-[10px] font-bold text-gray-800 truncate" title={getVariantLabel(v)}>
+                      {getVariantLabel(v)}
+                    </p>
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <span className="text-xs font-black text-pink-600">₹{v.price}</span>
+                      {v.mrp > v.price && (
+                        <span className="text-[9px] text-gray-400 line-through">₹{v.mrp}</span>
+                      )}
+                    </div>
+                    {discountPercent > 0 && (
+                      <span className="text-[8px] bg-red-50/50 text-red-650 font-extrabold px-1 py-0.5 rounded uppercase tracking-wide block w-fit">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
         product.category?.toLowerCase() === "fashion" && (
