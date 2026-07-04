@@ -9,7 +9,7 @@ import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
 export default function AdminDashboard() {
-  const [viewMode, setViewMode] = useState<"single" | "bulk">("single");
+  const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk">("inventory");
 
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
@@ -626,7 +626,7 @@ export default function AdminDashboard() {
   };
 
   const handleEditClick = (product: any) => {
-    setViewMode("single");
+    setViewMode("add-product");
     setEditingId(product.id);
     setBrand(product.brand || "");
     setTitle(product.title || "");
@@ -954,6 +954,7 @@ export default function AdminDashboard() {
       }
 
       resetForm();
+      setViewMode("inventory");
     } catch (err: any) {
       setError(err.message || "Failed to save product");
     } finally {
@@ -1407,7 +1408,7 @@ export default function AdminDashboard() {
       }
       setSuccess(`Successfully uploaded ${count} products!`);
       setBulkFiles([]);
-      setViewMode("single");
+      setViewMode("inventory");
     } catch (err: any) {
       setError(err.message || "Bulk upload failed.");
     } finally {
@@ -1494,16 +1495,22 @@ export default function AdminDashboard() {
 
       {/* Top Toggle Bar */}
       <div className="flex justify-center mb-8">
-        <div className="bg-slate-900/60 p-1 rounded-xl flex space-x-1 shadow-inner border border-slate-800">
+        <div className="bg-slate-900/60 p-1 rounded-xl flex space-x-1 shadow-inner border border-slate-800 tracking-wider font-semibold uppercase text-[10px]">
           <button 
-            onClick={() => setViewMode("single")}
-            className={`px-6 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "single" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+            onClick={() => setViewMode("inventory")}
+            className={`px-5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "inventory" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
           >
-            Inventory & Single Upload
+            Catalog Inventory
+          </button>
+          <button 
+            onClick={() => { setViewMode("add-product"); resetForm(); }}
+            className={`px-5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "add-product" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            {editingId ? "Edit Store Item" : "Add Store Item"}
           </button>
           <button 
             onClick={() => { setViewMode("bulk"); resetForm(); }}
-            className={`px-6 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "bulk" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+            className={`px-5 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "bulk" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
           >
             <Layers size={14} />
             <span>Bulk Upload Mode</span>
@@ -1514,11 +1521,12 @@ export default function AdminDashboard() {
       {success && <div className="mb-6 max-w-2xl mx-auto bg-emerald-500/10 text-emerald-400 p-4 rounded-xl border border-emerald-500/20 text-center font-bold shadow-md shadow-emerald-500/5 animate-pulse">{success}</div>}
       {error && <div className="mb-6 max-w-2xl mx-auto bg-rose-500/10 text-rose-400 p-4 rounded-xl border border-rose-500/20 text-center font-bold shadow-md shadow-rose-500/5">{error}</div>}
 
-      {viewMode === "single" ? (
+      {viewMode !== "bulk" ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Left Column: Add/Edit Form */}
-          <div className="lg:col-span-4">
+          {/* Add/Edit Form */}
+          {viewMode === "add-product" && (
+            <div className="lg:col-span-8">
             <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 shadow-xl sticky top-6">
               <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-3">
                 <h2 className="text-base font-extrabold text-white">
@@ -2438,6 +2446,12 @@ export default function AdminDashboard() {
                 </div>
               </form>
             </div>
+          </div>
+          )}
+
+          {/* Settings Column */}
+          {viewMode === "add-product" && (
+            <div className="lg:col-span-4 space-y-6">
 
             {/* Flash Sale Settings Panel */}
             <div className="bg-slate-900/40 backdrop-blur p-6 rounded-2xl border border-slate-900 mt-6 shadow-xl">
@@ -2544,9 +2558,11 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Right Column: Product List */}
-          <div className="lg:col-span-8">
+          {/* Catalog Inventory Column */}
+          {viewMode === "inventory" && (
+            <div className="lg:col-span-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-black text-white">Catalog Inventory ({filteredProducts.length})</h2>
               
@@ -2709,6 +2725,7 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+          )}
         </div>
       ) : (
         /* BULK UPLOAD VIEW */
