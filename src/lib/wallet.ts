@@ -28,7 +28,7 @@ export interface WalletSettings {
 }
 
 export const DEFAULT_WALLET_SETTINGS: WalletSettings = {
-  signupBonus: 50,
+  signupBonus: 0,
   cashbackPercent: 5,
   maxCashbackLimit: 100,
   expiryDays: 365,

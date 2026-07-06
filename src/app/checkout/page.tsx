@@ -145,7 +145,7 @@ export default function CheckoutPage() {
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
-  const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance) : 0;
+  const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance, 50) : 0;
   const remainingToPay = totalToPay - walletDiscount;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -650,7 +650,7 @@ export default function CheckoutPage() {
                 <Coins className="text-pink-500" size={20} />
                 <div className="flex flex-col">
                   <span className="font-bold text-sm text-gray-900">Use Wallet Balance</span>
-                  <span className="text-[10px] text-gray-500">Available: ₹{walletBalance}</span>
+                  <span className="text-[10px] text-gray-500">Available: ₹{walletBalance} (Max ₹50 per order)</span>
                 </div>
               </div>
               <input 

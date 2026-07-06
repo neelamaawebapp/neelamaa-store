@@ -20,6 +20,7 @@ function SignupContent() {
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [pin, setPin] = useState("");
+  const [referredByInput, setReferredByInput] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,8 +51,26 @@ function SignupContent() {
         throw new Error("This mobile number is already in use by another account.");
       }
 
-      // 1. Create Auth User
       const normalizedEmail = email.toLowerCase().trim();
+      const trimmedRefInput = referredByInput.trim().toUpperCase();
+
+      // Validate referral code if entered
+      let referrerUserId = "";
+      if (trimmedRefInput) {
+        const qRef = query(collection(db, "users"), where("referralCode", "==", trimmedRefInput));
+        const refSnap = await getDocs(qRef);
+        if (refSnap.empty) {
+          throw new Error("Invalid referral code. Please check or clear it to proceed.");
+        }
+        referrerUserId = refSnap.docs[0].id;
+      }
+
+      // Generate B's own unique referral code
+      const baseName = name.trim().replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
+      const phonePart = phone.trim().slice(-4);
+      const ownReferralCode = `${baseName}${phonePart}`;
+
+      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const user = userCredential.user;
 
@@ -61,7 +80,7 @@ function SignupContent() {
       });
 
       // 3. Save Extended Profile to Firestore
-      await setDoc(doc(db, "users", user.uid), {
+      const userProfileData: any = {
         name,
         email: normalizedEmail,
         phone,
@@ -69,8 +88,32 @@ function SignupContent() {
         city,
         pin,
         address: `${street}, ${city}, ${pin}`,
+        referralCode: ownReferralCode,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      if (trimmedRefInput) {
+        userProfileData.referredByCode = trimmedRefInput;
+        userProfileData.referredByUserId = referrerUserId;
+      }
+
+      await setDoc(doc(db, "users", user.uid), userProfileData);
+
+      // 4. Trigger referral credits if valid code entered
+      if (trimmedRefInput) {
+        try {
+          await fetch("/api/wallet/credit-referral", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.uid,
+              referredByCode: trimmedRefInput
+            })
+          });
+        } catch (creditErr) {
+          console.error("Failed to credit referral bonus on signup:", creditErr);
+        }
+      }
 
       router.push(redirect);
     } catch (err: any) {
@@ -137,6 +180,10 @@ function SignupContent() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Password *</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="Min 6 characters" required minLength={6} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Referral Code (Optional)</label>
+                <input type="text" value={referredByInput} onChange={(e) => setReferredByInput(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="e.g. ABC1234" />
               </div>
             </div>
 

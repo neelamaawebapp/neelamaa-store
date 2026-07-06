@@ -34,7 +34,8 @@ export async function GET(req: Request) {
             ? { ...DEFAULT_WALLET_SETTINGS, ...settingsSnap.data() } 
             : DEFAULT_WALLET_SETTINGS;
 
-          const signupBonus = Number(rules.signupBonus || 0);
+          // Standard signup starts with 0. Referral credits are handled via credit-referral API.
+          const signupBonus = 0;
           const expiryDays = Number(rules.expiryDays || 365);
           
           let latestHash = "genesis";

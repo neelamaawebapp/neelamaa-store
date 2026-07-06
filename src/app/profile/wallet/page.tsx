@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ChevronLeft, Sparkles, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownLeft, Wallet, AlertCircle, RefreshCw } from "lucide-react";
+import { ChevronLeft, Sparkles, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownLeft, Wallet, AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
 import Link from "next/link";
 
 // Web Cryptography API helper to compute SHA-256 hash in browser
@@ -22,6 +22,15 @@ export default function UserWalletPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLedgerSecure, setIsLedgerSecure] = useState<boolean | null>(null);
+  const [referralCode, setReferralCode] = useState<string>("");
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    if (!referralCode) return;
+    navigator.clipboard.writeText(referralCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const loadWalletData = async () => {
     if (!user) return;
@@ -34,6 +43,24 @@ export default function UserWalletPage() {
           setBalance(data.balance);
           setTransactions(data.transactions || []);
           await verifyLedger(data.transactions || []);
+        }
+      }
+
+      // Fetch referral code from user profile
+      const { doc, getDoc, getFirestore } = await import("firebase/firestore");
+      const { app } = await import("@/lib/firebase");
+      const db = getFirestore(app);
+      const userDocSnap = await getDoc(doc(db, "users", user.uid));
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        if (userData.referralCode) {
+          setReferralCode(userData.referralCode);
+        } else {
+          // If for some reason they don't have one (legacy users), let's generate it
+          const baseName = (userData.name || "CS").trim().replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
+          const phonePart = (userData.phone || "1234").trim().slice(-4);
+          const ownReferralCode = `${baseName}${phonePart}`;
+          setReferralCode(ownReferralCode);
         }
       }
     } catch (err) {
@@ -137,42 +164,42 @@ export default function UserWalletPage() {
       <div className="p-4 flex-1 overflow-y-auto space-y-6">
         
         {/* Stylized Card Graphic */}
-        <div className="relative rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-xl overflow-hidden border border-slate-800">
+        <div className="relative rounded-2xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 p-6 text-white shadow-xl overflow-hidden border border-sky-300/30">
           {/* Decorative shapes */}
-          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="absolute -left-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
           
           <div className="flex justify-between items-start relative z-10">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-black text-pink-500 tracking-widest uppercase">CRAFT STYLE</span>
-              <p className="text-[9px] text-slate-400">Virtual Rewards & Loyalty</p>
+              <span className="text-[10px] font-black text-white tracking-widest uppercase">CRAFT STYLE</span>
+              <p className="text-[9px] text-sky-100">Virtual Rewards & Loyalty</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-full px-2 py-0.5 border border-white/10 text-[9px] font-bold flex items-center gap-1">
-              <Sparkles size={10} className="text-amber-400" />
+            <div className="bg-white/20 backdrop-blur-md rounded-full px-2 py-0.5 border border-white/20 text-[9px] font-bold flex items-center gap-1">
+              <Sparkles size={10} className="text-amber-300 animate-pulse" />
               <span>PREMIUM</span>
             </div>
           </div>
 
           {/* Chip Graphic */}
-          <div className="mt-8 w-10 h-7 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 rounded-md relative overflow-hidden shadow-inner flex flex-col justify-between p-1.5 border border-amber-600/30">
+          <div className="mt-8 w-10 h-7 bg-gradient-to-tr from-amber-350 via-yellow-100 to-amber-450 rounded-md relative overflow-hidden shadow-inner flex flex-col justify-between p-1.5 border border-amber-600/20">
             <div className="border-b border-amber-900/10 flex justify-between"><div className="w-1.5 border-r border-amber-900/10 h-1"></div><div className="w-1.5 border-l border-amber-900/10 h-1"></div></div>
             <div className="flex justify-between"><div className="w-2 border-r border-amber-900/10 h-1.5"></div><div className="w-2 border-l border-amber-900/10 h-1.5"></div></div>
           </div>
 
           <div className="mt-6 flex justify-between items-end relative z-10">
             <div className="space-y-0.5">
-              <span className="text-slate-400 text-[9px] uppercase tracking-wider block">Available Balance</span>
+              <span className="text-sky-100 text-[9px] uppercase tracking-wider block">Available Balance</span>
               <span className="text-3xl font-black text-white tracking-tight">₹{balance}</span>
             </div>
             <div className="text-right">
-              <span className="text-slate-400 text-[8px] uppercase tracking-widest block">Card Member</span>
-              <span className="text-xs font-bold text-slate-200 uppercase truncate max-w-[120px] block">
+              <span className="text-sky-100 text-[8px] uppercase tracking-widest block">Card Member</span>
+              <span className="text-xs font-bold text-white uppercase truncate max-w-[120px] block">
                 {user?.displayName || user?.email?.split("@")[0] || "Customer"}
               </span>
             </div>
           </div>
 
-          <div className="mt-6 pt-3 border-t border-white/5 flex justify-between items-center text-[9px] text-slate-500 font-mono">
+          <div className="mt-6 pt-3 border-t border-white/20 flex justify-between items-center text-[9px] text-sky-100 font-mono">
             <span>•••• •••• •••• {user?.uid ? user.uid.slice(-4).toUpperCase() : "8888"}</span>
             <span>SECURE WALLET</span>
           </div>
@@ -204,6 +231,46 @@ export default function UserWalletPage() {
             )}
           </div>
         )}
+
+        {/* Referral Program Info */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 text-gray-800">
+            <Sparkles className="text-pink-500" size={18} />
+            <h3 className="font-extrabold text-sm uppercase tracking-wide">Refer & Earn ₹50</h3>
+          </div>
+          
+          <div className="bg-sky-50 border border-sky-100 rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-2 select-none">
+            <span className="text-[10px] uppercase font-bold text-sky-600 tracking-wider">Your Referral Code</span>
+            <div className="flex items-center space-x-2.5">
+              <span className="font-mono text-xl font-black text-blue-900 tracking-wider">{referralCode || "CRAFT50"}</span>
+              <button 
+                onClick={copyToClipboard}
+                className="p-1.5 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-500 hover:text-blue-600 active:scale-95 transition-all"
+              >
+                {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+              </button>
+            </div>
+            {copied && <span className="text-[10px] text-green-600 font-bold animate-fade-in">Copied to clipboard!</span>}
+          </div>
+
+          <div className="space-y-3">
+            <span className="text-xs font-bold text-gray-700 block">How it works:</span>
+            <ul className="space-y-2.5 text-xs text-gray-600">
+              <li className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                <span>Share your code with friends who are not registered on Craft Style.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                <span>Your friend enters your code in the **Referral Code** field during sign up.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-pink-100 text-pink-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                <span>Once signed up, **both you and your friend** instantly receive ₹50 in your wallets!</span>
+              </li>
+            </ul>
+          </div>
+        </div>
 
         {/* Passbook Section */}
         <div className="space-y-3">
