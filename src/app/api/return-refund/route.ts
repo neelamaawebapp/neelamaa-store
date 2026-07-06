@@ -222,10 +222,52 @@ export async function PATCH(req: Request) {
     }
 
     const returnRequestData = returnRequestSnap.data();
-    const { orderId, itemIndex } = returnRequestData;
+    const { orderId, itemIndex, userId, itemDetails } = returnRequestData;
 
     // Update return request status
     await updateDoc(returnRequestRef, { status });
+
+    // Automatic wallet refund on approval
+    if (status === "Approved" && userId) {
+      try {
+        const itemPrice = itemDetails ? (Number(itemDetails.price || 0) * Number(itemDetails.quantity || 1)) : 0;
+        if (itemPrice > 0) {
+          const { runTransaction, collection } = await import("firebase/firestore");
+          const { calculateTransactionHash } = await import("@/lib/wallet-server");
+          const walletRef = doc(db, "wallets", userId);
+          
+          await runTransaction(db, async (transaction) => {
+            const walletSnap = await transaction.get(walletRef);
+            if (walletSnap.exists()) {
+              const walletData = walletSnap.data();
+              const currentBalance = Number(walletData.balance || 0);
+              const previousHash = walletData.latestTransactionHash || "genesis";
+              const newHash = calculateTransactionHash(userId, itemPrice, "CREDIT", previousHash);
+              
+              const txnRef = doc(collection(db, "wallet_transactions"));
+              transaction.set(txnRef, {
+                walletId: userId,
+                amount: itemPrice,
+                transactionType: "CREDIT",
+                source: "ORDER_REFUND",
+                referenceId: orderId,
+                description: `Refund for Order #${orderId.slice(-8).toUpperCase()} Item #${itemIndex + 1}`,
+                createdAt: new Date().toISOString(),
+                hash: newHash
+              });
+              
+              transaction.update(walletRef, {
+                balance: currentBalance + itemPrice,
+                latestTransactionHash: newHash,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          });
+        }
+      } catch (refundErr) {
+        console.error("Failed to process automatic wallet refund:", refundErr);
+      }
+    }
 
     // Update the corresponding order item status
     let orderUpdated = false;

@@ -18,6 +18,38 @@ export default function Header() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [walletBalance, setWalletBalance] = useState<number | string>("...");
+
+  useEffect(() => {
+    if (!user) {
+      setWalletBalance(0);
+      return;
+    }
+
+    const loadBalance = async () => {
+      try {
+        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setWalletBalance(data.balance);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load header wallet balance", err);
+      }
+    };
+
+    loadBalance();
+
+    const handleUpdate = () => {
+      loadBalance();
+    };
+
+    window.addEventListener("wallet-update", handleUpdate);
+    return () => window.removeEventListener("wallet-update", handleUpdate);
+  }, [user]);
+
   const [promoMessages, setPromoMessages] = useState<string[]>(DEFAULT_PROMOS);
   const [promoIndex, setPromoIndex] = useState(0);
   const [fadeClass, setFadeClass] = useState("opacity-100 translate-y-0");
@@ -96,12 +128,12 @@ export default function Header() {
               </span>
               <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />
             </div>
-            <div className="flex items-center bg-[#eaffea] text-green-700 px-1.5 py-0.5 rounded-full font-bold border border-green-200">
-              <span className="mr-0.5">₹0</span>
+            <Link href="/profile/wallet" className="flex items-center bg-[#eaffea] hover:bg-[#dfffdf] transition-all text-green-700 px-2 py-0.5 rounded-full font-bold border border-green-200 shadow-sm cursor-pointer select-none">
+              <span className="mr-0.5">₹{walletBalance}</span>
               <div className="bg-green-600 text-white rounded-full p-0.5">
                 <Sparkles size={8} />
               </div>
-            </div>
+            </Link>
           </div>
         </div>
 

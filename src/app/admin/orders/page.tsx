@@ -280,6 +280,23 @@ export default function AdminOrders() {
         await updateDoc(doc(db, "orders", orderId), fieldsToUpdate);
       }
 
+      // Trigger cashback on Delivered
+      if (newStatus === "Delivered") {
+        try {
+          await fetch("/api/wallet/credit-cashback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: orderId,
+              userId: order.userId || "guest",
+              mockOrderTotal: order.totalAmount || 0
+            })
+          });
+        } catch (cbErr) {
+          console.error("Failed to trigger cashback:", cbErr);
+        }
+      }
+
       // 3. Trigger customer status update notification (Delivered or Cancelled)
       if (newStatus === "Delivered" || newStatus === "Cancelled") {
         try {

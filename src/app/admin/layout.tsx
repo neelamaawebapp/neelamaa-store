@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Package, ShoppingCart, Users, LogOut, Store, RotateCcw, Bell } from "lucide-react";
+import { Package, ShoppingCart, Users, LogOut, Store, RotateCcw, Bell, Coins } from "lucide-react";
 import Link from "next/link";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -70,6 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Returns", href: "/admin/returns", icon: RotateCcw },
     { name: "Broadcasts", href: "/admin/broadcast", icon: Bell },
+    { name: "Wallet Settings", href: "/admin/wallet", icon: Coins },
     { name: "Customers", href: "/admin/customers", icon: Users },
   ];
 

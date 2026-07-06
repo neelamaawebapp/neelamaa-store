@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin } from "lucide-react";
+import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
@@ -285,6 +285,14 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-3 text-gray-800">
               <Package size={20} className="text-gray-400" />
               <span className="font-medium text-sm">Orders</span>
+            </div>
+            <ChevronLeft size={16} className="text-gray-400 rotate-180" />
+          </button>
+
+          <button onClick={() => router.push("/profile/wallet")} className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left cursor-pointer">
+            <div className="flex items-center space-x-3 text-gray-800">
+              <Wallet size={20} className="text-gray-400" />
+              <span className="font-medium text-sm">My Wallet</span>
             </div>
             <ChevronLeft size={16} className="text-gray-400 rotate-180" />
           </button>

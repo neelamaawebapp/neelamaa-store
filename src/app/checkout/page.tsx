@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag } from "lucide-react";
+import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag, Coins } from "lucide-react";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Script from "next/script";
@@ -56,6 +56,27 @@ export default function CheckoutPage() {
   // Payment Success Flow
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
   const [mockTxnId, setMockTxnId] = useState("");
+
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchWallet = async () => {
+      try {
+        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setWalletBalance(data.balance);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load checkout wallet balance", err);
+      }
+    };
+    fetchWallet();
+  }, [user]);
 
   // Auto-fill from user profile
   useEffect(() => {
@@ -124,6 +145,9 @@ export default function CheckoutPage() {
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
+  const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance) : 0;
+  const remainingToPay = totalToPay - walletDiscount;
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -180,6 +204,11 @@ export default function CheckoutPage() {
       console.error("Stock validation failed, proceeding with caution", err);
     }
 
+    if (remainingToPay === 0) {
+      await completeOrder("Wallet", "Wallet");
+      return;
+    }
+
     if (payMethod === "COD") {
       await completeOrder("COD", "COD");
       return;
@@ -190,7 +219,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalToPay }),
+        body: JSON.stringify({ amount: remainingToPay }),
       });
       const data = await res.json();
 
@@ -344,10 +373,31 @@ export default function CheckoutPage() {
           console.error("Failed transaction for invoiceSeq, using short order ID as fallback", txErr);
         }
 
+        if (walletDiscount > 0) {
+          const debitRes = await fetch("/api/wallet/debit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.uid,
+              orderId: orderId,
+              amount: walletDiscount
+            })
+          });
+
+          if (!debitRes.ok) {
+            const errData = await debitRes.json();
+            throw new Error(errData.error || "Failed to debit wallet balance.");
+          }
+          window.dispatchEvent(new Event("wallet-update"));
+        }
+
         const completeOrderData = {
           ...orderData,
+          id: orderId,
           invoiceNo: generatedInvoiceNo,
-          invoiceDate: new Date().toISOString()
+          invoiceDate: new Date().toISOString(),
+          walletAmountUsed: walletDiscount,
+          cashAmountPaid: remainingToPay
         };
 
         await setDoc(docRef, completeOrderData);
@@ -370,12 +420,31 @@ export default function CheckoutPage() {
         const seqStr = String(nextLocalSeq).padStart(3, '0');
         const localInvoiceNo = `CS${seqStr}/${getFinancialYear()}`;
 
+        if (walletDiscount > 0) {
+          try {
+            await fetch("/api/wallet/debit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: user.uid,
+                orderId: orderId,
+                amount: walletDiscount
+              })
+            });
+            window.dispatchEvent(new Event("wallet-update"));
+          } catch (debitErr) {
+            console.error("Failed to debit wallet for local fallback order:", debitErr);
+          }
+        }
+
         localOrders.push({ 
           ...orderData, 
           id: orderId,
           invoiceNo: localInvoiceNo,
           invoiceDate: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          walletAmountUsed: walletDiscount,
+          cashAmountPaid: remainingToPay
         });
         localStorage.setItem("craftstyle_local_orders", JSON.stringify(localOrders));
       }
@@ -390,7 +459,7 @@ export default function CheckoutPage() {
             email: user?.email || "",
             phone,
             orderId: orderId.slice(-8).toUpperCase(),
-            amount: totalToPay
+            amount: remainingToPay
           })
         });
       } catch (e) {
@@ -573,6 +642,27 @@ export default function CheckoutPage() {
           </div>
         )}
 
+        {/* Wallet Toggle Card */}
+        {walletBalance > 0 && (
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 select-none animate-fade-in">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div className="flex items-center space-x-3">
+                <Coins className="text-pink-500" size={20} />
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-gray-900">Use Wallet Balance</span>
+                  <span className="text-[10px] text-gray-500">Available: ₹{walletBalance}</span>
+                </div>
+              </div>
+              <input 
+                type="checkbox"
+                checked={useWallet}
+                onChange={(e) => setUseWallet(e.target.checked)}
+                className="w-4.5 h-4.5 text-pink-500 border-gray-300 rounded focus:ring-pink-500 cursor-pointer"
+              />
+            </label>
+          </div>
+        )}
+
         {/* Price Details */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide border-b border-gray-100 pb-2">Price Summary</h3>
@@ -606,50 +696,69 @@ export default function CheckoutPage() {
                 <span className="text-green-600 font-bold">FREE</span>
               )}
             </div>
+            {walletDiscount > 0 && (
+              <div className="flex justify-between text-gray-600 animate-fade-in font-medium">
+                <span className="flex items-center gap-1.5 text-pink-600">
+                  <Coins size={13} />
+                  <span>Wallet Balance Used</span>
+                </span>
+                <span className="text-pink-650 font-bold">-₹{walletDiscount}</span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-3 mt-3 flex justify-between font-bold text-gray-900 text-base">
               <span>Total to Pay</span>
-              <span>₹{totalToPay}</span>
+              <span>₹{remainingToPay}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-           <h2 className="font-bold text-sm uppercase tracking-wide mb-3 text-gray-800 border-b border-gray-100 pb-2">Payment Method</h2>
-           <div className="space-y-3">
-             <label className={`flex items-center space-x-3 p-3 border rounded-md cursor-pointer transition-colors ${payMethod === "COD" ? "border-pink-500 bg-pink-50/10" : "border-slate-200 bg-white"}`}>
-               <input 
-                 type="radio" 
-                 name="payment" 
-                 value="COD" 
-                 checked={payMethod === "COD"}
-                 onChange={() => setPayMethod("COD")}
-                 className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
-               />
-               <span className="font-bold text-sm text-gray-900">Cash on Delivery (COD)</span>
-             </label>
-             <label className={`flex items-center space-x-3 p-3 border rounded-md cursor-pointer transition-colors ${payMethod === "Online" ? "border-pink-500 bg-pink-50/10" : "border-slate-200 bg-white"}`}>
-               <input 
-                 type="radio" 
-                 name="payment" 
-                 value="Online" 
-                 checked={payMethod === "Online"}
-                 onChange={() => setPayMethod("Online")}
-                 className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
-               />
-               <div className="flex flex-col">
-                 <span className="font-bold text-sm text-gray-900">Pay Online</span>
-                 <span className="text-[10px] text-gray-500">UPI, Credit/Debit Cards, Net Banking</span>
-               </div>
-             </label>
-           </div>
-        </div>
+        {remainingToPay === 0 ? (
+          <div className="bg-emerald-50 border border-emerald-150 text-emerald-800 text-xs p-4 rounded-xl flex items-center gap-3 mb-4 animate-scale-in">
+            <Check className="text-emerald-600 stroke-[3] flex-shrink-0 animate-bounce" size={20} />
+            <div>
+              <p className="font-bold">Paid in Full via Wallet</p>
+              <p className="text-[10px] text-emerald-600 mt-0.5">Your wallet balance covers the total order amount. No payment gateway needed.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+             <h2 className="font-bold text-sm uppercase tracking-wide mb-3 text-gray-800 border-b border-gray-100 pb-2">Payment Method</h2>
+             <div className="space-y-3">
+               <label className={`flex items-center space-x-3 p-3 border rounded-md cursor-pointer transition-colors ${payMethod === "COD" ? "border-pink-500 bg-pink-50/10" : "border-slate-200 bg-white"}`}>
+                 <input 
+                   type="radio" 
+                   name="payment" 
+                   value="COD" 
+                   checked={payMethod === "COD"}
+                   onChange={() => setPayMethod("COD")}
+                   className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
+                 />
+                 <span className="font-bold text-sm text-gray-900">Cash on Delivery (COD)</span>
+               </label>
+               <label className={`flex items-center space-x-3 p-3 border rounded-md cursor-pointer transition-colors ${payMethod === "Online" ? "border-pink-500 bg-pink-50/10" : "border-slate-200 bg-white"}`}>
+                 <input 
+                   type="radio" 
+                   name="payment" 
+                   value="Online" 
+                   checked={payMethod === "Online"}
+                   onChange={() => setPayMethod("Online")}
+                   className="w-4 h-4 text-pink-600 focus:ring-pink-500" 
+                 />
+                 <div className="flex flex-col">
+                   <span className="font-bold text-sm text-gray-900">Pay Online</span>
+                   <span className="text-[10px] text-gray-500">UPI, Credit/Debit Cards, Net Banking</span>
+                 </div>
+               </label>
+             </div>
+          </div>
+        )}
       </div>
 
       {/* Sticky Bottom Action */}
       <div className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-white border-t border-gray-200 p-3 pb-safe z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-gray-900">₹{totalToPay}</span>
+            <span className="text-lg font-bold text-gray-900">₹{remainingToPay}</span>
             <a href="#" className="text-xs text-pink-600 font-bold uppercase tracking-wide">Total to pay</a>
           </div>
           <button 
@@ -658,7 +767,7 @@ export default function CheckoutPage() {
             disabled={placing}
             className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center w-[60%]"
           >
-            {placing ? "PROCESSING..." : payMethod === "Online" ? "PROCEED TO PAY" : "CONFIRM ORDER"}
+            {placing ? "PROCESSING..." : remainingToPay === 0 ? "PLACE ORDER" : payMethod === "Online" ? "PROCEED TO PAY" : "CONFIRM ORDER"}
           </button>
         </div>
       </div>
@@ -693,7 +802,7 @@ export default function CheckoutPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">Amount to Pay</p>
-                <h3 className="font-extrabold text-pink-600 text-lg">₹{totalToPay}</h3>
+                <h3 className="font-extrabold text-pink-600 text-lg">₹{remainingToPay}</h3>
               </div>
             </div>
 

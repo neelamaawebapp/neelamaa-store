@@ -1,0 +1,279 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { ChevronLeft, Sparkles, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownLeft, Wallet, AlertCircle, RefreshCw } from "lucide-react";
+import Link from "next/link";
+
+// Web Cryptography API helper to compute SHA-256 hash in browser
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+export default function UserWalletPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [balance, setBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isLedgerSecure, setIsLedgerSecure] = useState<boolean | null>(null);
+
+  const loadWalletData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setBalance(data.balance);
+          setTransactions(data.transactions || []);
+          await verifyLedger(data.transactions || []);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load wallet data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyLedger = async (txns: any[]) => {
+    if (!txns || txns.length === 0) {
+      setIsLedgerSecure(true);
+      return;
+    }
+
+    try {
+      // Reverse array to start checking from oldest to newest (genesis chain order)
+      const oldestFirst = [...txns].reverse();
+      let prevHash = "genesis";
+      let isValid = true;
+
+      for (const txn of oldestFirst) {
+        // Hashing uses absolute amount magnitude
+        const expectedData = `${txn.walletId}_${Math.abs(txn.amount)}_${txn.transactionType}_${prevHash}`;
+        const calculatedHash = await sha256(expectedData);
+
+        if (calculatedHash !== txn.hash) {
+          console.warn("Tamper detected on transaction:", txn.id, "Expected:", calculatedHash, "Found:", txn.hash);
+          isValid = false;
+          break;
+        }
+        prevHash = txn.hash;
+      }
+      setIsLedgerSecure(isValid);
+    } catch (err) {
+      console.error("Ledger audit failed:", err);
+      setIsLedgerSecure(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login?redirect=/profile/wallet");
+      return;
+    }
+    loadWalletData();
+  }, [user, authLoading]);
+
+  const formatDate = (isoStr: string) => {
+    try {
+      const date = new Date(isoStr);
+      return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }) + " • " + date.toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      });
+    } catch (e) {
+      return "Recently";
+    }
+  };
+
+  const formatExpiry = (isoStr?: string | null) => {
+    if (!isoStr) return "";
+    try {
+      const date = new Date(isoStr);
+      return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+    } catch (e) {
+      return "";
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
+        <RefreshCw className="animate-spin text-pink-500 mb-2" size={24} />
+        <span className="text-sm text-gray-500 font-medium">Auditing Ledger & Syncing Balance...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-md mx-auto relative pb-20">
+      
+      {/* Header */}
+      <div className="bg-white p-4 flex items-center border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <button onClick={() => router.push("/profile")} className="mr-4">
+          <ChevronLeft size={24} className="text-gray-800" />
+        </button>
+        <h1 className="font-bold text-gray-900 leading-tight uppercase tracking-wide text-sm">My Wallet</h1>
+      </div>
+
+      <div className="p-4 flex-1 overflow-y-auto space-y-6">
+        
+        {/* Stylized Card Graphic */}
+        <div className="relative rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-xl overflow-hidden border border-slate-800">
+          {/* Decorative shapes */}
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -left-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="flex justify-between items-start relative z-10">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black text-pink-500 tracking-widest uppercase">CRAFT STYLE</span>
+              <p className="text-[9px] text-slate-400">Virtual Rewards & Loyalty</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-full px-2 py-0.5 border border-white/10 text-[9px] font-bold flex items-center gap-1">
+              <Sparkles size={10} className="text-amber-400" />
+              <span>PREMIUM</span>
+            </div>
+          </div>
+
+          {/* Chip Graphic */}
+          <div className="mt-8 w-10 h-7 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 rounded-md relative overflow-hidden shadow-inner flex flex-col justify-between p-1.5 border border-amber-600/30">
+            <div className="border-b border-amber-900/10 flex justify-between"><div className="w-1.5 border-r border-amber-900/10 h-1"></div><div className="w-1.5 border-l border-amber-900/10 h-1"></div></div>
+            <div className="flex justify-between"><div className="w-2 border-r border-amber-900/10 h-1.5"></div><div className="w-2 border-l border-amber-900/10 h-1.5"></div></div>
+          </div>
+
+          <div className="mt-6 flex justify-between items-end relative z-10">
+            <div className="space-y-0.5">
+              <span className="text-slate-400 text-[9px] uppercase tracking-wider block">Available Balance</span>
+              <span className="text-3xl font-black text-white tracking-tight">₹{balance}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-slate-400 text-[8px] uppercase tracking-widest block">Card Member</span>
+              <span className="text-xs font-bold text-slate-200 uppercase truncate max-w-[120px] block">
+                {user?.displayName || user?.email?.split("@")[0] || "Customer"}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-3 border-t border-white/5 flex justify-between items-center text-[9px] text-slate-500 font-mono">
+            <span>•••• •••• •••• {user?.uid ? user.uid.slice(-4).toUpperCase() : "8888"}</span>
+            <span>SECURE WALLET</span>
+          </div>
+        </div>
+
+        {/* Dynamic Security Verification Badge */}
+        {isLedgerSecure !== null && (
+          <div className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
+            isLedgerSecure 
+              ? "bg-emerald-50 border-emerald-100 text-emerald-800" 
+              : "bg-rose-50 border-rose-100 text-rose-800"
+          }`}>
+            {isLedgerSecure ? (
+              <>
+                <ShieldCheck className="text-emerald-600 flex-shrink-0" size={20} />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider">Secured & Audited</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">Transaction history integrity verified using SHA-256 audit chaining.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="text-rose-600 flex-shrink-0" size={20} />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider">Audit Chain Warning</p>
+                  <p className="text-[10px] text-rose-600 mt-0.5">Ledger mismatch detected. Some transaction rows could not be verified.</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Passbook Section */}
+        <div className="space-y-3">
+          <h3 className="font-bold text-xs text-gray-800 uppercase tracking-wider">Transaction Passbook</h3>
+          
+          {transactions.length === 0 ? (
+            <div className="bg-white border border-gray-100 rounded-xl p-8 text-center text-gray-500 flex flex-col items-center">
+              <Wallet size={36} className="text-gray-300 mb-2" />
+              <p className="text-sm font-semibold">No transactions yet</p>
+              <p className="text-xs text-gray-400 mt-1">Check back when you receive cashback or place orders.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {transactions.map((txn) => {
+                const isCredit = txn.transactionType === "CREDIT";
+                const absoluteAmount = Math.abs(txn.amount);
+                
+                return (
+                  <div key={txn.id} className="bg-white border border-gray-150 rounded-xl p-4 flex justify-between items-start shadow-sm group hover:border-gray-300 transition-all select-none">
+                    <div className="flex gap-3">
+                      {/* Icon */}
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        isCredit 
+                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
+                          : "bg-rose-50 text-rose-600 border border-rose-100"
+                      }`}>
+                        {isCredit ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-0.5">
+                        <h4 className="text-sm font-bold text-gray-900 leading-tight">{txn.description}</h4>
+                        <p className="text-[10px] text-gray-400 font-mono tracking-tight">{formatDate(txn.createdAt)}</p>
+                        
+                        {txn.source === "CASHBACK" && txn.status === "Active" && txn.expiresAt && (
+                          <span className="inline-block text-[9px] bg-amber-50 border border-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-md mt-1 animate-pulse">
+                            🎒 Expires: {formatExpiry(txn.expiresAt)}
+                          </span>
+                        )}
+                        {txn.status === "Expired" && (
+                          <span className="inline-block text-[9px] bg-gray-100 text-gray-500 font-medium px-2 py-0.5 rounded-md mt-1 uppercase">
+                            Expired
+                          </span>
+                        )}
+                        {txn.status === "Used" && (
+                          <span className="inline-block text-[9px] bg-blue-50 text-blue-600 font-medium px-2 py-0.5 rounded-md mt-1 uppercase">
+                            Used
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="text-right">
+                      <span className={`text-sm font-extrabold block ${
+                        isCredit ? "text-green-600" : "text-gray-900"
+                      }`}>
+                        {isCredit ? "+" : "-"} ₹{absoluteAmount}
+                      </span>
+                      <span className="text-[8px] font-mono text-gray-400 uppercase tracking-widest block mt-1">
+                        #{txn.referenceId ? txn.referenceId.slice(-6).toUpperCase() : "TXN"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
