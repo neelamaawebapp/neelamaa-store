@@ -378,7 +378,7 @@ export default function CheckoutPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: user.uid,
+              userId: orderData.userId,
               orderId: orderId,
               amount: walletDiscount
             })
@@ -426,7 +426,7 @@ export default function CheckoutPage() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                userId: user.uid,
+                userId: orderData.userId,
                 orderId: orderId,
                 amount: walletDiscount
               })

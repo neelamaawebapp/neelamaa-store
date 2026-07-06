@@ -67,7 +67,7 @@ export default function InvoicePage() {
         const docRef = doc(db, "orders", id as string);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const orderData = { id: docSnap.id, ...docSnap.data() };
+          const orderData = { id: docSnap.id, ...docSnap.data() } as any;
           const isAllowed = isAdmin || 
                             orderData.userId === user.uid || 
                             (user.email && orderData.customerEmail?.toLowerCase() === user.email?.toLowerCase()) || 

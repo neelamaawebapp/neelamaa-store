@@ -243,7 +243,9 @@ export default function AdminWalletSettings() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
                   Verified Signup Bonus (₹)
-                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="Credited automatically when a user opens their wallet for the first time." />
+                  <span title="Credited automatically when a user opens their wallet for the first time.">
+                    <HelpCircle size={12} className="text-slate-500 cursor-help" />
+                  </span>
                 </label>
                 <input 
                   type="number"
@@ -260,7 +262,9 @@ export default function AdminWalletSettings() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
                   Referral Reward Amount (₹)
-                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="Credited to the referrer when a new customer registers with their referral code." />
+                  <span title="Credited to the referrer when a new customer registers with their referral code.">
+                    <HelpCircle size={12} className="text-slate-500 cursor-help" />
+                  </span>
                 </label>
                 <input 
                   type="number"
@@ -277,7 +281,9 @@ export default function AdminWalletSettings() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
                   Order Cashback Percentage (%)
-                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="The percentage of order total to reward as cashback points when the order becomes Delivered." />
+                  <span title="The percentage of order total to reward as cashback points when the order becomes Delivered.">
+                    <HelpCircle size={12} className="text-slate-500 cursor-help" />
+                  </span>
                 </label>
                 <input 
                   type="number"
@@ -295,7 +301,9 @@ export default function AdminWalletSettings() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
                   Max Cashback Limit per Order (₹)
-                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="The maximum cashback amount that can be earned in a single transaction, regardless of order total." />
+                  <span title="The maximum cashback amount that can be earned in a single transaction, regardless of order total.">
+                    <HelpCircle size={12} className="text-slate-500 cursor-help" />
+                  </span>
                 </label>
                 <input 
                   type="number"
@@ -312,7 +320,9 @@ export default function AdminWalletSettings() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
                   Reward Expiry Cycle (Days)
-                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="Number of days before credit rewards expire. Expiry check runs daily." />
+                  <span title="Number of days before credit rewards expire. Expiry check runs daily.">
+                    <HelpCircle size={12} className="text-slate-500 cursor-help" />
+                  </span>
                 </label>
                 <input 
                   type="number"
