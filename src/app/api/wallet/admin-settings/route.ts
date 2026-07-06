@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { signupBonus, cashbackPercent, maxCashbackLimit, expiryDays } = body;
+    const { signupBonus, referralBonus, cashbackPercent, maxCashbackLimit, expiryDays } = body;
 
     const { getFirestore, doc, setDoc } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     const settingsRef = doc(db, "settings", "wallet");
     const updatedSettings = {
       signupBonus: Number(signupBonus !== undefined ? signupBonus : DEFAULT_WALLET_SETTINGS.signupBonus),
+      referralBonus: Number(referralBonus !== undefined ? referralBonus : DEFAULT_WALLET_SETTINGS.referralBonus),
       cashbackPercent: Number(cashbackPercent !== undefined ? cashbackPercent : DEFAULT_WALLET_SETTINGS.cashbackPercent),
       maxCashbackLimit: Number(maxCashbackLimit !== undefined ? maxCashbackLimit : DEFAULT_WALLET_SETTINGS.maxCashbackLimit),
       expiryDays: Number(expiryDays !== undefined ? expiryDays : DEFAULT_WALLET_SETTINGS.expiryDays),

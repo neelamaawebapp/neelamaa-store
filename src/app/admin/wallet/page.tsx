@@ -8,7 +8,8 @@ export default function AdminWalletSettings() {
   const { user } = useAuth();
   
   // Rules Config State
-  const [signupBonus, setSignupBonus] = useState(50);
+  const [signupBonus, setSignupBonus] = useState(100);
+  const [referralBonus, setReferralBonus] = useState(50);
   const [cashbackPercent, setCashbackPercent] = useState(5);
   const [maxCashbackLimit, setMaxCashbackLimit] = useState(100);
   const [expiryDays, setExpiryDays] = useState(365);
@@ -36,6 +37,7 @@ export default function AdminWalletSettings() {
         const data = await res.json();
         if (data.success && data.settings) {
           setSignupBonus(data.settings.signupBonus);
+          setReferralBonus(data.settings.referralBonus !== undefined ? data.settings.referralBonus : 50);
           setCashbackPercent(data.settings.cashbackPercent);
           setMaxCashbackLimit(data.settings.maxCashbackLimit);
           setExpiryDays(data.settings.expiryDays);
@@ -109,6 +111,7 @@ export default function AdminWalletSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           signupBonus,
+          referralBonus,
           cashbackPercent,
           maxCashbackLimit,
           expiryDays
@@ -251,6 +254,23 @@ export default function AdminWalletSettings() {
                   required
                 />
                 <span className="text-[10px] text-slate-500 block">Initial reward credited to new registrants.</span>
+              </div>
+
+              {/* Referral Bonus */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                  Referral Reward Amount (₹)
+                  <HelpCircle size={12} className="text-slate-500 cursor-help" title="Credited to the referrer when a new customer registers with their referral code." />
+                </label>
+                <input 
+                  type="number"
+                  min={0}
+                  value={referralBonus}
+                  onChange={e => setReferralBonus(Number(e.target.value))}
+                  className="w-full bg-slate-900/60 border border-slate-800 focus:border-pink-500 outline-none px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-white"
+                  required
+                />
+                <span className="text-[10px] text-slate-500 block">Reward issued to the referring customer.</span>
               </div>
 
               {/* Cashback Percent */}

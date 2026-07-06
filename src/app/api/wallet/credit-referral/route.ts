@@ -56,6 +56,15 @@ export async function POST(req: Request) {
 
     // 3. Run Firestore ACID Transaction to safely update both wallets and create logs
     await runTransaction(db, async (transaction) => {
+      // Read campaign rules from settings/wallet, fallback to defaults
+      const { DEFAULT_WALLET_SETTINGS } = await import("@/lib/wallet");
+      const settingsRef = doc(db, "settings", "wallet");
+      const settingsSnap = await transaction.get(settingsRef);
+      const rules = settingsSnap.exists()
+        ? { ...DEFAULT_WALLET_SETTINGS, ...settingsSnap.data() }
+        : DEFAULT_WALLET_SETTINGS;
+      const referralBonus = Number(rules.referralBonus || 50);
+
       // a. Get/initialize Referrer A's wallet
       const rWalletSnap = await transaction.get(referrerWalletRef);
       let rBalance = 0;
@@ -96,12 +105,12 @@ export async function POST(req: Request) {
         });
       }
 
-      // c. Credit Referrer A (₹50)
-      const rNewHash = calculateTransactionHash(referrerId, 50, "CREDIT", rLatestHash);
+      // c. Credit Referrer A (dynamic referralBonus)
+      const rNewHash = calculateTransactionHash(referrerId, referralBonus, "CREDIT", rLatestHash);
       const rTxnRef = doc(collection(db, "wallet_transactions"));
       transaction.set(rTxnRef, {
         walletId: referrerId,
-        amount: 50,
+        amount: referralBonus,
         transactionType: "CREDIT",
         source: "SIGNUP_BONUS",
         referenceId: `referral_${userId.slice(-6)}`,
@@ -113,7 +122,7 @@ export async function POST(req: Request) {
       });
 
       transaction.update(referrerWalletRef, {
-        balance: rBalance + 50,
+        balance: rBalance + referralBonus,
         latestTransactionHash: rNewHash,
         updatedAt: new Date().toISOString()
       });

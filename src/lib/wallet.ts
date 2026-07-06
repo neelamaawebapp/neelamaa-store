@@ -22,6 +22,7 @@ export interface WalletTransaction {
 
 export interface WalletSettings {
   signupBonus: number;
+  referralBonus: number;
   cashbackPercent: number;
   maxCashbackLimit: number;
   expiryDays: number;
@@ -29,6 +30,7 @@ export interface WalletSettings {
 
 export const DEFAULT_WALLET_SETTINGS: WalletSettings = {
   signupBonus: 100,
+  referralBonus: 50,
   cashbackPercent: 5,
   maxCashbackLimit: 100,
   expiryDays: 365,
