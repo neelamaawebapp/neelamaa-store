@@ -401,7 +401,7 @@ export default function ProductFeed() {
         <div className={`p-4 py-8 border-b relative ${newArrivalsGrad.bg} ${newArrivalsGrad.border}`}>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
-            <Link href="/categories" className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
+            <Link href={`/category/${encodeURIComponent("New Arrivals")}`} className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
           </div>

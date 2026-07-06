@@ -23,10 +23,9 @@ export default function CategoryProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const q = query(
-          collection(db, "products"),
-          where("category", "==", categoryName)
-        );
+        const q = categoryName === "New Arrivals"
+          ? query(collection(db, "products"), where("homeSection", "==", "New Arrivals"))
+          : query(collection(db, "products"), where("category", "==", categoryName));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map((doc) => ({
           id: doc.id,
