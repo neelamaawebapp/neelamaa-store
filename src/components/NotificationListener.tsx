@@ -22,6 +22,49 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Tone 1: High crisp chime start (e.g., 880Hz -> A5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(880, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+    
+    gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.35);
+
+    // Tone 2: Harmonizing secondary chime (delayed slightly, e.g., 1046.5Hz -> C6)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1046.5, ctx.currentTime + 0.08);
+    osc2.frequency.exponentialRampToValueAtTime(1568, ctx.currentTime + 0.22);
+    
+    gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    
+    osc2.start(ctx.currentTime + 0.08);
+    osc2.stop(ctx.currentTime + 0.45);
+
+  } catch (err) {
+    console.warn("Web Audio API sound playback failed:", err);
+  }
+};
+
 export default function NotificationListener() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -152,6 +195,7 @@ export default function NotificationListener() {
             message: latestBroadcast.message,
             image: latestBroadcast.image
           });
+          playNotificationSound();
 
           // Auto-hide in-app toast after 8 seconds
           const timer = setTimeout(() => {
@@ -201,6 +245,7 @@ export default function NotificationListener() {
               message: data.message,
               image: data.image
             });
+            playNotificationSound();
 
             // Auto-hide in-app toast after 8 seconds
             const timer = setTimeout(() => {
