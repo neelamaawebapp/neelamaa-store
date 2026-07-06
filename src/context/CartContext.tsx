@@ -126,6 +126,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [user]);
 
+  const updateCartAbandonmentTracker = async (isEmpty: boolean = false) => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        cartUpdatedAt: isEmpty ? null : new Date().toISOString(),
+        abandonedCartStage: 0
+      });
+    } catch (e) {
+      console.error("Failed to update cart abandonment tracker:", e);
+    }
+  };
+
   const addToBag = async (product: Omit<CartItem, "quantity" | "id"> & { size: string }, quantity: number = 1) => {
     const cartItemId = `${product.productId}_${product.size}`;
     const newCartItem: CartItem = {
@@ -160,6 +173,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         await setDoc(itemRef, newCartItem);
       }
+      await updateCartAbandonmentTracker(false);
     } catch (err) {
       console.error("Firestore addToBag failed, falling back to local storage", err);
       // Fallback
@@ -186,6 +200,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const itemRef = doc(db, `users/${user.uid}/cartItems`, id);
       await deleteDoc(itemRef);
+      const isNowEmpty = cart.filter(item => item.id !== id).length === 0;
+      await updateCartAbandonmentTracker(isNowEmpty);
     } catch (err) {
       console.error("Firestore delete failed, falling back to local storage", err);
       const currentCart = cart.filter(item => item.id !== id);
@@ -210,6 +226,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const itemRef = doc(db, `users/${user.uid}/cartItems`, id);
       await updateDoc(itemRef, { quantity: qty });
+      await updateCartAbandonmentTracker(false);
     } catch (err) {
       console.error("Firestore update failed, falling back to local storage", err);
       const currentCart = cart.map(item => item.id === id ? { ...item, quantity: qty } : item);
@@ -231,6 +248,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         const promises = cart.map(item => deleteDoc(doc(db, `users/${user.uid}/cartItems`, item.id)));
         await Promise.all(promises);
         setCart([]);
+        await updateCartAbandonmentTracker(true);
       } catch (err) {
         console.error("Firestore clear failed, clearing local state", err);
         setCart([]);
@@ -249,6 +267,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         const promises = itemsToDelete.map(item => deleteDoc(doc(db, `users/${user.uid}/cartItems`, item.id)));
         await Promise.all(promises);
         setCart(itemsToKeep);
+        const isNowEmpty = itemsToKeep.length === 0;
+        await updateCartAbandonmentTracker(isNowEmpty);
       } catch (err) {
         console.error("Firestore selective clear failed, syncing with local state", err);
         setCart(itemsToKeep);
