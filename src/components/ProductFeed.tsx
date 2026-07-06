@@ -405,9 +405,9 @@ export default function ProductFeed() {
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
           </div>
-          <div className="flex space-x-3 overflow-x-auto hide-scrollbar pb-2 pt-1 px-1 -mx-1">
+          <div className="grid grid-cols-2 gap-3">
             {newArrivals.map((product) => (
-              <ProductCard key={product.id} product={product} isHorizontal={true} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         </div>

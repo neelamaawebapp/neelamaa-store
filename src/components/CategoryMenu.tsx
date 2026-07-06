@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Edit2, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
+import { Edit2, Plus, Save, Trash2, UploadCloud, X, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { STORE_CATEGORIES } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
@@ -26,6 +26,42 @@ export default function CategoryMenu() {
   // Image Editor States
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editorImageUrl, setEditorImageUrl] = useState<string>("");
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDropSwap = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+    const reordered = [...editCategories];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setEditCategories(reordered);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleMoveUp = (idx: number) => {
+    if (idx === 0) return;
+    const reordered = [...editCategories];
+    const temp = reordered[idx];
+    reordered[idx] = reordered[idx - 1];
+    reordered[idx - 1] = temp;
+    setEditCategories(reordered);
+  };
+
+  const handleMoveDown = (idx: number) => {
+    if (idx === editCategories.length - 1) return;
+    const reordered = [...editCategories];
+    const temp = reordered[idx];
+    reordered[idx] = reordered[idx + 1];
+    reordered[idx + 1] = temp;
+    setEditCategories(reordered);
+  };
 
   // Fetch Categories
   useEffect(() => {
@@ -197,9 +233,21 @@ export default function CategoryMenu() {
             {/* Modal Body */}
             <div className="overflow-y-auto p-4 flex-1 space-y-4 bg-gray-50">
               {editCategories.map((cat, idx) => (
-                <div key={idx} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div 
+                  key={idx} 
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDropSwap(e, idx)}
+                  className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-3 cursor-move hover:border-pink-300 hover:shadow-md transition-all active:scale-[0.99] select-none"
+                >
+                  {/* Drag Handle */}
+                  <div className="text-gray-400 cursor-grab active:cursor-grabbing p-1 flex-shrink-0">
+                    <GripVertical size={18} />
+                  </div>
+
                   {/* Image Upload */}
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-300 flex-shrink-0 group">
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden bg-gray-100 border border-gray-300 flex-shrink-0 group">
                     {cat.image ? (
                       <>
                         <Image src={cat.image} alt={cat.name} fill className="object-cover" />
@@ -217,7 +265,7 @@ export default function CategoryMenu() {
                       </>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-                        <UploadCloud size={16} />
+                        <UploadCloud size={14} />
                       </div>
                     )}
                     
@@ -235,9 +283,9 @@ export default function CategoryMenu() {
                     />
                   </div>
 
-                  {/* Category Name & Delete */}
+                  {/* Category Name */}
                   <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-gray-500 mb-1">CATEGORY NAME</label>
+                    <label className="block text-[9px] font-bold text-gray-400 mb-0.5">CATEGORY NAME</label>
                     <input 
                       type="text" 
                       value={cat.name} 
@@ -246,14 +294,38 @@ export default function CategoryMenu() {
                         newCats[idx].name = e.target.value;
                         setEditCategories(newCats);
                       }}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-pink-500 font-bold text-gray-800" 
+                      className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:border-pink-500 font-bold text-gray-800" 
                       placeholder="e.g. Fashion"
                     />
                   </div>
                   
+                  {/* Move Up/Down Controls */}
+                  <div className="flex flex-col -space-y-0.5">
+                    <button 
+                      type="button"
+                      onClick={() => handleMoveUp(idx)} 
+                      disabled={idx === 0}
+                      className="p-1 text-gray-400 hover:text-pink-600 disabled:opacity-20 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Move Up"
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => handleMoveDown(idx)} 
+                      disabled={idx === editCategories.length - 1}
+                      className="p-1 text-gray-400 hover:text-pink-600 disabled:opacity-20 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Move Down"
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+
+                  {/* Delete Action */}
                   <button 
+                    type="button"
                     onClick={() => handleRemoveCategory(idx)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
                   >
                     <Trash2 size={18} />
                   </button>
