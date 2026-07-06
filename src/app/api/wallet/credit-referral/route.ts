@@ -118,12 +118,12 @@ export async function POST(req: Request) {
         updatedAt: new Date().toISOString()
       });
 
-      // d. Credit Referee B (₹50)
-      const bNewHash = calculateTransactionHash(userId, 50, "CREDIT", bLatestHash);
+      // d. Credit Referee B (₹100)
+      const bNewHash = calculateTransactionHash(userId, 100, "CREDIT", bLatestHash);
       const bTxnRef = doc(collection(db, "wallet_transactions"));
       transaction.set(bTxnRef, {
         walletId: userId,
-        amount: 50,
+        amount: 100,
         transactionType: "CREDIT",
         source: "SIGNUP_BONUS",
         referenceId: "referral_signup",
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
       });
 
       transaction.update(refereeWalletRef, {
-        balance: bBalance + 50,
+        balance: bBalance + 100,
         latestTransactionHash: bNewHash,
         updatedAt: new Date().toISOString()
       });
