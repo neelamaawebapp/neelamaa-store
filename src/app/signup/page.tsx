@@ -26,7 +26,16 @@ function SignupContent() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginAsMockUser } = useAuth();
+  const { loginAsMockUser, user, loading: authLoading } = useAuth();
+
+  // Redirect if already logged in / registered
+  useEffect(() => {
+    if (authLoading) return;
+    if (user) {
+      alert("You are already registered and logged in!");
+      router.push("/profile");
+    }
+  }, [user, authLoading, router]);
 
   // Load ref query parameter into referral code input
   useEffect(() => {
