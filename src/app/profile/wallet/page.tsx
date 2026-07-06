@@ -47,7 +47,7 @@ export default function UserWalletPage() {
       }
 
       // Fetch referral code from user profile
-      const { doc, getDoc, getFirestore } = await import("firebase/firestore");
+      const { doc, getDoc, getFirestore, query, collection, where, getDocs, updateDoc } = await import("firebase/firestore");
       const { app } = await import("@/lib/firebase");
       const db = getFirestore(app);
       const userDocSnap = await getDoc(doc(db, "users", user.uid));
@@ -56,10 +56,27 @@ export default function UserWalletPage() {
         if (userData.referralCode) {
           setReferralCode(userData.referralCode);
         } else {
-          // If for some reason they don't have one (legacy users), let's generate it
-          const baseName = (userData.name || "CS").trim().replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
-          const phonePart = (userData.phone || "1234").trim().slice(-4);
-          const ownReferralCode = `${baseName}${phonePart}`;
+          // Legacy users: generate and save a secure unique referral code
+          const generateUniqueCode = async () => {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let code = "";
+            let isUnique = false;
+            while (!isUnique) {
+              let result = "CRAFT-";
+              for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
+              const qCheck = query(collection(db, "users"), where("referralCode", "==", result));
+              const snapCheck = await getDocs(qCheck);
+              if (snapCheck.empty) {
+                code = result;
+                isUnique = true;
+              }
+            }
+            return code;
+          };
+          const ownReferralCode = await generateUniqueCode();
+          await updateDoc(doc(db, "users", user.uid), { referralCode: ownReferralCode });
           setReferralCode(ownReferralCode);
         }
       }

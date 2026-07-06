@@ -65,10 +65,27 @@ function SignupContent() {
         referrerUserId = refSnap.docs[0].id;
       }
 
-      // Generate B's own unique referral code
-      const baseName = name.trim().replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
-      const phonePart = phone.trim().slice(-4);
-      const ownReferralCode = `${baseName}${phonePart}`;
+      // Generate B's own unique, unguessable referral code
+      const generateUniqueCode = async () => {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let code = "";
+        let isUnique = false;
+        while (!isUnique) {
+          let result = "CRAFT-";
+          for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          const qCheck = query(collection(db, "users"), where("referralCode", "==", result));
+          const snapCheck = await getDocs(qCheck);
+          if (snapCheck.empty) {
+            code = result;
+            isUnique = true;
+          }
+        }
+        return code;
+      };
+
+      const ownReferralCode = await generateUniqueCode();
 
       // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
