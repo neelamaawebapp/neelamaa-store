@@ -2,11 +2,11 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin, Wallet } from "lucide-react";
+import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin, Wallet, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, logout, loading } = useAuth();
   const router = useRouter();
 
   // Address States
@@ -19,11 +19,21 @@ export default function ProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
+    if (loading) return;
     // If somehow a non-logged in user reaches here, redirect
     if (user === null) {
-      router.push("/login");
+      router.push("/login?redirect=/profile");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
+        <RefreshCw className="animate-spin text-pink-500 mb-2" size={24} />
+        <span className="text-sm text-gray-500 font-medium">Syncing profile...</span>
+      </div>
+    );
+  }
 
   // Fetch address on mount
   useEffect(() => {
