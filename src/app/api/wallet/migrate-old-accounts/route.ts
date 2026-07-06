@@ -7,11 +7,32 @@ export async function GET() {
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
 
-    // 1. Fetch all registered users
+    // 1. Fetch registered users from "users" collection
     const usersSnapshot = await getDocs(collection(db, "users"));
-    const usersList = usersSnapshot.docs.map(d => ({
-      uid: d.id,
-      name: d.data().name || "Customer"
+    const usersMap = new Map<string, string>();
+    
+    usersSnapshot.forEach(d => {
+      usersMap.set(d.id, d.data().name || "Customer");
+    });
+
+    // 2. Fetch unique user IDs from "orders" collection to catch synthesized users
+    try {
+      const ordersSnapshot = await getDocs(collection(db, "orders"));
+      ordersSnapshot.forEach(d => {
+        const data = d.data();
+        if (data.userId && data.userId !== "guest" && data.userId !== "COD" && !data.userId.startsWith("mock_")) {
+          if (!usersMap.has(data.userId)) {
+            usersMap.set(data.userId, data.customerName || "Customer");
+          }
+        }
+      });
+    } catch (orderErr) {
+      console.error("Migration orders fetch failed (skipping order-level check):", orderErr);
+    }
+
+    const usersList = Array.from(usersMap.entries()).map(([uid, name]) => ({
+      uid,
+      name
     }));
 
     let processedCount = 0;
