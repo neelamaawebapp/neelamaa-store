@@ -26,15 +26,6 @@ export default function ProfilePage() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
-        <RefreshCw className="animate-spin text-pink-500 mb-2" size={24} />
-        <span className="text-sm text-gray-500 font-medium">Syncing profile...</span>
-      </div>
-    );
-  }
-
   // Fetch address on mount
   useEffect(() => {
     if (!user) return;
@@ -75,6 +66,15 @@ export default function ProfilePage() {
 
     fetchAddress();
   }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6">
+        <RefreshCw className="animate-spin text-pink-500 mb-2" size={24} />
+        <span className="text-sm text-gray-500 font-medium">Syncing profile...</span>
+      </div>
+    );
+  }
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
