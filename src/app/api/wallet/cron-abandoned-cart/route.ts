@@ -87,10 +87,10 @@ export async function GET(req: Request) {
             await addDoc(notifRef, {
               userId: user.id,
               title: pushTitle,
-              body: pushBody,
+              message: pushBody,
               type: "CART_ABANDONMENT",
               createdAt: new Date().toISOString(),
-              isRead: false
+              read: false
             });
           });
         } catch (e) {
