@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ChevronLeft, Sparkles, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownLeft, Wallet, AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
+import { ChevronLeft, Sparkles, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownLeft, Wallet, AlertCircle, RefreshCw, Copy, Check, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
 // Web Cryptography API helper to compute SHA-256 hash in browser
@@ -30,6 +30,16 @@ export default function UserWalletPage() {
     navigator.clipboard.writeText(referralCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareViaWhatsApp = () => {
+    if (!referralCode) return;
+    const appName = "Craft Style";
+    const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
+    const textMessage = `Hey! 🎁 I’ve been using ${appName} for my shopping, and thought you'd love it.\n\nSign up using my link or use my referral code ${referralCode} to get ₹100 instantly credited to your wallet for your first order!\n\nDownload the app here: ${referralLink}`;
+    
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textMessage)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   const loadWalletData = async () => {
@@ -269,6 +279,14 @@ export default function UserWalletPage() {
             </div>
             {copied && <span className="text-[10px] text-green-600 font-bold animate-fade-in">Copied to clipboard!</span>}
           </div>
+
+          <button 
+            onClick={shareViaWhatsApp}
+            className="w-full bg-[#25D366] hover:bg-[#20ba5a] active:scale-[0.98] font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-white shadow-sm"
+          >
+            <MessageCircle size={14} className="fill-current" />
+            SHARE VIA WHATSAPP
+          </button>
 
           <div className="space-y-3">
             <span className="text-xs font-bold text-gray-700 block">How it works:</span>

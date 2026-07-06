@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -27,6 +27,14 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginAsMockUser } = useAuth();
+
+  // Load ref query parameter into referral code input
+  useEffect(() => {
+    const urlRef = searchParams.get("ref");
+    if (urlRef) {
+      setReferredByInput(urlRef.toUpperCase());
+    }
+  }, [searchParams]);
 
   const redirect = searchParams.get("redirect") || "/";
 

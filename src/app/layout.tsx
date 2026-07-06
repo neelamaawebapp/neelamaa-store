@@ -24,6 +24,22 @@ export const metadata: Metadata = {
   title: "Craft Style",
   description: "High-performance E-commerce Web Application",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "Craft Style",
+    description: "Shop premium fashion and get ₹100 signup bonus instantly credited to your wallet!",
+    url: "https://myntra-clone-delta-blue.vercel.app",
+    siteName: "Craft Style",
+    images: [
+      {
+        url: "https://myntra-clone-delta-blue.vercel.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Craft Style Logo"
+      }
+    ],
+    locale: "en_IN",
+    type: "website"
+  }
 };
 
 export default function RootLayout({
