@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense, useEffect } from "react";
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -230,6 +230,68 @@ function SignupContent() {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    setLoading(true);
+    setError("");
+    localStorage.removeItem("craftstyle_mock_user");
+
+    try {
+      const provider = new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      if (!user) throw new Error("Facebook login failed");
+
+      // Check if user exists in Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        // Generate a unique referral code
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let referralCode = "";
+        let isUnique = false;
+        while (!isUnique) {
+          let resultStr = "CRAFT-";
+          for (let i = 0; i < 6; i++) {
+            resultStr += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          const qCheck = query(collection(db, "users"), where("referralCode", "==", resultStr));
+          const snapCheck = await getDocs(qCheck);
+          if (snapCheck.empty) {
+            referralCode = resultStr;
+            isUnique = true;
+          }
+        }
+
+        await setDoc(userDocRef, {
+          name: user.displayName || user.email?.split("@")[0] || "Customer",
+          email: user.email?.toLowerCase().trim() || "",
+          phone: "",
+          street: "",
+          city: "",
+          pin: "",
+          address: "",
+          referralCode,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      router.push(redirect);
+    } catch (err: any) {
+      console.error(err);
+      let errorMessage = "Failed to sign up with Facebook.";
+      if (err.code === "auth/popup-closed-by-user") {
+        errorMessage = "Facebook login popup closed.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDemoLogin = () => {
     loginAsMockUser("demo.customer@example.com", "Demo Customer");
     window.location.href = redirect;
@@ -336,6 +398,18 @@ function SignupContent() {
                   />
                 </svg>
                 <span>CONTINUE WITH GOOGLE</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFacebookLogin}
+                disabled={loading}
+                className="mt-3 w-full bg-[#1877F2] text-white font-bold py-3.5 rounded-md hover:bg-[#166FE5] transition-all flex justify-center items-center gap-2.5 disabled:opacity-70 shadow-sm"
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                <span>CONTINUE WITH FACEBOOK</span>
               </button>
               
               <div className="relative flex py-4 items-center">
