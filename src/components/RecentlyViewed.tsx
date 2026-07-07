@@ -136,8 +136,8 @@ export default function RecentlyViewed() {
   const gradients = getDailyGradients();
   const gradient = gradients[1];
 
-  if (loading || products.length === 0) {
-    return null; // Don't render anything if loading or no products
+  if (!user || loading || products.length === 0) {
+    return null; // Don't render anything if not logged in, loading, or no products
   }
 
   return (
