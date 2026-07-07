@@ -86,12 +86,16 @@ export async function GET(req: Request) {
 
     // 3. Fetch Transactions
     const txnsRef = collection(db, "wallet_transactions");
-    const qTxns = query(txnsRef, where("walletId", "==", userId), orderBy("createdAt", "desc"));
+    const qTxns = query(txnsRef, where("walletId", "==", userId));
     const querySnapshot = await getDocs(qTxns);
     const transactions = querySnapshot.docs.map(d => ({
       id: d.id,
       ...d.data()
-    }));
+    })).sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
     return NextResponse.json({
       success: true,
