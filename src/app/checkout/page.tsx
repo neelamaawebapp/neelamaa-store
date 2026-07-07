@@ -10,7 +10,7 @@ import { db } from "@/lib/firebase";
 import Script from "next/script";
 
 export default function CheckoutPage() {
-  const { cart, totalAmount, clearCart, couponCode, couponDiscountPercent } = useCart();
+  const { cart, totalAmount, clearCart, couponCode, couponDiscountPercent, applyCouponCode, removeCouponCode } = useCart();
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -60,15 +60,128 @@ export default function CheckoutPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [useWallet, setUseWallet] = useState(false);
 
+  // Checkout Coupons State
+  const [checkoutCouponInput, setCheckoutCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  const handleApplyCheckoutCoupon = async () => {
+    if (!checkoutCouponInput.trim()) {
+      setCouponError("Please enter a coupon code.");
+      setCouponSuccess("");
+      return;
+    }
+    setApplyingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+    try {
+      const res = await applyCouponCode(checkoutCouponInput);
+      if (res.success) {
+        setCouponSuccess(res.message);
+        setCheckoutCouponInput("");
+      } else {
+        setCouponError(res.message);
+      }
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to apply coupon.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     const fetchWallet = async () => {
       try {
-        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setWalletBalance(data.balance);
+        let currentBalance = 0;
+
+        if (user.uid.startsWith("mock_")) {
+          const localKey = `craftstyle_mock_wallet_${user.email || "guest"}`;
+          const storedWallet = localStorage.getItem(localKey);
+          if (storedWallet) {
+            const parsed = JSON.parse(storedWallet);
+            currentBalance = parsed.balance;
+          } else {
+            currentBalance = 100;
+            const txns = [{
+              id: `txn_mock_signup_${Date.now()}`,
+              walletId: user.uid,
+              amount: 100,
+              transactionType: "CREDIT",
+              source: "SIGNUP_BONUS",
+              referenceId: "signup",
+              description: "Signup Bonus (Mock User)",
+              status: "Active",
+              createdAt: new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+              hash: "mock_genesis_hash"
+            }];
+            localStorage.setItem(localKey, JSON.stringify({
+              balance: currentBalance,
+              transactions: txns
+            }));
+          }
+          setWalletBalance(currentBalance);
+        } else {
+          let apiSucceeded = false;
+          try {
+            const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success) {
+                currentBalance = data.balance;
+                setWalletBalance(currentBalance);
+                apiSucceeded = true;
+              }
+            }
+          } catch (err) {
+            console.error("Failed to load checkout wallet balance via API", err);
+          }
+
+          if (!apiSucceeded) {
+            const { doc, getDoc, getFirestore, collection, query, where, getDocs, setDoc } = await import("firebase/firestore");
+            const { app } = await import("@/lib/firebase");
+            const db = getFirestore(app);
+
+            const walletRef = doc(db, "wallets", user.uid);
+            let walletSnap = await getDoc(walletRef);
+
+            if (!walletSnap.exists()) {
+              const signupBonus = 100;
+              const expiryDays = 365;
+              const txnRef = doc(collection(db, "wallet_transactions"));
+
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + expiryDays);
+
+              const initialTxn = {
+                walletId: user.uid,
+                amount: signupBonus,
+                transactionType: "CREDIT",
+                source: "SIGNUP_BONUS",
+                referenceId: "signup",
+                description: "Signup Bonus",
+                status: "Active",
+                expiresAt: expiresAt.toISOString(),
+                createdAt: new Date().toISOString(),
+                hash: "genesis"
+              };
+
+              await setDoc(txnRef, initialTxn);
+              await setDoc(walletRef, {
+                userId: user.uid,
+                balance: signupBonus,
+                currency: "INR",
+                updatedAt: new Date().toISOString(),
+                latestTransactionHash: "genesis"
+              });
+
+              currentBalance = signupBonus;
+            } else {
+              currentBalance = walletSnap.data().balance || 0;
+            }
+            setWalletBalance(currentBalance);
           }
         }
       } catch (err) {
@@ -145,7 +258,7 @@ export default function CheckoutPage() {
   const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
   const totalToPay = finalAmount + courierCharges;
 
-  const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance, 50) : 0;
+  const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance) : 0;
   const remainingToPay = totalToPay - walletDiscount;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -374,19 +487,45 @@ export default function CheckoutPage() {
         }
 
         if (walletDiscount > 0) {
-          const debitRes = await fetch("/api/wallet/debit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: orderData.userId,
-              orderId: orderId,
-              amount: walletDiscount
-            })
-          });
+          if (orderData.userId.startsWith("mock_")) {
+            const localKey = `craftstyle_mock_wallet_${user?.email || "guest"}`;
+            const storedWallet = localStorage.getItem(localKey);
+            if (storedWallet) {
+              const parsed = JSON.parse(storedWallet);
+              const newBalance = Math.max(0, parsed.balance - walletDiscount);
+              const newTxns = [
+                {
+                  id: `txn_mock_debit_${Date.now()}`,
+                  walletId: orderData.userId,
+                  amount: -walletDiscount,
+                  transactionType: "DEBIT",
+                  source: "ORDER_PAYMENT",
+                  referenceId: orderId,
+                  description: `Paid for Order #${orderId.slice(-8).toUpperCase()}`,
+                  createdAt: new Date().toISOString()
+                },
+                ...(parsed.transactions || [])
+              ];
+              localStorage.setItem(localKey, JSON.stringify({
+                balance: newBalance,
+                transactions: newTxns
+              }));
+            }
+          } else {
+            const debitRes = await fetch("/api/wallet/debit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: orderData.userId,
+                orderId: orderId,
+                amount: walletDiscount
+              })
+            });
 
-          if (!debitRes.ok) {
-            const errData = await debitRes.json();
-            throw new Error(errData.error || "Failed to debit wallet balance.");
+            if (!debitRes.ok) {
+              const errData = await debitRes.json();
+              throw new Error(errData.error || "Failed to debit wallet balance.");
+            }
           }
           window.dispatchEvent(new Event("wallet-update"));
         }
@@ -422,15 +561,41 @@ export default function CheckoutPage() {
 
         if (walletDiscount > 0) {
           try {
-            await fetch("/api/wallet/debit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: orderData.userId,
-                orderId: orderId,
-                amount: walletDiscount
-              })
-            });
+            if (orderData.userId.startsWith("mock_")) {
+              const localKey = `craftstyle_mock_wallet_${user?.email || "guest"}`;
+              const storedWallet = localStorage.getItem(localKey);
+              if (storedWallet) {
+                const parsed = JSON.parse(storedWallet);
+                const newBalance = Math.max(0, parsed.balance - walletDiscount);
+                const newTxns = [
+                  {
+                    id: `txn_mock_debit_${Date.now()}`,
+                    walletId: orderData.userId,
+                    amount: -walletDiscount,
+                    transactionType: "DEBIT",
+                    source: "ORDER_PAYMENT",
+                    referenceId: orderId,
+                    description: `Paid for Order #${orderId.slice(-8).toUpperCase()}`,
+                    createdAt: new Date().toISOString()
+                  },
+                  ...(parsed.transactions || [])
+                ];
+                localStorage.setItem(localKey, JSON.stringify({
+                  balance: newBalance,
+                  transactions: newTxns
+                }));
+              }
+            } else {
+              await fetch("/api/wallet/debit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: orderData.userId,
+                  orderId: orderId,
+                  amount: walletDiscount
+                })
+              });
+            }
             window.dispatchEvent(new Event("wallet-update"));
           } catch (debitErr) {
             console.error("Failed to debit wallet for local fallback order:", debitErr);
@@ -650,7 +815,7 @@ export default function CheckoutPage() {
                 <Coins className="text-pink-500" size={20} />
                 <div className="flex flex-col">
                   <span className="font-bold text-sm text-gray-900">Use Wallet Balance</span>
-                  <span className="text-[10px] text-gray-500">Available: ₹{walletBalance} (Max ₹50 per order)</span>
+                  <span className="text-[10px] text-gray-500">Available: ₹{walletBalance}</span>
                 </div>
               </div>
               <input 
@@ -662,6 +827,85 @@ export default function CheckoutPage() {
             </label>
           </div>
         )}
+
+        {/* Coupons Card */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+            <div className="flex items-center space-x-2 text-gray-800">
+              <Tag size={18} className="text-pink-500" />
+              <h3 className="font-bold text-sm uppercase tracking-wide">Apply Coupon</h3>
+            </div>
+            {couponCode && (
+              <span className="text-[10px] bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded border border-green-150 flex items-center gap-1">
+                <Check size={10} className="stroke-[3]" /> Coupon Active
+              </span>
+            )}
+          </div>
+
+          {couponCode ? (
+            <div className="flex items-center justify-between bg-green-50/50 border border-green-100 rounded-xl p-3.5 animate-fade-in">
+              <div className="flex items-start space-x-2.5">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 flex-shrink-0 mt-0.5">
+                  <Check size={16} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-gray-900 uppercase font-mono tracking-wider">{couponCode} APPLIED</h4>
+                  <p className="text-[11px] text-green-700 mt-0.5 font-medium">You saved ₹{couponDiscountAmount} ({couponDiscountPercent}% OFF)</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => {
+                  removeCouponCode();
+                  setCouponSuccess("");
+                  setCouponError("");
+                }}
+                className="text-gray-400 hover:text-red-500 p-1.5 transition-colors cursor-pointer"
+                title="Remove Coupon"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  placeholder="Enter Coupon Code (e.g. FIRSTBUY20)"
+                  value={checkoutCouponInput}
+                  onChange={(e) => {
+                    setCheckoutCouponInput(e.target.value);
+                    setCouponError("");
+                    setCouponSuccess("");
+                  }}
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm uppercase font-mono tracking-wider focus:ring-1 focus:ring-pink-500 outline-none text-gray-900 placeholder-gray-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleApplyCheckoutCoupon()}
+                  disabled={applyingCoupon}
+                  className="bg-pink-500 text-white font-bold px-5 py-2.5 rounded-md hover:bg-pink-600 transition-colors text-xs uppercase tracking-wider disabled:opacity-75 cursor-pointer"
+                >
+                  {applyingCoupon ? "APPLYING..." : "APPLY"}
+                </button>
+              </div>
+
+              {couponError && (
+                <div className="bg-red-50 text-red-600 text-xs py-2 px-3 rounded-lg border border-red-100 animate-shake flex items-center gap-1.5 font-medium">
+                  <AlertTriangle size={13} />
+                  <span>{couponError}</span>
+                </div>
+              )}
+
+              {couponSuccess && (
+                <div className="bg-green-50 text-green-700 text-xs py-2 px-3 rounded-lg border border-green-150 animate-fade-in flex items-center gap-1.5 font-medium">
+                  <Check size={13} />
+                  <span>{couponSuccess}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Price Details */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">

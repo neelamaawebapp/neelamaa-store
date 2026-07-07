@@ -46,13 +46,115 @@ export default function UserWalletPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setBalance(data.balance);
-          setTransactions(data.transactions || []);
-          await verifyLedger(data.transactions || []);
+      let currentBalance = 0;
+      let txns: any[] = [];
+
+      if (user.uid.startsWith("mock_")) {
+        const localKey = `craftstyle_mock_wallet_${user.email || "guest"}`;
+        const storedWallet = localStorage.getItem(localKey);
+        if (storedWallet) {
+          const parsed = JSON.parse(storedWallet);
+          currentBalance = parsed.balance;
+          txns = parsed.transactions || [];
+        } else {
+          currentBalance = 100;
+          txns = [{
+            id: `txn_mock_signup_${Date.now()}`,
+            walletId: user.uid,
+            amount: 100,
+            transactionType: "CREDIT",
+            source: "SIGNUP_BONUS",
+            referenceId: "signup",
+            description: "Signup Bonus (Mock User)",
+            status: "Active",
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+            hash: "mock_genesis_hash"
+          }];
+          localStorage.setItem(localKey, JSON.stringify({
+            balance: currentBalance,
+            transactions: txns
+          }));
+        }
+        setBalance(currentBalance);
+        setTransactions(txns);
+        setIsLedgerSecure(true);
+      } else {
+        let apiSucceeded = false;
+        try {
+          const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              currentBalance = data.balance;
+              txns = data.transactions || [];
+              setBalance(currentBalance);
+              setTransactions(txns);
+              await verifyLedger(txns);
+              apiSucceeded = true;
+            }
+          }
+        } catch (apiErr) {
+          console.error("API wallet load failed, attempting client-side fallback", apiErr);
+        }
+
+        if (!apiSucceeded) {
+          const { doc, getDoc, getFirestore, collection, query, where, getDocs, setDoc } = await import("firebase/firestore");
+          const { app } = await import("@/lib/firebase");
+          const db = getFirestore(app);
+
+          const walletRef = doc(db, "wallets", user.uid);
+          let walletSnap = await getDoc(walletRef);
+
+          if (!walletSnap.exists()) {
+            const signupBonus = 100;
+            const expiryDays = 365;
+            const txnRef = doc(collection(db, "wallet_transactions"));
+
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + expiryDays);
+
+            const initialTxn = {
+              walletId: user.uid,
+              amount: signupBonus,
+              transactionType: "CREDIT",
+              source: "SIGNUP_BONUS",
+              referenceId: "signup",
+              description: "Signup Bonus",
+              status: "Active",
+              expiresAt: expiresAt.toISOString(),
+              createdAt: new Date().toISOString(),
+              hash: "genesis"
+            };
+
+            await setDoc(txnRef, initialTxn);
+            await setDoc(walletRef, {
+              userId: user.uid,
+              balance: signupBonus,
+              currency: "INR",
+              updatedAt: new Date().toISOString(),
+              latestTransactionHash: "genesis"
+            });
+
+            currentBalance = signupBonus;
+            txns = [{ id: txnRef.id, ...initialTxn }];
+          } else {
+            const wData = walletSnap.data();
+            currentBalance = wData.balance || 0;
+
+            const qTxns = query(collection(db, "wallet_transactions"), where("walletId", "==", user.uid));
+            const querySnapshot = await getDocs(qTxns);
+            txns = querySnapshot.docs.map(d => ({
+              id: d.id,
+              ...d.data()
+            })).sort((a: any, b: any) => {
+              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            });
+          }
+
+          setBalance(currentBalance);
+          setTransactions(txns);
+          await verifyLedger(txns);
         }
       }
 
@@ -66,7 +168,6 @@ export default function UserWalletPage() {
         if (userData.referralCode) {
           setReferralCode(userData.referralCode);
         } else {
-          // Legacy users: generate and save a secure unique referral code
           const generateUniqueCode = async () => {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             let code = "";
