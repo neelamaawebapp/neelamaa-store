@@ -512,19 +512,63 @@ export default function CheckoutPage() {
               }));
             }
           } else {
-            const debitRes = await fetch("/api/wallet/debit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: orderData.userId,
-                orderId: orderId,
-                amount: walletDiscount
-              })
-            });
+            // Real User: Try client-side direct update first (guaranteed authenticated context)
+            let debitSucceeded = false;
+            try {
+              const { doc, getDoc, setDoc, updateDoc, collection } = await import("firebase/firestore");
+              const walletRef = doc(db, "wallets", orderData.userId);
+              const walletSnap = await getDoc(walletRef);
+              if (walletSnap.exists()) {
+                const currentBalance = Number(walletSnap.data().balance || 0);
+                if (currentBalance >= walletDiscount) {
+                  const previousHash = walletSnap.data().latestTransactionHash || "genesis";
+                  
+                  // Safe client-side SHA-256 implementation using Web Crypto API
+                  const msgBuffer = new TextEncoder().encode(`${orderData.userId}_${walletDiscount}_DEBIT_${previousHash}`);
+                  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+                  const hashArray = Array.from(new Uint8Array(hashBuffer));
+                  const newHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-            if (!debitRes.ok) {
-              const errData = await debitRes.json();
-              throw new Error(errData.error || "Failed to debit wallet balance.");
+                  const txnRef = doc(collection(db, "wallet_transactions"));
+                  await setDoc(txnRef, {
+                    walletId: orderData.userId,
+                    amount: -walletDiscount,
+                    transactionType: "DEBIT",
+                    source: "ORDER_PAYMENT",
+                    referenceId: orderId,
+                    description: `Paid for Order #${orderId.slice(-8).toUpperCase()}`,
+                    createdAt: new Date().toISOString(),
+                    hash: newHash
+                  });
+
+                  await updateDoc(walletRef, {
+                    balance: currentBalance - walletDiscount,
+                    latestTransactionHash: newHash,
+                    updatedAt: new Date().toISOString()
+                  });
+                  debitSucceeded = true;
+                }
+              }
+            } catch (clientDebitErr) {
+              console.error("Client-side direct debit failed, falling back to API:", clientDebitErr);
+            }
+
+            // Fallback to API route if client-side write failed
+            if (!debitSucceeded) {
+              const debitRes = await fetch("/api/wallet/debit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: orderData.userId,
+                  orderId: orderId,
+                  amount: walletDiscount
+                })
+              });
+
+              if (!debitRes.ok) {
+                const errData = await debitRes.json();
+                throw new Error(errData.error || "Failed to debit wallet balance.");
+              }
             }
           }
           window.dispatchEvent(new Event("wallet-update"));
@@ -586,15 +630,57 @@ export default function CheckoutPage() {
                 }));
               }
             } else {
-              await fetch("/api/wallet/debit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  userId: orderData.userId,
-                  orderId: orderId,
-                  amount: walletDiscount
-                })
-              });
+              // Real User Fallback: Try client-side direct update first
+              let debitSucceeded = false;
+              try {
+                const { doc, getDoc, setDoc, updateDoc, collection } = await import("firebase/firestore");
+                const walletRef = doc(db, "wallets", orderData.userId);
+                const walletSnap = await getDoc(walletRef);
+                if (walletSnap.exists()) {
+                  const currentBalance = Number(walletSnap.data().balance || 0);
+                  if (currentBalance >= walletDiscount) {
+                    const previousHash = walletSnap.data().latestTransactionHash || "genesis";
+                    
+                    const msgBuffer = new TextEncoder().encode(`${orderData.userId}_${walletDiscount}_DEBIT_${previousHash}`);
+                    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    const newHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+                    const txnRef = doc(collection(db, "wallet_transactions"));
+                    await setDoc(txnRef, {
+                      walletId: orderData.userId,
+                      amount: -walletDiscount,
+                      transactionType: "DEBIT",
+                      source: "ORDER_PAYMENT",
+                      referenceId: orderId,
+                      description: `Paid for Order #${orderId.slice(-8).toUpperCase()}`,
+                      createdAt: new Date().toISOString(),
+                      hash: newHash
+                    });
+
+                    await updateDoc(walletRef, {
+                      balance: currentBalance - walletDiscount,
+                      latestTransactionHash: newHash,
+                      updatedAt: new Date().toISOString()
+                    });
+                    debitSucceeded = true;
+                  }
+                }
+              } catch (clientDebitErr) {
+                console.error("Client-side direct fallback debit failed:", clientDebitErr);
+              }
+
+              if (!debitSucceeded) {
+                await fetch("/api/wallet/debit", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: orderData.userId,
+                    orderId: orderId,
+                    amount: walletDiscount
+                  })
+                });
+              }
             }
             window.dispatchEvent(new Event("wallet-update"));
           } catch (debitErr) {
