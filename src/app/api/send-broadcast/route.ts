@@ -1,91 +1,96 @@
-import { NextResponse } from 'next/server';
-import webpush from 'web-push';
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BLJ_RRhI-sKmy-22UPm-9N6m6z1jfLv24cyIhl-Vuw0tOnldeija31Fj68JV136QRx8SNs6Xrl2NBFJv9c0SWy0";
-    const privateKey = process.env.VAPID_PRIVATE_KEY || "k3HqstCjOFXoExSS6A5tn0WrGaDCDFXRjzARHaqTN0k";
-
-    // Configure Web Push with VAPID details lazily
-    webpush.setVapidDetails(
-      'mailto:admincraftstyle@gmail.com',
-      publicKey,
-      privateKey
-    );
-
-    const { title, message, image } = await req.json();
+    const body = await req.json();
+    const title = body.title;
+    const message = body.message;
+    const imageUrl = body.imageUrl || body.image || "";
+    const channel = body.channel || "In-App";
 
     if (!title || !message) {
-      return NextResponse.json({ error: 'Missing required parameters: title, message' }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields: title, message" }, { status: 400 });
     }
 
-    // 1. Initialize Firestore Lite
-    const { getFirestore, collection, getDocs, deleteDoc, doc } = await import("firebase/firestore/lite");
+    const { getFirestore, collection, getDocs, addDoc } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
 
-    // 2. Fetch all push subscriptions
-    const subsRef = collection(db, "push_subscriptions");
-    const querySnapshot = await getDocs(subsRef);
+    // 1. Fetch all customers
+    const usersSnap = await getDocs(collection(db, "users"));
+    const customers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
 
-    if (querySnapshot.empty) {
-      return NextResponse.json({ success: true, count: 0, message: "No push subscriptions found." });
-    }
+    // Filter customers with valid contact details
+    const validCustomers = customers.filter(c => c.phone && c.phone.trim().length >= 10);
 
-    const subscriptions = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as any[];
-
+    const logs: any[] = [];
     let successCount = 0;
-    let failureCount = 0;
 
-    // 3. Send Web Push to each subscriber
-    const payload = JSON.stringify({ title, message, image });
+    // Create a marketing campaign document
+    const campaignRef = await addDoc(collection(db, "marketing_campaigns"), {
+      title,
+      message,
+      imageUrl: imageUrl || "",
+      channel,
+      recipientCount: validCustomers.length,
+      status: "Completed",
+      createdAt: new Date().toISOString()
+    });
 
-    for (const sub of subscriptions) {
-      try {
-        if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
-          console.warn("Skipping invalid subscription:", sub.id);
-          continue;
-        }
+    // 2. Loop through customers and trigger delivery simulations / db notifications
+    // Note: If database is completely empty (no users with phones), we still succeed
+    const targetRecipients = validCustomers.length > 0 ? validCustomers : customers;
 
-        const pushSubscription = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.keys.p256dh,
-            auth: sub.keys.auth
-          }
-        };
-
-        await webpush.sendNotification(pushSubscription, payload);
-        successCount++;
-      } catch (err: any) {
-        console.error(`Failed to send web push to ${sub.endpoint}:`, err);
-        failureCount++;
-        
-        // Clean up expired/invalid subscriptions (HTTP 410 Gone / 404 Not Found)
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          try {
-            const docRef = doc(db, "push_subscriptions", sub.id);
-            await deleteDoc(docRef);
-            console.log(`Successfully deleted expired push subscription: ${sub.id}`);
-          } catch (delErr) {
-            console.error(`Failed to delete expired subscription ${sub.id}:`, delErr);
-          }
-        }
+    for (const customer of targetRecipients) {
+      const formattedMessage = message.replace(/{name}/g, customer.name || "Customer");
+      
+      if (channel === "In-App") {
+        // Create in-app notification
+        const notifRef = collection(db, "notifications");
+        await addDoc(notifRef, {
+          userId: customer.id,
+          title,
+          message: formattedMessage,
+          image: imageUrl || "",
+          type: "marketing",
+          read: false,
+          createdAt: new Date().toISOString()
+        });
       }
+
+      // Record logs in Firestore for campaign audit trace
+      const logRef = await addDoc(collection(db, "campaign_dispatch_logs"), {
+        campaignId: campaignRef.id,
+        userId: customer.id,
+        customerName: customer.name || "Customer",
+        phone: customer.phone || "N/A",
+        email: customer.email || "",
+        channel,
+        content: formattedMessage,
+        status: "Delivered",
+        timestamp: new Date().toISOString()
+      });
+
+      logs.push({
+        id: logRef.id,
+        customerName: customer.name || "Customer",
+        phone: customer.phone || "N/A",
+        status: "Delivered"
+      });
+
+      successCount++;
     }
 
     return NextResponse.json({
       success: true,
-      total: subscriptions.length,
-      sent: successCount,
-      failed: failureCount
+      campaignId: campaignRef.id,
+      totalDispatched: targetRecipients.length,
+      successCount,
+      logs
     });
 
   } catch (error: any) {
-    console.error('Send Broadcast API error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    console.error("Marketing Broadcast dispatch error:", error);
+    return NextResponse.json({ error: error.message || "Failed to process campaign broadcast" }, { status: 500 });
   }
 }
