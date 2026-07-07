@@ -7,7 +7,7 @@ import { auth, db } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, AlertTriangle } from "lucide-react";
 
 function SignupContent() {
   // Auth Fields
@@ -24,9 +24,19 @@ function SignupContent() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isVercelPreview, setIsVercelPreview] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginAsMockUser, user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host !== "myntra-clone-delta-blue.vercel.app" && host !== "localhost" && host.endsWith(".vercel.app")) {
+        setIsVercelPreview(true);
+      }
+    }
+  }, []);
 
   // Redirect if already logged in / registered
   useEffect(() => {
@@ -411,6 +421,19 @@ function SignupContent() {
                 </svg>
                 <span>CONTINUE WITH FACEBOOK</span>
               </button>
+
+              {isVercelPreview && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-xl flex flex-col gap-1.5 mt-3 select-none animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                    <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
+                    <span>Domain Configuration Warning</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 leading-normal font-medium">
+                    Google and Facebook logins require authorized redirect domains. To sign in successfully, please use the main production domain: 
+                    <a href="https://myntra-clone-delta-blue.vercel.app" className="underline font-bold text-pink-600 ml-1 hover:text-pink-700">myntra-clone-delta-blue.vercel.app</a>.
+                  </p>
+                </div>
+              )}
               
               <div className="relative flex py-4 items-center">
                 <div className="flex-grow border-t border-gray-200"></div>
