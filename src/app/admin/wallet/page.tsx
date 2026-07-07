@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Coins, HelpCircle, Save, ShieldAlert, Sparkles, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Coins, HelpCircle, Save, ShieldAlert, Sparkles, RefreshCw, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AdminWalletSettings() {
@@ -29,6 +29,13 @@ export default function AdminWalletSettings() {
   // Manual Expiry Run State
   const [cronRunning, setCronRunning] = useState(false);
   const [cronResult, setCronResult] = useState<any>(null);
+
+  // Ledger Auditing State
+  const [users, setUsers] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCustomerForAudit, setSelectedCustomerForAudit] = useState<any | null>(null);
 
   const fetchSettings = async () => {
     try {
@@ -59,14 +66,22 @@ export default function AdminWalletSettings() {
 
       // Sum all wallet balances
       const walletsSnap = await getDocs(collection(db, "wallets"));
+      const walletsList: any[] = [];
       let circulation = 0;
       walletsSnap.forEach(doc => {
-        circulation += (doc.data().balance || 0);
+        const data = doc.data();
+        circulation += (data.balance || 0);
+        walletsList.push({
+          id: doc.id,
+          ...data
+        });
       });
+      setWallets(walletsList);
       setTotalCirculation(circulation);
 
       // Summarize transactions
       const txnsSnap = await getDocs(collection(db, "wallet_transactions"));
+      const txnsList: any[] = [];
       let credited = 0;
       let debited = 0;
       let expired = 0;
@@ -74,6 +89,10 @@ export default function AdminWalletSettings() {
       txnsSnap.forEach(doc => {
         const data = doc.data();
         const amt = Number(data.amount || 0);
+        txnsList.push({
+          id: doc.id,
+          ...data
+        });
         if (data.transactionType === "CREDIT") {
           credited += amt;
         } else if (data.transactionType === "DEBIT") {
@@ -83,10 +102,21 @@ export default function AdminWalletSettings() {
           }
         }
       });
-
+      setTransactions(txnsList);
       setTotalCredited(credited);
       setTotalDebited(debited);
       setTotalExpired(expired);
+
+      // Fetch users
+      const usersSnap = await getDocs(collection(db, "users"));
+      const usersList: any[] = [];
+      usersSnap.forEach(doc => {
+        usersList.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      setUsers(usersList);
     } catch (err) {
       console.error("Failed to load statistics:", err);
     } finally {
@@ -151,6 +181,77 @@ export default function AdminWalletSettings() {
       setCronRunning(false);
     }
   };
+
+  // Combine users, wallets and transactions
+  const getMappedLedger = () => {
+    const customersList: any[] = users.map(u => {
+      const wallet = wallets.find(w => w.id === u.id);
+      const userTxns = transactions.filter(t => t.walletId === u.id);
+      
+      const sortedTxns = [...userTxns].sort((a, b) => {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+
+      const totalCredit = userTxns
+        .filter(t => t.transactionType === "CREDIT")
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+      const totalDebit = userTxns
+        .filter(t => t.transactionType === "DEBIT")
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
+
+      return {
+        id: u.id,
+        name: u.name || "Customer",
+        email: u.email || "",
+        balance: wallet?.balance || 0,
+        totalCredit,
+        totalDebit,
+        transactions: sortedTxns,
+      };
+    });
+
+    // Check for orphan wallets
+    wallets.forEach(w => {
+      const exists = customersList.some(c => c.id === w.id);
+      if (!exists) {
+        const userTxns = transactions.filter(t => t.walletId === w.id);
+        const sortedTxns = [...userTxns].sort((a, b) => {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+
+        const totalCredit = userTxns
+          .filter(t => t.transactionType === "CREDIT")
+          .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+        const totalDebit = userTxns
+          .filter(t => t.transactionType === "DEBIT")
+          .reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
+
+        customersList.push({
+          id: w.id,
+          name: "Unknown / Guest User",
+          email: w.id,
+          balance: w.balance || 0,
+          totalCredit,
+          totalDebit,
+          transactions: sortedTxns,
+        });
+      }
+    });
+
+    return customersList;
+  };
+
+  const filteredCustomers = getMappedLedger().filter(cust => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      cust.name.toLowerCase().includes(q) ||
+      cust.email.toLowerCase().includes(q) ||
+      cust.id.toLowerCase().includes(q)
+    );
+  });
 
   if (loading) {
     return (
@@ -389,6 +490,179 @@ export default function AdminWalletSettings() {
           </div>
         </div>
       </div>
+
+      {/* Customer Wallet Balances and Ledger Section */}
+      <div className="bg-slate-950/40 border border-slate-900 rounded-2xl p-6 relative">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-900 pb-4">
+          <div>
+            <h2 className="text-sm font-extrabold text-white tracking-wide uppercase flex items-center gap-2">
+              <Coins className="text-pink-500" size={16} />
+              Customer Wallet Ledger
+            </h2>
+            <p className="text-slate-400 text-[10px] mt-0.5">
+              Detailed points breakdown, ledger auditing, and issue/expiry logs for individual customers.
+            </p>
+          </div>
+          <div className="w-full md:w-72 relative">
+            <input 
+              type="text"
+              placeholder="Search by customer name or email..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-900/80 border border-slate-800 focus:border-pink-500 outline-none pl-9 pr-4 py-2.5 rounded-xl text-xs font-semibold text-white placeholder-slate-500"
+            />
+            <div className="absolute left-3 top-3 text-slate-500">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Wallets Table */}
+        {statsLoading ? (
+          <div className="flex justify-center items-center py-12 text-slate-400">
+            <RefreshCw className="animate-spin text-pink-500 mr-2" size={18} />
+            <span className="text-xs">Loading ledger details...</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-900 text-slate-500 uppercase text-[9px] font-bold tracking-wider">
+                  <th className="pb-3 pl-2">Customer Info</th>
+                  <th className="pb-3 text-right">Points Balance</th>
+                  <th className="pb-3 text-right">Total Credited</th>
+                  <th className="pb-3 text-right">Total Debited</th>
+                  <th className="pb-3 text-right pr-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-500">
+                      No customers found matching "{searchQuery}"
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCustomers.map(cust => (
+                    <tr key={cust.id} className="border-b border-slate-900/50 hover:bg-slate-900/10 transition-colors">
+                      <td className="py-3.5 pl-2">
+                        <div className="font-bold text-slate-200">{cust.name}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{cust.email}</div>
+                      </td>
+                      <td className="py-3.5 text-right font-black text-white">
+                        ₹{cust.balance}
+                      </td>
+                      <td className="py-3.5 text-right text-emerald-400 font-semibold">
+                        +₹{cust.totalCredit}
+                      </td>
+                      <td className="py-3.5 text-right text-rose-400/80 font-semibold">
+                        -₹{cust.totalDebit}
+                      </td>
+                      <td className="py-3.5 text-right pr-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCustomerForAudit(cust)}
+                          className="bg-slate-900 hover:bg-slate-800 text-pink-500 hover:text-pink-400 border border-slate-800 font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                        >
+                          AUDIT HISTORY
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Transaction Audit Modal */}
+      {selectedCustomerForAudit && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-950 border border-slate-900 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-scale-in max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-900 flex justify-between items-center bg-slate-950">
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                  Audit Ledger: {selectedCustomerForAudit.name}
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">{selectedCustomerForAudit.email}</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setSelectedCustomerForAudit(null)}
+                className="text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg transition-all cursor-pointer border border-slate-800"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Stats Summary */}
+            <div className="grid grid-cols-3 bg-slate-900/30 border-b border-slate-900 p-4 text-center">
+              <div>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Current Balance</span>
+                <span className="text-sm font-black text-white block mt-1">₹{selectedCustomerForAudit.balance}</span>
+              </div>
+              <div>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Total Credited</span>
+                <span className="text-sm font-bold text-emerald-400 block mt-1">+₹{selectedCustomerForAudit.totalCredit}</span>
+              </div>
+              <div>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Total Debited</span>
+                <span className="text-sm font-bold text-rose-400 block mt-1">-₹{selectedCustomerForAudit.totalDebit}</span>
+              </div>
+            </div>
+
+            {/* Modal Body: Transactions list */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {selectedCustomerForAudit.transactions.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No point transactions recorded for this customer.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedCustomerForAudit.transactions.map((txn: any) => (
+                    <div key={txn.id} className="bg-slate-950 border border-slate-900 p-4 rounded-xl flex justify-between items-center gap-4 hover:border-slate-800 transition-all">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md tracking-wide uppercase ${
+                            txn.transactionType === "CREDIT" 
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          }`}>
+                            {txn.transactionType}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {txn.source}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-semibold">{txn.description || "No description provided."}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-slate-500">
+                          <span>Created: {new Date(txn.createdAt).toLocaleString()}</span>
+                          {txn.expiresAt && (
+                            <span className={txn.status === "Expired" ? "text-rose-500/70" : "text-amber-500/80"}>
+                              Expires: {new Date(txn.expiresAt).toLocaleDateString()} {txn.status === "Expired" && "(Lapsed)"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm font-black ${
+                          txn.transactionType === "CREDIT" ? "text-emerald-400" : "text-rose-400"
+                        }`}>
+                          {txn.transactionType === "CREDIT" ? "+" : "-"}₹{Math.abs(txn.amount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
