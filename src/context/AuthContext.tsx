@@ -26,34 +26,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check local storage for mock user first
-    if (typeof window !== "undefined") {
-      const localMockUser = localStorage.getItem("craftstyle_mock_user");
-      if (localMockUser) {
-        try {
-          const parsed = JSON.parse(localMockUser);
-          setUser(parsed);
-          if (parsed.email === "admin@craftstyle.com" || parsed.email === "admincraftstyle@gmail.com") {
-            setIsAdmin(true);
-          } else {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        // Real user logged in, clear mock user
+        localStorage.removeItem("craftstyle_mock_user");
+        setUser(currentUser);
+        if (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "admincraftstyle@gmail.com") {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+        setLoading(false);
+      } else {
+        // No real user, check if we have a mock user
+        const localMockUser = localStorage.getItem("craftstyle_mock_user");
+        if (localMockUser) {
+          try {
+            const parsed = JSON.parse(localMockUser);
+            setUser(parsed);
+            if (parsed.email === "admin@craftstyle.com" || parsed.email === "admincraftstyle@gmail.com") {
+              setIsAdmin(true);
+            } else {
+              setIsAdmin(false);
+            }
+          } catch (e) {
+            console.error("Failed to parse mock user", e);
+            setUser(null);
             setIsAdmin(false);
           }
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error("Failed to parse mock user", e);
+        } else {
+          setUser(null);
+          setIsAdmin(false);
         }
+        setLoading(false);
       }
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser && (currentUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || currentUser.email === "admincraftstyle@gmail.com")) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
-      setLoading(false);
     });
 
     return () => unsubscribe();
