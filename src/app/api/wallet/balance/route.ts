@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     }
 
     // 1. Initialize Firestore (using full SDK for transactions)
-    const { getFirestore, doc, getDoc, collection, query, where, orderBy, getDocs, runTransaction } = await import("firebase/firestore");
+    const { getFirestore, doc, getDoc, collection, query, where, orderBy, getDocs, setDoc } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
 
@@ -23,59 +23,54 @@ export async function GET(req: Request) {
     // 2. Auto-initialize wallet if it doesn't exist
     if (!walletSnap.exists()) {
       try {
-        await runTransaction(db, async (transaction) => {
-          const wSnap = await transaction.get(walletRef);
-          if (wSnap.exists()) return; // Already created in a race condition
+        // Read campaign rules from settings/wallet, fallback to defaults
+        const settingsRef = doc(db, "settings", "wallet");
+        const settingsSnap = await getDoc(settingsRef);
+        const rules = settingsSnap.exists() 
+          ? { ...DEFAULT_WALLET_SETTINGS, ...settingsSnap.data() } 
+          : DEFAULT_WALLET_SETTINGS;
 
-          // Read campaign rules from settings/wallet, fallback to defaults
-          const settingsRef = doc(db, "settings", "wallet");
-          const settingsSnap = await transaction.get(settingsRef);
-          const rules = settingsSnap.exists() 
-            ? { ...DEFAULT_WALLET_SETTINGS, ...settingsSnap.data() } 
-            : DEFAULT_WALLET_SETTINGS;
+        const signupBonus = Number(rules.signupBonus || 100);
+        const expiryDays = Number(rules.expiryDays || 365);
+        
+        let latestHash = "genesis";
+        let initialBalance = 0;
 
-          const signupBonus = Number(rules.signupBonus || 100);
-          const expiryDays = Number(rules.expiryDays || 365);
+        if (signupBonus > 0) {
+          initialBalance = signupBonus;
+          const txnRef = doc(collection(db, "wallet_transactions"));
+          latestHash = calculateTransactionHash(userId, signupBonus, "CREDIT", "genesis");
           
-          let latestHash = "genesis";
-          let initialBalance = 0;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + expiryDays);
 
-          if (signupBonus > 0) {
-            initialBalance = signupBonus;
-            const txnRef = doc(collection(db, "wallet_transactions"));
-            latestHash = calculateTransactionHash(userId, signupBonus, "CREDIT", "genesis");
-            
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + expiryDays);
-
-            transaction.set(txnRef, {
-              walletId: userId,
-              amount: signupBonus,
-              transactionType: "CREDIT",
-              source: "SIGNUP_BONUS",
-              referenceId: "signup",
-              description: "Signup Bonus",
-              status: "Active",
-              expiresAt: expiresAt.toISOString(),
-              createdAt: new Date().toISOString(),
-              hash: latestHash
-            });
-          }
-
-          transaction.set(walletRef, {
-            userId,
-            balance: initialBalance,
-            currency: "INR",
-            updatedAt: new Date().toISOString(),
-            latestTransactionHash: latestHash
+          await setDoc(txnRef, {
+            walletId: userId,
+            amount: signupBonus,
+            transactionType: "CREDIT",
+            source: "SIGNUP_BONUS",
+            referenceId: "signup",
+            description: "Signup Bonus",
+            status: "Active",
+            expiresAt: expiresAt.toISOString(),
+            createdAt: new Date().toISOString(),
+            hash: latestHash
           });
+        }
+
+        await setDoc(walletRef, {
+          userId,
+          balance: initialBalance,
+          currency: "INR",
+          updatedAt: new Date().toISOString(),
+          latestTransactionHash: latestHash
         });
 
-        // Re-fetch after transaction creation
+        // Re-fetch after creation
         walletSnap = await getDoc(walletRef);
       } catch (txErr: any) {
-        console.error("Wallet auto-initialization transaction failed:", txErr);
-        // Fallback: If transaction failed, try to read one more time
+        console.error("Wallet auto-initialization failed:", txErr);
+        // Fallback: Try to read one more time
         walletSnap = await getDoc(walletRef);
       }
     }
@@ -88,10 +83,61 @@ export async function GET(req: Request) {
     const txnsRef = collection(db, "wallet_transactions");
     const qTxns = query(txnsRef, where("walletId", "==", userId));
     const querySnapshot = await getDocs(qTxns);
-    const transactions = querySnapshot.docs.map(d => ({
+    let transactions = querySnapshot.docs.map(d => ({
       id: d.id,
       ...d.data()
-    })).sort((a: any, b: any) => {
+    }));
+
+    // Auto-credit signup bonus if wallet exists with 0 balance and no transactions
+    if (walletSnap.exists() && walletSnap.data().balance === 0 && transactions.length === 0) {
+      try {
+        const settingsRef = doc(db, "settings", "wallet");
+        const settingsSnap = await getDoc(settingsRef);
+        const rules = settingsSnap.exists() 
+          ? { ...DEFAULT_WALLET_SETTINGS, ...settingsSnap.data() } 
+          : DEFAULT_WALLET_SETTINGS;
+
+        const signupBonus = Number(rules.signupBonus || 100);
+        const expiryDays = Number(rules.expiryDays || 365);
+
+        if (signupBonus > 0) {
+          const txnRef = doc(collection(db, "wallet_transactions"));
+          const latestHash = calculateTransactionHash(userId, signupBonus, "CREDIT", "genesis");
+          
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + expiryDays);
+
+          const newTxn = {
+            walletId: userId,
+            amount: signupBonus,
+            transactionType: "CREDIT",
+            source: "SIGNUP_BONUS",
+            referenceId: "signup",
+            description: "Signup Bonus",
+            status: "Active",
+            expiresAt: expiresAt.toISOString(),
+            createdAt: new Date().toISOString(),
+            hash: latestHash
+          };
+
+          await setDoc(txnRef, newTxn);
+          await setDoc(walletRef, {
+            userId,
+            balance: signupBonus,
+            currency: "INR",
+            updatedAt: new Date().toISOString(),
+            latestTransactionHash: latestHash
+          });
+
+          balance = signupBonus;
+          transactions = [{ id: txnRef.id, ...newTxn }];
+        }
+      } catch (fixErr) {
+        console.error("Failed to apply missing credit fix:", fixErr);
+      }
+    }
+
+    transactions.sort((a: any, b: any) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;

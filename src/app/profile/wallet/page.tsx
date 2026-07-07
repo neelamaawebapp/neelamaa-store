@@ -85,7 +85,7 @@ export default function UserWalletPage() {
           const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
           if (res.ok) {
             const data = await res.json();
-            if (data.success) {
+            if (data.success && (data.balance > 0 || (data.transactions && data.transactions.length > 0))) {
               currentBalance = data.balance;
               txns = data.transactions || [];
               setBalance(currentBalance);
