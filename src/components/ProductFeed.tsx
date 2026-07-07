@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getDailyGradients } from "@/lib/colorUtils";
 import OptimizedImage from "./OptimizedImage";
+import { useAuth } from "@/context/AuthContext";
 
 // Seeded pseudo-random number generator (Mulberry32 or similar)
 function seededRandom(seedStr: string) {
@@ -37,6 +38,7 @@ function seededShuffle<T>(array: T[], seed: string): T[] {
 }
 
 export default function ProductFeed() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [flashSaleStartTime, setFlashSaleStartTime] = useState<number | null>(null);
@@ -53,17 +55,22 @@ export default function ProductFeed() {
   const [sortOrder, setSortOrder] = useState<"none" | "lowHigh" | "highLow">("none");
   const [wishlist, setWishlist] = useState<string[]>([]);
 
-  // Load wishlist from localstorage on mount
+  const wishlistKey = user ? `craftstyle_wishlist_${user.uid}` : "craftstyle_wishlist_guest";
+
+  // Load wishlist from localstorage on mount or auth change
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("craftstyle_wishlist");
+      const stored = localStorage.getItem(wishlistKey);
       if (stored) {
         setWishlist(JSON.parse(stored));
+      } else {
+        setWishlist([]);
       }
     } catch (e) {
       console.error("Failed to load wishlist", e);
+      setWishlist([]);
     }
-  }, []);
+  }, [wishlistKey]);
 
   const toggleWishlist = (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -75,7 +82,7 @@ export default function ProductFeed() {
       newWishlist = [...wishlist, productId];
     }
     setWishlist(newWishlist);
-    localStorage.setItem("craftstyle_wishlist", JSON.stringify(newWishlist));
+    localStorage.setItem(wishlistKey, JSON.stringify(newWishlist));
   };
 
   useEffect(() => {

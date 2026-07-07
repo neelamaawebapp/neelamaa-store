@@ -8,10 +8,12 @@ import { ChevronLeft, Heart, ShoppingBag, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OptimizedImage from "@/components/OptimizedImage";
+import { useAuth } from "@/context/AuthContext";
 
 export default function WishlistPage() {
   const router = useRouter();
   const { addToBag } = useCart();
+  const { user } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,20 +22,24 @@ export default function WishlistPage() {
   // State for inline size selection
   const [selectingSizeProductId, setSelectingSizeProductId] = useState<string | null>(null);
 
-  // Load wishlist from local storage on mount
+  const wishlistKey = user ? `craftstyle_wishlist_${user.uid}` : "craftstyle_wishlist_guest";
+
+  // Load wishlist from local storage on mount or auth change
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("craftstyle_wishlist");
+      const stored = localStorage.getItem(wishlistKey);
       if (stored) {
         setWishlistIds(JSON.parse(stored));
       } else {
+        setWishlistIds([]);
         setLoading(false);
       }
     } catch (e) {
       console.error("Failed to read wishlist local storage:", e);
+      setWishlistIds([]);
       setLoading(false);
     }
-  }, []);
+  }, [wishlistKey]);
 
   // Fetch product data from Firestore
   useEffect(() => {
@@ -79,7 +85,7 @@ export default function WishlistPage() {
     }
     const updatedIds = wishlistIds.filter((id) => id !== productId);
     setWishlistIds(updatedIds);
-    localStorage.setItem("craftstyle_wishlist", JSON.stringify(updatedIds));
+    localStorage.setItem(wishlistKey, JSON.stringify(updatedIds));
     setProducts((prev) => prev.filter((p) => p.id !== productId));
     showToast("Removed from Wishlist");
   };

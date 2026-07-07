@@ -15,16 +15,21 @@ export default function RecentlyViewed() {
   const [loading, setLoading] = useState(true);
   const [wishlist, setWishlist] = useState<string[]>([]);
 
+  const wishlistKey = user ? `craftstyle_wishlist_${user.uid}` : "craftstyle_wishlist_guest";
+
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("craftstyle_wishlist");
+      const stored = localStorage.getItem(wishlistKey);
       if (stored) {
         setWishlist(JSON.parse(stored));
+      } else {
+        setWishlist([]);
       }
     } catch (e) {
       console.error("Failed to load wishlist", e);
+      setWishlist([]);
     }
-  }, []);
+  }, [wishlistKey]);
 
   const toggleWishlist = (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -36,7 +41,7 @@ export default function RecentlyViewed() {
       newWishlist = [...wishlist, productId];
     }
     setWishlist(newWishlist);
-    localStorage.setItem("craftstyle_wishlist", JSON.stringify(newWishlist));
+    localStorage.setItem(wishlistKey, JSON.stringify(newWishlist));
   };
 
   useEffect(() => {

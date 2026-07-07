@@ -328,24 +328,29 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Check local wishlist on load
+  const wishlistKey = user ? `craftstyle_wishlist_${user.uid}` : "craftstyle_wishlist_guest";
+
+  // Check local wishlist on load or when key changes
   useEffect(() => {
     if (!id) return;
     try {
-      const stored = localStorage.getItem("craftstyle_wishlist");
+      const stored = localStorage.getItem(wishlistKey);
       if (stored) {
         const localWishlist = JSON.parse(stored);
         setIsWishlisted(localWishlist.includes(id));
+      } else {
+        setIsWishlisted(false);
       }
     } catch (e) {
       console.error("Failed to parse wishlist:", e);
+      setIsWishlisted(false);
     }
-  }, [id]);
+  }, [id, wishlistKey]);
 
   const toggleWishlist = () => {
     if (!id) return;
     try {
-      const stored = localStorage.getItem("craftstyle_wishlist");
+      const stored = localStorage.getItem(wishlistKey);
       const localWishlist = stored ? JSON.parse(stored) : [];
       let newWishlist;
       if (isWishlisted) {
@@ -355,7 +360,7 @@ export default function ProductDetailPage() {
         newWishlist = [...localWishlist, id];
         setToast("Added to Wishlist!");
       }
-      localStorage.setItem("craftstyle_wishlist", JSON.stringify(newWishlist));
+      localStorage.setItem(wishlistKey, JSON.stringify(newWishlist));
       setIsWishlisted(!isWishlisted);
     } catch (e) {
       console.error("Failed to toggle wishlist:", e);
