@@ -48,6 +48,11 @@ export default function BroadcastDashboard() {
   const [editorImageUrl, setEditorImageUrl] = useState<string>("");
   const [editingFile, setEditingFile] = useState<File | null>(null);
   
+  // Dynamic upload route target
+  const [uploadTarget, setUploadTarget] = useState<"broadcast" | "marketing">("broadcast");
+  const marketingFileInputRef = useRef<HTMLInputElement>(null);
+  const [isMarketingDragging, setIsMarketingDragging] = useState(false);
+
   // State for Subscriptions & Broadcast History
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [fetchingSubs, setFetchingSubs] = useState(true);
@@ -61,7 +66,8 @@ export default function BroadcastDashboard() {
   const [marketingTitle, setMarketingTitle] = useState("");
   const [marketingMessage, setMarketingMessage] = useState("");
   const [marketingImage, setMarketingImage] = useState("");
-  const [marketingChannel, setMarketingChannel] = useState<"WhatsApp" | "SMS" | "In-App">("WhatsApp");
+  const [marketingChannel, setMarketingChannel] = useState<"WhatsApp" | "WhatsApp Group" | "SMS" | "In-App">("WhatsApp");
+  const [marketingGroupLink, setMarketingGroupLink] = useState("https://chat.whatsapp.com/");
   const [sendingMarketing, setSendingMarketing] = useState(false);
   
   const [dispatchLogs, setDispatchLogs] = useState<any[]>([]);
@@ -173,6 +179,42 @@ export default function BroadcastDashboard() {
       setSkippedQueueIds([]);
       setQueueIndex(0);
       setIsQueueActive(true);
+      return;
+    }
+
+    if (marketingChannel === "WhatsApp Group") {
+      const formattedMsg = marketingMessage.replace(/{name}/g, "Customer");
+      const fullText = marketingImage.trim() 
+        ? `${formattedMsg}\n\nView Update Banner: ${marketingImage.trim()}`
+        : formattedMsg;
+
+      try {
+        await navigator.clipboard.writeText(fullText);
+        setSuccess("Campaign message copied! Redirecting to WhatsApp Group link... Press Ctrl+V to send.");
+        setTimeout(() => setSuccess(""), 4000);
+        window.open(marketingGroupLink, "_blank");
+
+        // Save campaign trace logs
+        try {
+          await fetch("/api/send-broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: marketingTitle.trim(),
+              message: marketingMessage.trim(),
+              imageUrl: marketingImage.trim(),
+              channel: "WhatsApp Group"
+            })
+          });
+          loadCampaignLogs();
+        } catch (dbErr) {}
+
+        setMarketingTitle("");
+        setMarketingMessage("");
+        setMarketingImage("");
+      } catch (err: any) {
+        setError("Failed to copy campaign details to clipboard.");
+      }
       return;
     }
 
@@ -386,6 +428,7 @@ export default function BroadcastDashboard() {
 
   const handleUploadImageFile = async (file: File) => {
     // Deprecated direct upload - now goes through ImageEditorModal
+    setUploadTarget("broadcast");
     setEditorImageUrl(URL.createObjectURL(file));
   };
 
@@ -405,6 +448,7 @@ export default function BroadcastDashboard() {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
+        setUploadTarget("broadcast");
         setEditorImageUrl(URL.createObjectURL(file));
       } else {
         setError("Please drop a valid image file.");
@@ -415,6 +459,40 @@ export default function BroadcastDashboard() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setUploadTarget("broadcast");
+      setEditorImageUrl(URL.createObjectURL(file));
+    }
+  };
+
+  // Marketing Image drag & drop handlers
+  const handleMarketingDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsMarketingDragging(true);
+  };
+
+  const handleMarketingDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsMarketingDragging(false);
+  };
+
+  const handleMarketingDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsMarketingDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        setUploadTarget("marketing");
+        setEditorImageUrl(URL.createObjectURL(file));
+      } else {
+        setError("Please drop a valid image file.");
+      }
+    }
+  };
+
+  const handleMarketingFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadTarget("marketing");
       setEditorImageUrl(URL.createObjectURL(file));
     }
   };
@@ -436,8 +514,13 @@ export default function BroadcastDashboard() {
       const data = await res.json();
       
       if (data.success) {
-        setBroadcastImage(data.data.url);
-        setSuccess("Banner image uploaded and adjusted successfully!");
+        if (uploadTarget === "marketing") {
+          setMarketingImage(data.data.url);
+          setSuccess("Campaign image uploaded successfully!");
+        } else {
+          setBroadcastImage(data.data.url);
+          setSuccess("Banner image uploaded and adjusted successfully!");
+        }
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setError(data.error?.message || "Failed to upload image.");
@@ -929,13 +1012,13 @@ export default function BroadcastDashboard() {
                     <form onSubmit={handleSendMarketingCampaign} className="space-y-4">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Marketing Channel</label>
-                        <div className="flex gap-2">
-                          {["WhatsApp", "SMS", "In-App"].map((channel) => (
+                        <div className="flex flex-wrap gap-2">
+                          {["WhatsApp", "WhatsApp Group", "SMS", "In-App"].map((channel) => (
                             <button
                               key={channel}
                               type="button"
                               onClick={() => setMarketingChannel(channel as any)}
-                              className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                              className={`flex-1 min-w-[100px] py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                                 marketingChannel === channel
                                   ? "border-pink-500 bg-pink-500/10 text-white"
                                   : "border-slate-800 bg-slate-950/20 text-slate-400 hover:border-slate-700"
@@ -946,6 +1029,20 @@ export default function BroadcastDashboard() {
                           ))}
                         </div>
                       </div>
+
+                      {marketingChannel === "WhatsApp Group" && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">WhatsApp Group Invite Link *</label>
+                          <input 
+                            type="url" 
+                            required 
+                            value={marketingGroupLink} 
+                            onChange={(e) => setMarketingGroupLink(e.target.value)} 
+                            className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 font-semibold" 
+                            placeholder="e.g. https://chat.whatsapp.com/GXYZ..." 
+                          />
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Campaign Name / Title *</label>
@@ -966,7 +1063,7 @@ export default function BroadcastDashboard() {
                         </label>
                         <textarea 
                           required 
-                          rows={6}
+                          rows={5}
                           value={marketingMessage} 
                           onChange={(e) => setMarketingMessage(e.target.value)} 
                           className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 leading-relaxed font-medium" 
@@ -975,13 +1072,56 @@ export default function BroadcastDashboard() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Banner Image link (Optional)</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Campaign Image (Optional)</label>
+                        
+                        {/* Image Preview if uploaded */}
+                        {marketingImage ? (
+                          <div className="relative aspect-[2/1] rounded-xl overflow-hidden border border-slate-800 bg-slate-950/50 mb-3 group flex items-center justify-center">
+                            <img src={marketingImage} alt="Campaign Preview" className="w-full h-full object-cover" />
+                            <button 
+                              type="button" 
+                              onClick={() => setMarketingImage("")}
+                              className="absolute top-2 right-2 bg-slate-900/90 text-slate-400 hover:text-white p-1 rounded-full border border-slate-800 transition-all z-10 cursor-pointer shadow-md"
+                              title="Delete Image"
+                            >
+                              <X size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadTarget("marketing");
+                                setEditorImageUrl(marketingImage);
+                              }}
+                              className="absolute bottom-2 right-2 bg-slate-900/95 text-slate-350 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-slate-800 transition-all z-10 cursor-pointer shadow-md"
+                              title="Crop/Edit Image"
+                            >
+                              Crop
+                            </button>
+                          </div>
+                        ) : (
+                          /* Drag & Drop Upload Zone */
+                          <div 
+                            onDragOver={handleMarketingDragOver}
+                            onDragLeave={handleMarketingDragLeave}
+                            onDrop={handleMarketingDrop}
+                            onClick={() => marketingFileInputRef.current?.click()}
+                            className={`border border-dashed rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3 relative min-h-[96px]
+                              ${isMarketingDragging ? 'border-pink-500 bg-pink-500/5' : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/60'}
+                            `}
+                          >
+                            <UploadCloud size={24} className={`mb-1.5 ${isMarketingDragging ? 'text-pink-500' : 'text-slate-500'}`} />
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">Drag & drop campaign image here</p>
+                            <p className="text-[9px] text-center text-slate-500 font-semibold mt-0.5">Or click to select a file (auto center-crops to 2:1)</p>
+                            <input type="file" ref={marketingFileInputRef} onChange={handleMarketingFileChange} accept="image/*" className="hidden" />
+                          </div>
+                        )}
+
                         <input 
                           type="url" 
                           value={marketingImage} 
                           onChange={(e) => setMarketingImage(e.target.value)} 
                           className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700 font-semibold" 
-                          placeholder="e.g. https://domain.com/banner.jpg" 
+                          placeholder="Or paste direct image URL link..." 
                         />
                       </div>
 
@@ -994,6 +1134,11 @@ export default function BroadcastDashboard() {
                           <>
                             <Play size={14} />
                             <span>Launch WhatsApp Queue</span>
+                          </>
+                        ) : marketingChannel === "WhatsApp Group" ? (
+                          <>
+                            <MessageSquare size={14} />
+                            <span>Copy Message & Open Group</span>
                           </>
                         ) : (
                           <>
