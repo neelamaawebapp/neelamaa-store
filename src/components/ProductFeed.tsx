@@ -5,7 +5,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Heart, SlidersHorizontal, ChevronRight, Zap, Star } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getDailyGradients } from "@/lib/colorUtils";
 import OptimizedImage from "./OptimizedImage";
 import { useAuth } from "@/context/AuthContext";
@@ -39,6 +39,7 @@ function seededShuffle<T>(array: T[], seed: string): T[] {
 
 export default function ProductFeed() {
   const { user } = useAuth();
+  const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [flashSaleStartTime, setFlashSaleStartTime] = useState<number | null>(null);
@@ -75,6 +76,10 @@ export default function ProductFeed() {
   const toggleWishlist = (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
     let newWishlist;
     if (wishlist.includes(productId)) {
       newWishlist = wishlist.filter((id) => id !== productId);

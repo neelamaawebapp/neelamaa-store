@@ -349,6 +349,10 @@ export default function ProductDetailPage() {
 
   const toggleWishlist = () => {
     if (!id) return;
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
     try {
       const stored = localStorage.getItem(wishlistKey);
       const localWishlist = stored ? JSON.parse(stored) : [];
@@ -488,6 +492,10 @@ export default function ProductDetailPage() {
 
   const handleAdd = async () => {
     if (!product) return;
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
 
     let finalPrice = product.price;
     let finalMrp = product.mrp || Math.round(product.price * 1.5);
@@ -571,6 +579,10 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     if (!product) return;
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
 
     let finalPrice = product.price;
     let finalMrp = product.mrp || Math.round(product.price * 1.5);

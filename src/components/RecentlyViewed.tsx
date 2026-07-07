@@ -6,11 +6,13 @@ import { db } from "@/lib/firebase";
 import { Heart, Star } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import { getDailyGradients } from "@/lib/colorUtils";
 import OptimizedImage from "./OptimizedImage";
 
 export default function RecentlyViewed() {
   const { user } = useAuth();
+  const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -34,6 +36,10 @@ export default function RecentlyViewed() {
   const toggleWishlist = (productId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
     let newWishlist;
     if (wishlist.includes(productId)) {
       newWishlist = wishlist.filter((id) => id !== productId);

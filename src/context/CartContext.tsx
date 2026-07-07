@@ -148,16 +148,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     if (!user) {
-      // Handle local cart
-      const currentCart = [...cart];
-      const existingIdx = currentCart.findIndex(item => item.id === cartItemId);
-      if (existingIdx > -1) {
-        currentCart[existingIdx].quantity += quantity;
-      } else {
-        currentCart.push(newCartItem);
-      }
-      setCart(currentCart);
-      localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+      console.warn("Attempted to add to bag without being logged in");
       return;
     }
 

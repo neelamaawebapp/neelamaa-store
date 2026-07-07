@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function WishlistPage() {
   const router = useRouter();
   const { addToBag } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,13 @@ export default function WishlistPage() {
   
   // State for inline size selection
   const [selectingSizeProductId, setSelectingSizeProductId] = useState<string | null>(null);
+
+  // Redirect to login if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login?redirect=/wishlist");
+    }
+  }, [user, authLoading, router]);
 
   const wishlistKey = user ? `craftstyle_wishlist_${user.uid}` : "craftstyle_wishlist_guest";
 
