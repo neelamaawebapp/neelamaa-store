@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
   const [subCategory, setSubCategory] = useState("");
+  const [price, setPrice] = useState("");
   const [homeSection, setHomeSection] = useState("Standard");
   const [gstRate, setGstRate] = useState("18");
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -558,6 +559,26 @@ export default function AdminDashboard() {
     }
   }, [brand, category, editingId, skuEdited]);
 
+  // Synchronize price state when pricing breakdown fields change
+  useEffect(() => {
+    const hasBreakdown = 
+      purchasePrice !== "" || 
+      packingCharges !== "" || 
+      courierCharges !== "" || 
+      otherExpenses !== "" || 
+      profit !== "";
+      
+    if (hasBreakdown) {
+      const computed = 
+        Number(purchasePrice || 0) + 
+        Number(packingCharges || 0) + 
+        Number(courierCharges || 0) + 
+        Number(otherExpenses || 0) + 
+        Number(profit || 0);
+      setPrice(computed > 0 ? computed.toString() : "");
+    }
+  }, [purchasePrice, packingCharges, courierCharges, otherExpenses, profit]);
+
   const handleMigrateProducts = async () => {
     if (!confirm("Are you sure you want to migrate all current products in the database? This will update their category and subCategory fields based on the new schema.")) {
       return;
@@ -639,6 +660,7 @@ export default function AdminDashboard() {
     setProfit("");
     setCategory(categoriesSchema[0]?.name || STORE_CATEGORIES[0].name);
     setSubCategory(categoriesSchema[0]?.subCategories[0]?.name || "");
+    setPrice("");
     setHomeSection("Standard");
     setGstRate("18");
     setProductImages([]);
@@ -679,6 +701,7 @@ export default function AdminDashboard() {
     setTitle(product.title || "");
     setCategory(product.category || STORE_CATEGORIES[0].name);
     setSubCategory(product.subCategory || "");
+    setPrice(product.price !== undefined && product.price !== null ? product.price.toString() : "");
     setHomeSection(product.homeSection || "Standard");
     setGstRate(product.gstRate?.toString() || "18");
     
@@ -862,15 +885,16 @@ export default function AdminDashboard() {
           }
         }
       } else {
-        if (mrp !== "" && Number(mrp) < calculatedPrice) {
-          throw new Error("Maximum Retail Price (MRP) cannot be less than the calculated Selling Price (₹" + calculatedPrice + ").");
+        const finalPrice = Number(price || 0);
+        if (mrp !== "" && Number(mrp) < finalPrice) {
+          throw new Error("Maximum Retail Price (MRP) cannot be less than the Selling Price (₹" + finalPrice + ").");
         }
       }
 
       const productData: any = {
         brand,
         title,
-        price: calculatedPrice,
+        price: Number(price || 0),
         mrp: mrp !== "" ? Number(mrp) : null,
         purchasePrice: purchasePrice !== "" ? Number(purchasePrice) : null,
         packingCharges: packingCharges !== "" ? Number(packingCharges) : null,
@@ -1984,7 +2008,7 @@ export default function AdminDashboard() {
                           sizeUnit: "",
                           color: "",
                           material: "",
-                          price: calculatedPrice ? calculatedPrice.toString() : "",
+                          price: price ? price.toString() : (calculatedPrice ? calculatedPrice.toString() : ""),
                           mrp: mrp || "",
                           stock: quantity || "10",
                           sku: "",
@@ -2208,7 +2232,7 @@ export default function AdminDashboard() {
                         sizeUnit: "",
                         color: "",
                         material: "",
-                        price: calculatedPrice ? calculatedPrice.toString() : "",
+                        price: price ? price.toString() : (calculatedPrice ? calculatedPrice.toString() : ""),
                         mrp: mrp || "",
                         stock: "10",
                         sku: "",
@@ -2362,10 +2386,17 @@ export default function AdminDashboard() {
                         <option value="28">28%</option>
                       </select>
                     </div>
-                    {/* Live Pricing Calculator Indicator Widget */}
+                    {/* Editable Selling Price Field */}
                     <div className="flex flex-col justify-center text-right bg-[#e11d48]/5 border border-pink-500/20 p-2 rounded-lg">
-                      <span className="text-[8px] font-bold text-pink-500 uppercase block tracking-wider">Selling Price</span>
-                      <span className="text-sm font-extrabold text-white block mt-0.5">₹{calculatedPrice}</span>
+                      <label className="block text-[8px] font-bold text-pink-500 uppercase tracking-wider mb-0.5">Selling Price (₹) *</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={price} 
+                        onChange={(e) => setPrice(e.target.value)} 
+                        className="w-full bg-transparent text-right font-extrabold text-white text-sm outline-none border-b border-transparent focus:border-pink-500/45 pb-0.5"
+                        placeholder="0" 
+                      />
                     </div>
                   </div>
                 </div>
