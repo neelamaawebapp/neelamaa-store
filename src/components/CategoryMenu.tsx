@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Edit2, Plus, Save, Trash2, UploadCloud, X, ChevronUp, ChevronDown, Folder, ChevronRight } from "lucide-react";
+import { Edit2, Plus, Save, Trash2, UploadCloud, X, ChevronUp, ChevronDown, Folder, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { getDailyGradients } from "@/lib/colorUtils";
@@ -29,6 +29,13 @@ export default function CategoryMenu() {
 
   // Drawer State
   const [activeDrawerParent, setActiveDrawerParent] = useState<ParentCategory | null>(null);
+
+  // Clean up body class if component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove("category-overlay-open");
+    };
+  }, []);
 
   // Fetch Categories
   useEffect(() => {
@@ -190,9 +197,15 @@ export default function CategoryMenu() {
     }
   };
 
+  const handleCloseOverlay = () => {
+    setActiveDrawerParent(null);
+    document.body.classList.remove("category-overlay-open");
+  };
+
   const handleCategoryClick = (cat: ParentCategory) => {
     if (cat.subCategories && cat.subCategories.length > 0) {
       setActiveDrawerParent(cat);
+      document.body.classList.add("category-overlay-open");
     } else {
       router.push(`/category/${encodeURIComponent(cat.name)}`);
     }
@@ -229,112 +242,119 @@ export default function CategoryMenu() {
       )}
 
       {/* Categories Horizontal Scroll */}
-      <div className={`flex overflow-x-auto hide-scrollbar px-4 pb-2 space-x-4 ${isAdmin ? 'pt-8' : ''}`}>
-        {categories.map((cat, idx) => (
-          <button 
-            key={idx} 
-            onClick={() => handleCategoryClick(cat)}
-            className="flex flex-col items-center flex-shrink-0 focus:outline-none group animate-fade-in cursor-pointer"
-          >
-            <div className="w-[85px] h-[125px] rounded-2xl overflow-hidden mb-2 border border-gray-200/60 shadow-sm group-hover:ring-2 group-hover:ring-pink-500 group-hover:ring-offset-2 transition-all bg-gray-100 relative">
-              {cat.image ? (
-                <Image
-                  src={cat.image}
-                  alt={cat.name}
-                  width={85}
-                  height={125}
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <Folder size={24} />
-                </div>
-              )}
-              {cat.subCategories && cat.subCategories.length > 0 && (
-                <div className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-0.5 z-10 flex items-center justify-center">
-                  <ChevronRight size={10} className="text-white" />
-                </div>
-              )}
-            </div>
-            <span className="text-[11px] font-bold text-slate-800 group-hover:text-pink-600 transition-colors mt-1 uppercase tracking-wide">
-              {cat.name}
-            </span>
-          </button>
-        ))}
+      <div className="category-menu-list">
+        <div className={`flex overflow-x-auto hide-scrollbar px-4 pb-2 space-x-4 ${isAdmin ? 'pt-8' : ''}`}>
+          {categories.map((cat, idx) => (
+            <button 
+              key={idx} 
+              onClick={() => handleCategoryClick(cat)}
+              className="flex flex-col items-center flex-shrink-0 focus:outline-none group animate-fade-in cursor-pointer"
+            >
+              <div className="w-[85px] h-[125px] rounded-2xl overflow-hidden mb-2 border border-gray-200/60 shadow-sm group-hover:ring-2 group-hover:ring-pink-500 group-hover:ring-offset-2 transition-all bg-gray-100 relative">
+                {cat.image ? (
+                  <Image
+                    src={cat.image}
+                    alt={cat.name}
+                    width={85}
+                    height={125}
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <Folder size={24} />
+                  </div>
+                )}
+                {cat.subCategories && cat.subCategories.length > 0 && (
+                  <div className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-0.5 z-10 flex items-center justify-center">
+                    <ChevronRight size={10} className="text-white" />
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-bold text-slate-800 group-hover:text-pink-600 transition-colors mt-1 uppercase tracking-wide">
+                {cat.name}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Bottom Sheet Drawer for Subcategories */}
+      {/* Immersive Full-Screen Categories Overlay */}
       {activeDrawerParent && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-[120] flex flex-col justify-between p-6 overflow-hidden">
+          {/* Blur & Gradient Backdrop */}
           <div 
-            onClick={() => setActiveDrawerParent(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-fade-in"
+            onClick={handleCloseOverlay}
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-xl transition-opacity duration-500 animate-fade-in cursor-pointer"
           />
           
-          {/* Drawer Sheet */}
-          <div className="relative w-full max-w-md bg-white rounded-t-3xl overflow-hidden shadow-2xl z-10 max-h-[70vh] flex flex-col animate-slide-up pb-safe">
-            {/* Handle Bar */}
-            <div className="w-full flex justify-center py-3">
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
-            </div>
-
-            {/* Header */}
-            <div className="px-5 pb-3 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-gray-950 text-base leading-tight uppercase tracking-wide">
+          {/* Glassmorphic Container Content */}
+          <div className="relative z-10 w-full max-w-md mx-auto flex-1 flex flex-col justify-between py-6">
+            
+            {/* Header section */}
+            <div className="flex items-center justify-between mb-8 animate-fade-in">
+              <button 
+                onClick={handleCloseOverlay}
+                className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="text-center">
+                <h3 className="font-extrabold text-white text-base tracking-widest uppercase leading-none">
                   {activeDrawerParent.name}
                 </h3>
-                <p className="text-[11px] font-medium text-gray-400 mt-0.5">
-                  Select a sub-category to view products
+                <p className="text-[9px] text-pink-300 font-bold tracking-widest uppercase mt-1">
+                  Sub-categories
                 </p>
               </div>
               <button 
-                onClick={() => setActiveDrawerParent(null)}
-                className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                onClick={handleCloseOverlay}
+                className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Sub-categories Grid */}
-            <div className="overflow-y-auto px-5 py-4 grid grid-cols-2 gap-4 flex-1">
+            {/* Sub-categories List (Cascading Grid) */}
+            <div className="overflow-y-auto max-h-[60vh] py-2 grid grid-cols-2 gap-4 flex-1 hide-scrollbar">
               {activeDrawerParent.subCategories.map((sub, sIdx) => (
                 <button
                   key={sIdx}
                   onClick={() => {
-                    setActiveDrawerParent(null);
+                    handleCloseOverlay();
                     router.push(`/category/${encodeURIComponent(sub.name)}`);
                   }}
-                  className="group bg-slate-50 border border-slate-100 hover:border-pink-200 rounded-2xl p-3 flex flex-col items-center justify-center transition-all focus:outline-none cursor-pointer"
+                  className="animate-cascade-item group bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/20 rounded-3xl p-4 flex flex-col items-center justify-center transition-all cursor-pointer shadow-xl backdrop-blur-md active:scale-95"
+                  style={{ animationDelay: `${sIdx * 0.07}s` }}
                 >
-                  <div className="w-16 h-16 rounded-full overflow-hidden relative border border-gray-200/50 shadow-xs mb-2 group-hover:scale-105 transition-transform animate-fade-in">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden relative border border-white/20 shadow-md mb-3 group-hover:scale-105 transition-transform bg-white/5 duration-300">
                     {sub.image ? (
                       <Image src={sub.image} alt={sub.name} fill className="object-cover" />
                     ) : (
-                      <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400">?</div>
+                      <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/50">?</div>
                     )}
                   </div>
-                  <span className="text-xs font-bold text-slate-800 group-hover:text-pink-600 transition-colors text-center">
+                  <span className="text-xs font-bold text-white text-center leading-tight tracking-wide group-hover:text-pink-300 transition-colors uppercase">
                     {sub.name}
                   </span>
                 </button>
               ))}
             </div>
 
-            {/* Footer View All button */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
+            {/* Footer View All Glass Button */}
+            <div className="mt-8 animate-fade-in">
               <button
                 onClick={() => {
                   const parentName = activeDrawerParent.name;
-                  setActiveDrawerParent(null);
+                  handleCloseOverlay();
                   router.push(`/category/${encodeURIComponent(parentName)}`);
                 }}
-                className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                className="w-full bg-white text-slate-900 hover:bg-pink-650 hover:text-white font-extrabold py-4 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-xl tracking-widest uppercase cursor-pointer hover:border-pink-500/50 border border-white/20 active:scale-98"
               >
-                VIEW ALL {activeDrawerParent.name.toUpperCase()}
+                <span>Explore All {activeDrawerParent.name}</span>
+                <ArrowRight size={14} className="animate-pulse" />
               </button>
             </div>
+
           </div>
         </div>
       )}
