@@ -700,8 +700,8 @@ export default function ProductDetailPage() {
 
       {/* Top Section: Product Name and Short Description with divider lines */}
       <div className="p-4 bg-white border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.brand}</h1>
-        <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight">{product.title}</h2>
+        <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.title}</h1>
+        <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
         
         {(() => {
           const points = parseShortDescription(product.shortDescription || "");
@@ -1391,8 +1391,8 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                   <div className="mt-2 text-left">
-                    <h3 className="font-bold text-[11px] text-gray-900 truncate uppercase tracking-tight">{item.brand}</h3>
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5 leading-normal">{item.title}</p>
+                    <h3 className="font-bold text-[11px] text-gray-900 truncate uppercase tracking-tight">{item.title}</h3>
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5 leading-normal">{item.brand}</p>
                     <div className="mt-1 flex items-baseline space-x-1.5">
                       <span className="text-[11px] font-extrabold text-pink-600 font-sans">₹{item.price}</span>
                       {itemMrp > item.price && (
@@ -1471,8 +1471,8 @@ export default function ProductDetailPage() {
                 <OptimizedImage src={product.image} alt={product.brand} fill className="object-cover" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-sm text-gray-900 truncate">{product.brand}</h4>
-                <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
+                <h4 className="font-bold text-sm text-gray-900 truncate">{product.title}</h4>
+                <p className="text-xs text-gray-500 truncate mt-0.5">{product.brand}</p>
                 {selectedSize && (
                   <p className="text-xs text-gray-500 mt-1">Size: <span className="font-bold text-gray-800">{selectedSize}</span></p>
                 )}

@@ -209,8 +209,8 @@ export default function BagPage() {
               </Link>
               <div className="flex-1 flex flex-col pt-1">
                 <Link href={`/product/${item.productId}`} className="group cursor-pointer block">
-                  <h3 className="font-bold text-sm text-gray-900 group-hover:text-pink-600 transition-colors">{item.brand}</h3>
-                  <p className="text-xs text-gray-500 truncate mb-1 group-hover:text-pink-500 transition-colors">{item.title}</p>
+                  <h3 className="font-bold text-sm text-gray-900 group-hover:text-pink-600 transition-colors">{item.title}</h3>
+                  <p className="text-xs text-gray-500 truncate mb-1 group-hover:text-pink-500 transition-colors">{item.brand}</p>
                 </Link>
                 {item.size && (
                   <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>

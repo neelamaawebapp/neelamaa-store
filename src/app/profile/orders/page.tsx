@@ -550,8 +550,8 @@ export default function CustomerOrdersPage() {
                         >
                           <img src={item.image} alt={item.brand} className="w-12 h-16 object-cover rounded border border-gray-100" />
                           <div className="flex-1">
-                            <h3 className="font-bold text-sm text-gray-900">{item.brand}</h3>
-                            <p className="text-xs text-gray-500 truncate w-48">{item.title}</p>
+                             <h3 className="font-bold text-sm text-gray-900">{item.title}</h3>
+                             <p className="text-xs text-gray-500 truncate w-48">{item.brand}</p>
                             <div className="flex space-x-2 mt-1">
                               <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                               {item.size && <p className="text-xs text-gray-500">Size: <span className="font-bold">{item.size}</span></p>}

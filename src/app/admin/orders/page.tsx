@@ -627,8 +627,8 @@ export default function AdminOrders() {
                         <div key={idx} className="flex items-center space-x-3 text-xs border-b border-slate-900/40 pb-2.5 last:border-b-0 last:pb-0">
                           <img src={item.image} alt={item.brand} className="w-9 h-11 object-cover rounded bg-slate-950 border border-slate-900" />
                           <div className="flex-1 min-w-0">
-                            <p className="font-extrabold text-slate-100 truncate">{item.brand}</p>
-                            <p className="text-slate-500 text-[10px] truncate">{item.title}</p>
+                            <p className="font-extrabold text-slate-100 truncate">{item.title}</p>
+                            <p className="text-slate-500 text-[10px] truncate">{item.brand}</p>
                             
                             {/* Stock Indicator */}
                             <div className="mt-1 flex items-center gap-1.5">

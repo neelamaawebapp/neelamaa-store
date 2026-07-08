@@ -244,8 +244,8 @@ export default function CategoryProductsPage() {
               </div>
               <div className="p-3 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-bold text-xs text-gray-950 truncate uppercase tracking-wide">{product.brand}</h3>
-                  <p className="text-[11px] text-gray-500 truncate mt-0.5">{product.title}</p>
+                  <h3 className="font-bold text-xs text-gray-950 truncate uppercase tracking-wide">{product.title}</h3>
+                  <p className="text-[11px] text-gray-500 truncate mt-0.5">{product.brand}</p>
                 </div>
                 <div className="mt-1.5 flex items-baseline space-x-1.5 flex-wrap">
                   <span className="font-bold text-xs text-gray-900">₹{product.price}</span>

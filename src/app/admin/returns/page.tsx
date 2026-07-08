@@ -323,8 +323,8 @@ export default function AdminReturns() {
                     <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-900 flex items-center space-x-3.5 flex-1">
                       <img src={req.itemDetails.image} alt={req.itemDetails.brand} className="w-12 h-16 object-cover rounded bg-slate-950 border border-slate-800 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-extrabold text-xs text-slate-100 truncate">{req.itemDetails.brand}</p>
-                        <p className="text-slate-500 text-[10px] truncate mt-0.5">{req.itemDetails.title}</p>
+                        <p className="font-extrabold text-xs text-slate-100 truncate">{req.itemDetails.title}</p>
+                        <p className="text-slate-500 text-[10px] truncate mt-0.5">{req.itemDetails.brand}</p>
                         <p className="text-slate-400 font-semibold text-[10px] mt-1.5">₹{req.itemDetails.price} | Qty: {req.itemDetails.quantity} {req.itemDetails.size && `| Size: ${req.itemDetails.size}`}</p>
                       </div>
                     </div>

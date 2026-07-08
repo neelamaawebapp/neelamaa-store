@@ -2825,8 +2825,8 @@ export default function AdminDashboard() {
                               <div className="flex items-center space-x-3.5">
                                 <img src={product.image} alt={product.brand} className="w-9 h-11 object-cover rounded bg-slate-950 border border-slate-900 group-hover:border-slate-800 transition-all flex-shrink-0" />
                                 <div className="flex flex-col min-w-0">
-                                  <span className="font-extrabold text-slate-100 truncate w-32 sm:w-44">{product.brand}</span>
-                                  <span className="text-[10px] text-slate-400 truncate w-32 sm:w-44 mt-0.5">{product.title}</span>
+                                  <span className="font-extrabold text-slate-100 truncate w-32 sm:w-44">{product.title}</span>
+                                  <span className="text-[10px] text-slate-400 truncate w-32 sm:w-44 mt-0.5">{product.brand}</span>
                                 </div>
                               </div>
                             </td>

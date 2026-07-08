@@ -268,10 +268,10 @@ export default function WishlistPage() {
 
                   <div>
                     <h3 className="font-extrabold text-xs text-gray-900 truncate tracking-tight uppercase">
-                      {product.brand}
+                      {product.title}
                     </h3>
                     <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                      {product.title}
+                      {product.brand}
                     </p>
                     
                     <div className="mt-1.5 flex items-baseline space-x-1.5 flex-wrap">
