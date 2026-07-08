@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell } from "lucide-react";
+import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
@@ -34,6 +34,10 @@ export default function AdminDashboard() {
   // Migration State
   const [migrating, setMigrating] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState("");
+  
+  // Sorting State
+  const [sortKey, setSortKey] = useState<"item" | "category" | "quantity" | "pricing" | "price" | "none">("none");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Pricing & Stock Fields
   const [quantity, setQuantity] = useState("");
@@ -600,6 +604,25 @@ export default function AdminDashboard() {
     } finally {
       setMigrating(false);
     }
+  };
+
+  const handleSort = (key: "item" | "category" | "quantity" | "pricing" | "price") => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
+  const renderSortIcon = (key: "item" | "category" | "quantity" | "pricing" | "price") => {
+    if (sortKey !== key) {
+      return <ArrowUpDown size={11} className="opacity-30" />;
+    }
+    if (sortDirection === "asc") {
+      return <ChevronUp size={11} className="text-pink-500" />;
+    }
+    return <ChevronDown size={11} className="text-pink-500" />;
   };
 
   const resetForm = () => {
@@ -1468,6 +1491,37 @@ export default function AdminDashboard() {
     }
     return true;
   });
+
+  // Sort products for the table
+  if (sortKey !== "none") {
+    filteredProducts.sort((a, b) => {
+      let valA: any = "";
+      let valB: any = "";
+
+      if (sortKey === "item") {
+        valA = ((a.brand || "") + " " + (a.title || "")).toLowerCase();
+        valB = ((b.brand || "") + " " + (b.title || "")).toLowerCase();
+      } else if (sortKey === "category") {
+        valA = (a.category || "").toLowerCase();
+        valB = (b.category || "").toLowerCase();
+      } else if (sortKey === "quantity") {
+        valA = Number(a.quantity || 0);
+        valB = Number(b.quantity || 0);
+      } else if (sortKey === "pricing") {
+        valA = Number(a.profit || 0);
+        valB = Number(b.profit || 0);
+      } else if (sortKey === "price") {
+        valA = Number(a.price || 0);
+        valB = Number(b.price || 0);
+      }
+
+      if (typeof valA === "string") {
+        return sortDirection === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else {
+        return sortDirection === "asc" ? valA - valB : valB - valA;
+      }
+    });
+  }
 
   return (
     <div className="max-w-7xl mx-auto pb-20 text-slate-100 font-sans">
@@ -2661,12 +2715,57 @@ export default function AdminDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
-                        <th className="px-5 py-4">Item Details</th>
-                        <th className="px-5 py-4">Category</th>
-                        <th className="px-5 py-4">Quantity (Stock)</th>
-                        <th className="px-5 py-4">Pricing Breakdown</th>
-                        <th className="px-5 py-4">Selling Price</th>
+                      <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px] select-none">
+                        <th 
+                          onClick={() => handleSort("item")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Item Details"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Item Details</span>
+                            {renderSortIcon("item")}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort("category")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Category"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Category</span>
+                            {renderSortIcon("category")}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort("quantity")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Quantity"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Quantity (Stock)</span>
+                            {renderSortIcon("quantity")}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort("pricing")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Profit Margin"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Pricing Breakdown</span>
+                            {renderSortIcon("pricing")}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort("price")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Selling Price"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Selling Price</span>
+                            {renderSortIcon("price")}
+                          </div>
+                        </th>
                         <th className="px-5 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
