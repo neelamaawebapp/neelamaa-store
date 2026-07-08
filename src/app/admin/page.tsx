@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
 import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell } from "lucide-react";
-import { STORE_CATEGORIES } from "@/lib/constants";
+import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
@@ -17,17 +17,23 @@ export default function AdminDashboard() {
   
   // Dynamic Categories State
   const [availableCategories, setAvailableCategories] = useState<string[]>(STORE_CATEGORIES.map(c => c.name));
+  const [categoriesSchema, setCategoriesSchema] = useState<ParentCategory[]>([]);
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [brand, setBrand] = useState("");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(STORE_CATEGORIES[0].name);
+  const [subCategory, setSubCategory] = useState("");
   const [homeSection, setHomeSection] = useState("Standard");
   const [gstRate, setGstRate] = useState("18");
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [skuEdited, setSkuEdited] = useState(false);
+  
+  // Migration State
+  const [migrating, setMigrating] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState("");
   
   // Pricing & Stock Fields
   const [quantity, setQuantity] = useState("");
@@ -318,9 +324,15 @@ export default function AdminDashboard() {
     import("firebase/firestore").then(({ getDoc, doc }) => {
       getDoc(doc(db, "settings", "categories")).then((snap) => {
         if (snap.exists() && snap.data().data) {
-          const fetchedCats = snap.data().data.map((c: any) => c.name);
-          setAvailableCategories(Array.from(new Set([...STORE_CATEGORIES.map(c => c.name), ...fetchedCats])));
+          const data = snap.data().data;
+          if (Array.isArray(data) && data.length > 0 && "subCategories" in data[0]) {
+            setCategoriesSchema(data);
+            setAvailableCategories(data.map((c: any) => c.name));
+            return;
+          }
         }
+        setCategoriesSchema(STORE_CATEGORIES);
+        setAvailableCategories(STORE_CATEGORIES.map(c => c.name));
       });
       // Fetch Flash Sale Setting
       getDoc(doc(db, "settings", "flashSale")).then((snap) => {
@@ -542,41 +554,51 @@ export default function AdminDashboard() {
     }
   }, [brand, category, editingId, skuEdited]);
 
-  const handleAddNewCategory = async (newCatName: string) => {
-    if (!newCatName.trim()) return;
-    const trimmed = newCatName.trim();
-    
-    // Check if it already exists
-    if (availableCategories.includes(trimmed)) {
-      setCategory(trimmed);
+  const handleMigrateProducts = async () => {
+    if (!confirm("Are you sure you want to migrate all current products in the database? This will update their category and subCategory fields based on the new schema.")) {
       return;
     }
-    
-    // 1. Update local state
-    const updatedCats = [...availableCategories, trimmed];
-    setAvailableCategories(updatedCats);
-    setCategory(trimmed);
-    
-    // 2. Save/Update Firestore settings/categories doc
+    setMigrating(true);
+    setMigrationStatus("Migrating database products...");
     try {
-      const { getDoc, setDoc, doc } = await import("firebase/firestore");
-      const docRef = doc(db, "settings", "categories");
-      const snap = await getDoc(docRef);
+      const { getDocs, collection, updateDoc, doc: firestoreDoc } = await import("firebase/firestore");
+      const snap = await getDocs(collection(db, "products"));
+      let count = 0;
       
-      let currentData: any[] = [];
-      if (snap.exists() && snap.data().data) {
-        currentData = snap.data().data;
-      } else {
-        currentData = STORE_CATEGORIES;
+      for (const productDoc of snap.docs) {
+        const data = productDoc.data();
+        const oldCategory = data.category || "";
+        
+        let newCategory = oldCategory;
+        let newSubCategory = data.subCategory || "";
+        
+        const lowerCat = oldCategory.toLowerCase().trim();
+        if (lowerCat === "mdf crafts") {
+          newCategory = "Home Decor";
+          newSubCategory = "MDF Designs";
+        } else if (lowerCat === "fashion") {
+          newCategory = "Lifestyle & Fashion";
+          newSubCategory = "Women’s Apparel";
+        } else if (lowerCat === "diy" || lowerCat === "paper craft") {
+          newCategory = "Hobby & Crafts";
+          newSubCategory = "DIY Products";
+        }
+        
+        if (newCategory !== oldCategory || newSubCategory !== data.subCategory) {
+          const docRef = firestoreDoc(db, "products", productDoc.id);
+          await updateDoc(docRef, {
+            category: newCategory,
+            subCategory: newSubCategory
+          });
+          count++;
+        }
       }
-      
-      // If category not already in Firestore doc, add it
-      if (!currentData.some((c: any) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-        const newData = [...currentData, { name: trimmed, image: "" }];
-        await setDoc(docRef, { data: newData });
-      }
-    } catch (e) {
-      console.error("Failed to add new category to Firestore settings", e);
+      setMigrationStatus(`Successfully migrated ${count} products!`);
+    } catch (e: any) {
+      console.error(e);
+      setMigrationStatus(`Migration failed: ${e.message}`);
+    } finally {
+      setMigrating(false);
     }
   };
 
@@ -592,7 +614,8 @@ export default function AdminDashboard() {
     setCourierCharges("");
     setOtherExpenses("");
     setProfit("");
-    setCategory(STORE_CATEGORIES[0].name);
+    setCategory(categoriesSchema[0]?.name || STORE_CATEGORIES[0].name);
+    setSubCategory(categoriesSchema[0]?.subCategories[0]?.name || "");
     setHomeSection("Standard");
     setGstRate("18");
     setProductImages([]);
@@ -601,6 +624,7 @@ export default function AdminDashboard() {
     setSkuEdited(false);
     setIsAddingNewCategory(false);
     setNewCategoryName("");
+    setMigrationStatus("");
     setShortDescription("");
     setFullDescription("");
     setStatus("Active");
@@ -631,6 +655,7 @@ export default function AdminDashboard() {
     setBrand(product.brand || "");
     setTitle(product.title || "");
     setCategory(product.category || STORE_CATEGORIES[0].name);
+    setSubCategory(product.subCategory || "");
     setHomeSection(product.homeSection || "Standard");
     setGstRate(product.gstRate?.toString() || "18");
     
@@ -835,6 +860,7 @@ export default function AdminDashboard() {
         color: color.trim(),
         material: material.trim(),
         category,
+        subCategory,
         homeSection,
         gstRate: Number(gstRate),
         image: primaryImage, // For backwards compatibility
@@ -1521,6 +1547,35 @@ export default function AdminDashboard() {
       {success && <div className="mb-6 max-w-2xl mx-auto bg-emerald-500/10 text-emerald-400 p-4 rounded-xl border border-emerald-500/20 text-center font-bold shadow-md shadow-emerald-500/5 animate-pulse">{success}</div>}
       {error && <div className="mb-6 max-w-2xl mx-auto bg-rose-500/10 text-rose-400 p-4 rounded-xl border border-rose-500/20 text-center font-bold shadow-md shadow-rose-500/5">{error}</div>}
 
+      {/* Database Category Migration Utility */}
+      <div className="mb-8 max-w-2xl mx-auto bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 shadow-md">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start space-x-3 text-left">
+            <div className="p-2 bg-pink-500/10 text-pink-500 rounded-lg border border-pink-500/20 mt-1 flex-shrink-0">
+              <AlertTriangle size={18} />
+            </div>
+            <div>
+              <h4 className="text-white font-bold text-sm">Category Database Migration Utility</h4>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Automatically maps legacy category names (e.g. "DIY", "MDF Crafts", "Fashion") to the new hierarchical parent-sub category structure for all products currently in the database.
+              </p>
+              {migrationStatus && (
+                <div className={`mt-2.5 p-2 rounded-lg text-xs font-bold ${migrationStatus.includes("Successfully") ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-950 text-slate-350"}`}>
+                  {migrationStatus}
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleMigrateProducts}
+            disabled={migrating}
+            className="w-full sm:w-auto bg-slate-800 hover:bg-pink-600 active:scale-[0.98] text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all border border-slate-700 hover:border-pink-500/50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {migrating ? "Migrating..." : "Run Migration"}
+          </button>
+        </div>
+      </div>
+
       {viewMode !== "bulk" ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -1757,61 +1812,50 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CATEGORY</label>
-                    {isAddingNewCategory ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="New category name"
-                          className="flex-1 bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-700"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newCategoryName.trim()) {
-                              handleAddNewCategory(newCategoryName.trim());
-                              setNewCategoryName("");
-                              setIsAddingNewCategory(false);
-                            }
-                          }}
-                          className="bg-pink-600 hover:bg-pink-500 text-white rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewCategoryName("");
-                            setIsAddingNewCategory(false);
-                          }}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-sans">PARENT CATEGORY</label>
+                    <select 
+                      value={category} 
+                      onChange={(e) => {
+                        const newParent = e.target.value;
+                        setCategory(newParent);
+                        const parentObj = categoriesSchema.find(c => c.name === newParent);
+                        if (parentObj && parentObj.subCategories && parentObj.subCategories.length > 0) {
+                          setSubCategory(parentObj.subCategories[0].name);
+                        } else {
+                          setSubCategory("");
+                        }
+                      }} 
+                      className="w-full bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                    >
+                      {categoriesSchema.map(c => (
+                        <option key={c.name} value={c.name} className="bg-slate-950 text-white">{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-sans">SUB CATEGORY</label>
+                    {(() => {
+                      const parentObj = categoriesSchema.find(c => c.name === category);
+                      const subs = parentObj?.subCategories || [];
+                      
+                      return (
                         <select 
-                          value={category} 
-                          onChange={(e) => setCategory(e.target.value)} 
-                          className="flex-1 bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                          value={subCategory} 
+                          onChange={(e) => setSubCategory(e.target.value)} 
+                          disabled={subs.length === 0}
+                          className="w-full bg-slate-950/60 border border-slate-805 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {availableCategories.map(c => (
-                            <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
-                          ))}
+                          {subs.length === 0 ? (
+                            <option value="" className="bg-slate-950 text-white">No sub-categories</option>
+                          ) : (
+                            subs.map(s => (
+                              <option key={s.name} value={s.name} className="bg-slate-950 text-white">{s.name}</option>
+                            ))
+                          )}
                         </select>
-                        <button
-                          type="button"
-                          onClick={() => setIsAddingNewCategory(true)}
-                          className="bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-lg px-3.5 flex items-center justify-center text-slate-200 hover:text-pink-500 hover:border-pink-500/30 transition-all font-bold text-base cursor-pointer"
-                          title="Add New Category"
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
 
