@@ -36,7 +36,7 @@ export default function AdminDashboard() {
   const [migrationStatus, setMigrationStatus] = useState("");
   
   // Sorting State
-  const [sortKey, setSortKey] = useState<"item" | "category" | "quantity" | "pricing" | "price" | "none">("none");
+  const [sortKey, setSortKey] = useState<"item" | "category" | "subcategory" | "quantity" | "pricing" | "price" | "none">("none");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Pricing & Stock Fields
@@ -606,7 +606,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSort = (key: "item" | "category" | "quantity" | "pricing" | "price") => {
+  const handleSort = (key: "item" | "category" | "subcategory" | "quantity" | "pricing" | "price") => {
     if (sortKey === key) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -615,7 +615,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const renderSortIcon = (key: "item" | "category" | "quantity" | "pricing" | "price") => {
+  const renderSortIcon = (key: "item" | "category" | "subcategory" | "quantity" | "pricing" | "price") => {
     if (sortKey !== key) {
       return <ArrowUpDown size={11} className="opacity-30" />;
     }
@@ -1504,6 +1504,9 @@ export default function AdminDashboard() {
       } else if (sortKey === "category") {
         valA = (a.category || "").toLowerCase();
         valB = (b.category || "").toLowerCase();
+      } else if (sortKey === "subcategory") {
+        valA = (a.subCategory || "").toLowerCase();
+        valB = (b.subCategory || "").toLowerCase();
       } else if (sortKey === "quantity") {
         valA = Number(a.quantity || 0);
         valB = Number(b.quantity || 0);
@@ -2737,6 +2740,16 @@ export default function AdminDashboard() {
                           </div>
                         </th>
                         <th 
+                          onClick={() => handleSort("subcategory")} 
+                          className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
+                          title="Sort by Sub Category"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Sub Category</span>
+                            {renderSortIcon("subcategory")}
+                          </div>
+                        </th>
+                        <th 
                           onClick={() => handleSort("quantity")} 
                           className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
                           title="Sort by Quantity"
@@ -2787,6 +2800,7 @@ export default function AdminDashboard() {
                               </div>
                             </td>
                             <td className="px-5 py-4 text-slate-400 font-medium">{product.category}</td>
+                            <td className="px-5 py-4 text-slate-400 font-medium">{product.subCategory || "—"}</td>
                             <td className="px-5 py-4">
                               {product.category?.toLowerCase() === "fashion" && product.sizesInventory ? (
                                 <div className="text-[10px] text-slate-400 font-semibold space-y-1">
