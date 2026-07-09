@@ -748,21 +748,6 @@ export default function ProductDetailPage() {
       <div className="p-4 bg-white border-b border-gray-100">
         <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.title}</h1>
         <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
-        
-        {(() => {
-          const points = parseShortDescription(product.shortDescription || "");
-          if (points.length === 0) return null;
-          return (
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5 leading-normal">
-              {points.map((point, index) => (
-                <span key={index} className="flex items-center">
-                  {index > 0 && <span className="text-gray-300 mr-2.5 font-normal">|</span>}
-                  <span className="text-gray-650">{point}</span>
-                </span>
-              ))}
-            </div>
-          );
-        })()}
       </div>
 
       {/* Product Image / Carousel */}
