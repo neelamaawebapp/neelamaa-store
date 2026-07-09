@@ -135,11 +135,12 @@ export default function ProductDetailPage() {
 
   const getFormattedSize = (v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`;
   const getVariantLabel = (v: any) => {
+    if (v.isBase) return "Base Variant";
     const parts = [];
     if (v.color) parts.push(v.color);
     const formattedSize = getFormattedSize(v);
     if (formattedSize) parts.push(formattedSize);
-    return parts.join(" / ");
+    return parts.join(" / ") || "Default Option";
   };
 
   const availableColors = product?.variants
@@ -200,6 +201,23 @@ export default function ProductDetailPage() {
       }
     }
   };
+
+  // Get all options including base product as the first variant option
+  const allVariants = product ? [
+    {
+      id: "base",
+      size: product.size || "",
+      sizeUnit: product.sizeUnit || "",
+      color: product.color || "",
+      material: product.material || "",
+      price: product.price || 0,
+      mrp: product.mrp || Math.round((product.price || 0) * 1.5),
+      stock: product.quantity || 0,
+      image: product.image,
+      isBase: true
+    },
+    ...(product.variants || [])
+  ] : [];
 
   const matchedVariant = product?.variants?.find((v: any) => {
     const matchSize = !v.size || getFormattedSize(v) === selectedSize;
@@ -502,38 +520,52 @@ export default function ProductDetailPage() {
     let finalSizeString = selectedSize;
 
     if (product.variants && product.variants.length > 0) {
-      if (availableColors.length > 0 && !selectedVariantColor) {
-        setToast("Please select a color first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
-      if (availableSizes.length > 0 && !selectedSize) {
-        setToast("Please select a size first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
-      if (availableMaterials.length > 0 && !selectedVariantMaterial) {
-        setToast("Please select a material first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
+      const isBaseSelected = selectedSize === "" && selectedVariantColor === "" && selectedVariantMaterial === "";
+      
+      if (!isBaseSelected) {
+        if (availableColors.length > 0 && !selectedVariantColor) {
+          setToast("Please select a color first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        if (availableSizes.length > 0 && !selectedSize) {
+          setToast("Please select a size first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        if (availableMaterials.length > 0 && !selectedVariantMaterial) {
+          setToast("Please select a material first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
 
-      if (!matchedVariant) {
-        setToast("Selected combination is unavailable.");
-        setTimeout(() => setToast(""), 3500);
-        return;
-      }
+        if (!matchedVariant) {
+          setToast("Selected combination is unavailable.");
+          setTimeout(() => setToast(""), 3500);
+          return;
+        }
 
-      if (matchedVariant.stock <= 0) {
-        setToast("Selected combination is out of stock.");
-        setTimeout(() => setToast(""), 3500);
-        return;
-      }
+        if (matchedVariant.stock <= 0) {
+          setToast("Selected combination is out of stock.");
+          setTimeout(() => setToast(""), 3500);
+          return;
+        }
 
-      finalPrice = matchedVariant.price;
-      finalMrp = matchedVariant.mrp;
-      const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
-      finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+        finalPrice = matchedVariant.price;
+        finalMrp = matchedVariant.mrp;
+        const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
+        finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+      } else {
+        if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
+          setToast("This item is currently out of stock.");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        finalPrice = product.price;
+        finalMrp = product.mrp || Math.round(product.price * 1.5);
+        const formattedBaseSize = `${product.size || ''}${product.sizeUnit ? ' ' + product.sizeUnit : ''}`;
+        finalSizeString = [formattedBaseSize, product.color, product.material].filter(Boolean).join(" / ");
+      }
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion";
       if (isFashion) {
@@ -589,38 +621,52 @@ export default function ProductDetailPage() {
     let finalSizeString = selectedSize;
 
     if (product.variants && product.variants.length > 0) {
-      if (availableColors.length > 0 && !selectedVariantColor) {
-        setToast("Please select a color first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
-      if (availableSizes.length > 0 && !selectedSize) {
-        setToast("Please select a size first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
-      if (availableMaterials.length > 0 && !selectedVariantMaterial) {
-        setToast("Please select a material first!");
-        setTimeout(() => setToast(""), 3000);
-        return;
-      }
+      const isBaseSelected = selectedSize === "" && selectedVariantColor === "" && selectedVariantMaterial === "";
+      
+      if (!isBaseSelected) {
+        if (availableColors.length > 0 && !selectedVariantColor) {
+          setToast("Please select a color first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        if (availableSizes.length > 0 && !selectedSize) {
+          setToast("Please select a size first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        if (availableMaterials.length > 0 && !selectedVariantMaterial) {
+          setToast("Please select a material first!");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
 
-      if (!matchedVariant) {
-        setToast("Selected combination is unavailable.");
-        setTimeout(() => setToast(""), 3500);
-        return;
-      }
+        if (!matchedVariant) {
+          setToast("Selected combination is unavailable.");
+          setTimeout(() => setToast(""), 3500);
+          return;
+        }
 
-      if (matchedVariant.stock <= 0) {
-        setToast("Selected combination is out of stock.");
-        setTimeout(() => setToast(""), 3500);
-        return;
-      }
+        if (matchedVariant.stock <= 0) {
+          setToast("Selected combination is out of stock.");
+          setTimeout(() => setToast(""), 3500);
+          return;
+        }
 
-      finalPrice = matchedVariant.price;
-      finalMrp = matchedVariant.mrp;
-      const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
-      finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+        finalPrice = matchedVariant.price;
+        finalMrp = matchedVariant.mrp;
+        const formattedSize = `${matchedVariant.size}${matchedVariant.sizeUnit ? ' ' + matchedVariant.sizeUnit : ''}`;
+        finalSizeString = [formattedSize, matchedVariant.color, matchedVariant.material].filter(Boolean).join(" / ");
+      } else {
+        if (product.quantity === undefined || product.quantity === null || Number(product.quantity) <= 0) {
+          setToast("This item is currently out of stock.");
+          setTimeout(() => setToast(""), 3000);
+          return;
+        }
+        finalPrice = product.price;
+        finalMrp = product.mrp || Math.round(product.price * 1.5);
+        const formattedBaseSize = `${product.size || ''}${product.sizeUnit ? ' ' + product.sizeUnit : ''}`;
+        finalSizeString = [formattedBaseSize, product.color, product.material].filter(Boolean).join(" / ");
+      }
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion";
       if (isFashion) {
@@ -798,14 +844,14 @@ export default function ProductDetailPage() {
                 if (hasColorVar) {
                   parts.push(
                     <span>
-                      Color: <strong className="text-gray-900">{selectedVariantColor || "Select"}</strong>
+                      Color: <strong className="text-gray-900">{selectedVariantColor || "Original"}</strong>
                     </span>
                   );
                 }
                 if (hasSizeVar) {
                   parts.push(
                     <span>
-                      Size: <strong className="text-gray-900">{selectedSize || "Select"}</strong>
+                      Size: <strong className="text-gray-900">{selectedSize || "Original"}</strong>
                     </span>
                   );
                 }
@@ -830,11 +876,13 @@ export default function ProductDetailPage() {
 
           {/* Cards Scrollable Strip */}
           <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1">
-            {product.variants.map((v: any) => {
+            {allVariants.map((v: any) => {
               const formattedSize = getFormattedSize(v);
-              const isActive = (!v.size || formattedSize === selectedSize) &&
-                               (!v.color || v.color === selectedVariantColor) &&
-                               (!v.material || v.material === selectedVariantMaterial);
+              const isActive = v.isBase
+                ? (selectedSize === "" && selectedVariantColor === "" && selectedVariantMaterial === "")
+                : ((!v.size || formattedSize === selectedSize) &&
+                   (!v.color || v.color === selectedVariantColor) &&
+                   (!v.material || v.material === selectedVariantMaterial));
               
               // Calculate discount percent
               const discountPercent = v.mrp > v.price ? Math.round(((v.mrp - v.price) / v.mrp) * 100) : 0;
@@ -843,9 +891,15 @@ export default function ProductDetailPage() {
                 <button
                   key={v.id}
                   onClick={() => {
-                    if (v.size) setSelectedSize(formattedSize);
-                    if (v.color) setSelectedVariantColor(v.color);
-                    if (v.material) setSelectedVariantMaterial(v.material);
+                    if (v.isBase) {
+                      setSelectedSize("");
+                      setSelectedVariantColor("");
+                      setSelectedVariantMaterial("");
+                    } else {
+                      if (v.size) setSelectedSize(formattedSize);
+                      if (v.color) setSelectedVariantColor(v.color);
+                      if (v.material) setSelectedVariantMaterial(v.material);
+                    }
                   }}
                   className={`w-28 flex-shrink-0 bg-white border rounded-xl overflow-hidden text-left transition-all cursor-pointer shadow-sm
                     ${isActive 
