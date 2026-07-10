@@ -9,7 +9,7 @@ import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
 export default function AdminDashboard() {
-  const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk">("inventory");
+  const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk" | "reports">("inventory");
 
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
@@ -130,6 +130,302 @@ export default function AdminDashboard() {
     }
   };
   
+  // Reports State
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [salesReportType, setSalesReportType] = useState<"monthly" | "yearly" | "custom">("monthly");
+  const [salesReportMonth, setSalesReportMonth] = useState(new Date().toISOString().substring(0, 7)); // e.g. "2026-07"
+  const [salesReportYear, setSalesReportYear] = useState(new Date().getFullYear().toString());
+  const [salesReportStartDate, setSalesReportStartDate] = useState("");
+  const [salesReportEndDate, setSalesReportEndDate] = useState("");
+  const [ordersList, setOrdersList] = useState<any[]>([]);
+  const [fetchingOrders, setFetchingOrders] = useState(false);
+
+  useEffect(() => {
+    if (viewMode === "reports" && ordersList.length === 0) {
+      const fetchOrders = async () => {
+        setFetchingOrders(true);
+        try {
+          const { collection, getDocs, query, orderBy } = await import("firebase/firestore");
+          const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+          const snap = await getDocs(q);
+          const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setOrdersList(list);
+        } catch (e) {
+          console.error("Failed to fetch orders for reports", e);
+        } finally {
+          setFetchingOrders(false);
+        }
+      };
+      fetchOrders();
+    }
+  }, [viewMode, ordersList.length]);
+
+  const getFinancialYear = (dateInput?: any) => {
+    if (!dateInput) return "25-26";
+    const d = typeof dateInput.toDate === "function" ? dateInput.toDate() : new Date(dateInput);
+    const date = isNaN(d.getTime()) ? new Date() : d;
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const startYear = month >= 3 ? year : year - 1;
+    const endYear = startYear + 1;
+    const startYY = String(startYear).substring(2);
+    const endYY = String(endYear).substring(2);
+    return `${startYY}-${endYY}`;
+  };
+
+  const getInvoiceNo = (order: any) => {
+    if (order.invoiceNo) return order.invoiceNo;
+    const idStr = order.id || "";
+    const cleanId = idStr.startsWith("mock_") ? idStr.replace("mock_", "") : idStr;
+    const shortId = cleanId.substring(0, 5).toUpperCase();
+    return `CS-${shortId}/${getFinancialYear(order.createdAt)}`;
+  };
+
+  const handleDownloadPricingReport = (items: any[]) => {
+    let html = `
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+          th { background-color: #ec4899; color: white; font-weight: bold; border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+          td { border: 1px solid #cbd5e1; padding: 10px; vertical-align: middle; text-align: left; font-size: 13px; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          .price { font-weight: bold; color: #db2777; }
+          .header { background-color: #0f172a; color: white; text-align: center; font-size: 16px; font-weight: bold; padding: 14px; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <th colspan="13" class="header">PRICING BREAKDOWN DETAILS REPORT</th>
+          </tr>
+          <tr>
+            <th>Picture</th>
+            <th>SKU</th>
+            <th>Item Title</th>
+            <th>Category</th>
+            <th>Sub-Category</th>
+            <th>Purchase Price (₹)</th>
+            <th>Packing Charges (₹)</th>
+            <th>Courier Charges (₹)</th>
+            <th>Other Expenses (₹)</th>
+            <th>Expected Profit (₹)</th>
+            <th>Base Cost (₹)</th>
+            <th>GST Rate (%)</th>
+            <th>Final Selling Price (₹)</th>
+          </tr>
+    `;
+
+    items.forEach(product => {
+      if (product.variants && product.variants.length > 0) {
+        product.variants.forEach((v: any) => {
+          const specLabel = [v.size ? `${v.size}${v.sizeUnit || ''}` : '', v.color, v.material].filter(Boolean).join(" / ");
+          const titleStr = `${product.title} (${specLabel})`;
+          const imgUrl = v.image || product.image || "";
+          
+          html += `
+            <tr>
+              <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover;" />` : '—'}</td>
+              <td>${v.sku || product.sku || '—'}</td>
+              <td>${titleStr}</td>
+              <td>${product.category || '—'}</td>
+              <td>${product.subCategory || '—'}</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>${product.gstRate || 18}%</td>
+              <td class="price">₹${v.price || 0}</td>
+            </tr>
+          `;
+        });
+      } else {
+        const base = 
+          Number(product.purchasePrice || 0) + 
+          Number(product.packingCharges || 0) + 
+          Number(product.courierCharges || 0) + 
+          Number(product.otherExpenses || 0) + 
+          Number(product.profit || 0);
+        
+        const imgUrl = product.image || "";
+        
+        html += `
+          <tr>
+            <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover;" />` : '—'}</td>
+            <td>${product.sku || '—'}</td>
+            <td>${product.title || '—'}</td>
+            <td>${product.category || '—'}</td>
+            <td>${product.subCategory || '—'}</td>
+            <td>₹${product.purchasePrice || 0}</td>
+            <td>₹${product.packingCharges || 0}</td>
+            <td>₹${product.courierCharges || 0}</td>
+            <td>₹${product.otherExpenses || 0}</td>
+            <td>₹${product.profit || 0}</td>
+            <td>₹${base || product.price || 0}</td>
+            <td>${product.gstRate || 18}%</td>
+            <td class="price">₹${product.price || 0}</td>
+          </tr>
+        `;
+      }
+    });
+
+    html += `
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `pricing_breakdown_report_${new Date().toISOString().substring(0,10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSalesReport = () => {
+    let filteredOrders = [...ordersList];
+    let label = "";
+
+    if (salesReportType === "monthly") {
+      const [year, month] = salesReportMonth.split("-");
+      const targetYear = parseInt(year);
+      const targetMonth = parseInt(month) - 1;
+      
+      filteredOrders = ordersList.filter(order => {
+        if (!order.createdAt) return false;
+        const d = typeof order.createdAt.toDate === "function" ? order.createdAt.toDate() : new Date(order.createdAt);
+        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+      });
+      
+      const monthName = new Date(targetYear, targetMonth).toLocaleString('default', { month: 'long' });
+      label = `${monthName} ${targetYear}`;
+    } else if (salesReportType === "yearly") {
+      const targetYear = parseInt(salesReportYear);
+      filteredOrders = ordersList.filter(order => {
+        if (!order.createdAt) return false;
+        const d = typeof order.createdAt.toDate === "function" ? order.createdAt.toDate() : new Date(order.createdAt);
+        return d.getFullYear() === targetYear;
+      });
+      label = `Year ${targetYear}`;
+    } else if (salesReportType === "custom") {
+      const start = salesReportStartDate ? new Date(salesReportStartDate) : new Date(0);
+      const end = salesReportEndDate ? new Date(salesReportEndDate) : new Date();
+      end.setHours(23, 59, 59, 999);
+      
+      filteredOrders = ordersList.filter(order => {
+        if (!order.createdAt) return false;
+        const d = typeof order.createdAt.toDate === "function" ? order.createdAt.toDate() : new Date(order.createdAt);
+        return d >= start && d <= end;
+      });
+      
+      label = `${start.toLocaleDateString()} to ${end.toLocaleDateString()}`;
+    }
+
+    if (filteredOrders.length === 0) {
+      alert("No sales records found for the selected time period.");
+      return;
+    }
+
+    let html = `
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+          th { background-color: #ec4899; color: white; font-weight: bold; border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+          td { border: 1px solid #cbd5e1; padding: 10px; vertical-align: middle; text-align: left; font-size: 13px; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          .header { background-color: #0f172a; color: white; text-align: center; font-size: 16px; font-weight: bold; padding: 14px; }
+          .summary { background-color: #f1f5f9; font-weight: bold; }
+          .value { font-weight: bold; color: #db2777; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <th colspan="10" class="header">SALES & GST TAX REPORT (${label})</th>
+          </tr>
+          <tr>
+            <th>Order Date</th>
+            <th>Order ID</th>
+            <th>Invoice Number</th>
+            <th>SKU</th>
+            <th>Item Title</th>
+            <th>Quantity</th>
+            <th>Base Price (₹)</th>
+            <th>GST Rate (%)</th>
+            <th>GST Amount (₹)</th>
+            <th>Total Price (₹)</th>
+          </tr>
+    `;
+
+    let grandTotalGst = 0;
+    let grandTotalSales = 0;
+
+    filteredOrders.forEach(order => {
+      const formattedDate = order.createdAt 
+        ? (typeof order.createdAt.toDate === "function" ? order.createdAt.toDate().toLocaleDateString() : new Date(order.createdAt).toLocaleDateString())
+        : '—';
+      const invoiceNo = getInvoiceNo(order);
+      
+      (order.items || []).forEach((item: any) => {
+        const currentPrice = Number(item.price || 0);
+        const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+        
+        const totalAmount = currentPrice * item.quantity;
+        const basePrice = item.basePrice || (currentPrice / (1 + rate/100));
+        const gstAmount = item.gstAmount || (currentPrice - basePrice);
+        
+        const totalBase = basePrice * item.quantity;
+        const totalGst = gstAmount * item.quantity;
+
+        grandTotalGst += totalGst;
+        grandTotalSales += totalAmount;
+
+        html += `
+          <tr>
+            <td>${formattedDate}</td>
+            <td>${order.id}</td>
+            <td>${invoiceNo}</td>
+            <td>${item.sku || '—'}</td>
+            <td>${item.title || '—'}</td>
+            <td>${item.quantity}</td>
+            <td>₹${Math.round(totalBase)}</td>
+            <td>${rate}%</td>
+            <td>₹${Math.round(totalGst)}</td>
+            <td class="value">₹${Math.round(totalAmount)}</td>
+          </tr>
+        `;
+      });
+    });
+
+    html += `
+          <tr class="summary">
+            <td colspan="8" style="text-align: right; padding-right: 15px;">GRAND TOTALS:</td>
+            <td class="value">₹${Math.round(grandTotalGst)}</td>
+            <td class="value" style="background-color: #fbcfe8;">₹${Math.round(grandTotalSales)}</td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sales_report_${label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Search and Filters for product table
   const [searchQuery, setSearchQuery] = useState("");
   const [tableFilter, setTableFilter] = useState<"all" | "lowStock" | "incomplete">("all");
@@ -1744,6 +2040,13 @@ export default function AdminDashboard() {
             <Layers size={14} />
             <span>Bulk Upload Mode</span>
           </button>
+          <button 
+            onClick={() => { setViewMode("reports"); resetForm(); }}
+            className={`px-5 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "reports" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <BarChart3 size={14} />
+            <span>Reports & Downloads</span>
+          </button>
         </div>
       </div>
 
@@ -2872,11 +3175,50 @@ export default function AdminDashboard() {
                 No items found matching the selected filters.
               </div>
             ) : (
-              <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px] select-none">
+              <>
+                {selectedProductIds.length > 0 && (
+                  <div className="mb-6 p-4 bg-slate-950/80 backdrop-blur border border-slate-800 rounded-xl flex items-center justify-between shadow-lg max-w-4xl mx-auto animate-fade-in-up">
+                    <span className="text-xs text-slate-350 font-semibold">
+                      Selected <strong className="text-pink-500 font-extrabold">{selectedProductIds.length}</strong> product{selectedProductIds.length > 1 ? 's' : ''} for pricing report.
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedProductIds([])}
+                        className="px-3.5 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-bold rounded-lg transition-all border border-slate-800 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => {
+                          const selectedProds = products.filter(p => selectedProductIds.includes(p.id));
+                          handleDownloadPricingReport(selectedProds);
+                        }}
+                        className="px-4 py-1.5 bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white text-xs font-bold rounded-lg shadow-md shadow-pink-500/10 transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        Download Selected Excel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px] select-none">
+                          <th className="px-5 py-4 w-10 text-left">
+                            <input 
+                              type="checkbox"
+                              checked={selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedProductIds(filteredProducts.map(p => p.id));
+                                } else {
+                                  setSelectedProductIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-pink-650 accent-pink-600 border-slate-800 bg-slate-950 rounded cursor-pointer"
+                            />
+                          </th>
                         <th 
                           onClick={() => handleSort("item")} 
                           className="px-5 py-4 cursor-pointer hover:text-white transition-colors"
@@ -2948,6 +3290,20 @@ export default function AdminDashboard() {
 
                         return (
                           <tr key={product.id} className="hover:bg-slate-900/30 transition-all group">
+                            <td className="px-5 py-4 w-10">
+                              <input 
+                                type="checkbox"
+                                checked={selectedProductIds.includes(product.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedProductIds(prev => [...prev, product.id]);
+                                  } else {
+                                    setSelectedProductIds(prev => prev.filter(id => id !== product.id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-pink-650 accent-pink-600 border-slate-800 bg-slate-950 rounded cursor-pointer"
+                              />
+                            </td>
                             <td className="px-5 py-4">
                               <div className="flex items-center space-x-3.5">
                                 <img src={product.image} alt={product.brand} className="w-9 h-11 object-cover rounded bg-slate-950 border border-slate-900 group-hover:border-slate-800 transition-all flex-shrink-0" />
@@ -3038,8 +3394,180 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+              </>
             )}
           </div>
+          )}
+
+          {/* Reports & Downloads Dashboard */}
+          {viewMode === "reports" && (
+            <div className="lg:col-span-12 space-y-8 animate-fade-in">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                <div>
+                  <h2 className="text-xl font-black text-white">Reports & Downloads</h2>
+                  <p className="text-xs text-slate-400 mt-1">Generate and export formatted Excel sheets for sales records, taxes, and pricing structures.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* 1. Pricing Breakdown Details Card */}
+                <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl flex flex-col justify-between space-y-6">
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 border border-pink-500/20 flex items-center justify-center">
+                      <Coins size={20} />
+                    </div>
+                    <h3 className="text-base font-extrabold text-white">Pricing Breakdown Details</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Download a structured Excel sheet containing the full price breakdown (Purchase Price, Packing, Courier, Profit, GST Rate, and Selling Price) along with SKU, Title, Category, Subcategory, and a small preview thumbnail image.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-900/60">
+                    <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400 font-medium">Selected for report:</span>
+                        <span className="text-pink-500 font-extrabold">{selectedProductIds.length} item{selectedProductIds.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Tip: You can select specific products using checkboxes in the "Catalog Inventory" tab, or download all products below.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <button
+                        onClick={() => {
+                          if (selectedProductIds.length === 0) {
+                            alert("Please select at least one product in the Catalog Inventory tab first.");
+                            return;
+                          }
+                          const selectedProds = products.filter(p => selectedProductIds.includes(p.id));
+                          handleDownloadPricingReport(selectedProds);
+                        }}
+                        disabled={selectedProductIds.length === 0}
+                        className="w-full bg-slate-850 hover:bg-slate-800 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all border border-slate-800 disabled:cursor-not-allowed hover:border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        Selected ({selectedProductIds.length})
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPricingReport(products)}
+                        className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-lg shadow-pink-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent"
+                      >
+                        Download All ({products.length})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Sales & GST Tax Report Card */}
+                <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl flex flex-col justify-between space-y-6">
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 border border-pink-500/20 flex items-center justify-center">
+                      <BarChart3 size={20} />
+                    </div>
+                    <h3 className="text-base font-extrabold text-white">Sales & GST Tax Report</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Download sales records including invoice number, order number, SKU, item title, purchase date, GST rate, GST amount, and total sale value. Includes total sales and GST amount summaries at the end of the sheet.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-900/60">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Date Filtering Option</label>
+                      <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-1 rounded-xl border border-slate-900">
+                        <button
+                          type="button"
+                          onClick={() => setSalesReportType("monthly")}
+                          className={`py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${salesReportType === "monthly" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSalesReportType("yearly")}
+                          className={`py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${salesReportType === "yearly" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+                        >
+                          Yearly
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSalesReportType("custom")}
+                          className={`py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${salesReportType === "custom" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+                        >
+                          Custom Range
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Report Type Fields */}
+                    {salesReportType === "monthly" && (
+                      <div className="animate-fade-in">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Select Month</label>
+                        <input 
+                          type="month"
+                          value={salesReportMonth}
+                          onChange={(e) => setSalesReportMonth(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                        />
+                      </div>
+                    )}
+
+                    {salesReportType === "yearly" && (
+                      <div className="animate-fade-in">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Select Year</label>
+                        <select 
+                          value={salesReportYear}
+                          onChange={(e) => setSalesReportYear(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                        >
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                            <option key={year} value={year.toString()} className="bg-slate-950 text-white">{year}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {salesReportType === "custom" && (
+                      <div className="grid grid-cols-2 gap-3.5 animate-fade-in">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Start Date</label>
+                          <input 
+                            type="date"
+                            value={salesReportStartDate}
+                            onChange={(e) => setSalesReportStartDate(e.target.value)}
+                            className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">End Date</label>
+                          <input 
+                            type="date"
+                            value={salesReportEndDate}
+                            onChange={(e) => setSalesReportEndDate(e.target.value)}
+                            className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {fetchingOrders ? (
+                      <div className="flex justify-center items-center py-3 bg-slate-950/40 rounded-xl border border-slate-900">
+                        <div className="w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs text-slate-450 ml-2 font-medium">Fetching orders database...</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleDownloadSalesReport}
+                        className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-lg shadow-pink-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent"
+                      >
+                        Download Sales Report
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
           )}
         </div>
       ) : (
