@@ -225,8 +225,8 @@ export default function AdminDashboard() {
           const imgUrl = v.image || product.image || "";
           
           html += `
-            <tr>
-              <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover;" />` : '—'}</td>
+            <tr style="height: 60px;">
+              <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover; display: block;" />` : '—'}</td>
               <td>${v.sku || product.sku || '—'}</td>
               <td>${titleStr}</td>
               <td>${product.category || '—'}</td>
@@ -253,8 +253,8 @@ export default function AdminDashboard() {
         const imgUrl = product.image || "";
         
         html += `
-          <tr>
-            <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover;" />` : '—'}</td>
+          <tr style="height: 60px;">
+            <td>${imgUrl ? `<img src="${imgUrl}" width="40" height="50" style="object-fit: cover; display: block;" />` : '—'}</td>
             <td>${product.sku || '—'}</td>
             <td>${product.title || '—'}</td>
             <td>${product.category || '—'}</td>
