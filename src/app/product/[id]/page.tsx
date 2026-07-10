@@ -235,6 +235,7 @@ export default function ProductDetailPage() {
     : `${product?.size || ''}${product?.sizeUnit ? ' ' + product?.sizeUnit : ''}`;
   const currentColor = matchedVariant ? matchedVariant.color : (product?.color || '');
   const currentMaterial = matchedVariant ? matchedVariant.material : (product?.material || '');
+  const hasSizesInventory = product?.sizesInventory && Object.values(product.sizesInventory).some((qty: any) => Number(qty) > 0);
 
   // Stock Subscription States
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -569,7 +570,7 @@ export default function ProductDetailPage() {
       }
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
-      if (isFashion) {
+      if (isFashion && hasSizesInventory) {
         if (!selectedSize) {
           setToast("Please select a size first!");
           setTimeout(() => setToast(""), 3000);
@@ -670,7 +671,7 @@ export default function ProductDetailPage() {
       }
     } else {
       const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
-      if (isFashion) {
+      if (isFashion && hasSizesInventory) {
         if (!selectedSize) {
           setToast("Please select a size first!");
           setTimeout(() => setToast(""), 3000);
@@ -931,7 +932,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
       ) : (
-        (product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion") && (
+        (product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion") && hasSizesInventory && (
           <div className="p-4 bg-white border-b border-gray-100">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -1042,7 +1043,7 @@ export default function ProductDetailPage() {
               } else {
                 stock = matchedVariant.stock;
               }
-            } else if (isFashion) {
+            } else if (isFashion && hasSizesInventory) {
               if (!selectedSize) {
                 hasSelectedOptions = false;
                 stock = 10;
@@ -1113,7 +1114,7 @@ export default function ProductDetailPage() {
             } else {
               stock = matchedVariant.stock;
             }
-          } else if (isFashion) {
+          } else if (isFashion && hasSizesInventory) {
             if (!selectedSize) {
               hasSelectedOptions = false;
               stock = 10;
