@@ -73,7 +73,7 @@ export default function BagPage() {
             const docSnap = await getDoc(productRef);
             if (docSnap.exists()) {
               const prodData = docSnap.data();
-              const isFashion = prodData.category?.toLowerCase() === "fashion";
+              const isFashion = prodData.category?.toLowerCase() === "fashion" || prodData.category?.toLowerCase() === "lifestyle & fashion";
               if (isFashion && item.size && prodData.sizesInventory) {
                 newStockLevels[item.id] = Number(prodData.sizesInventory[item.size] || 0);
               } else {

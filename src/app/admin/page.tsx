@@ -1057,7 +1057,7 @@ export default function AdminDashboard() {
         variants: hasVariants && variantsList.length > 0 ? variantsList : null
       };
 
-      if (category.toLowerCase() === "fashion") {
+      if (category.toLowerCase() === "fashion" || category.toLowerCase() === "lifestyle & fashion") {
         if (hasVariants && variantsList.length > 0) {
           const legacySizes: any = { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
           variantsList.forEach(v => {
@@ -1508,7 +1508,7 @@ export default function AdminDashboard() {
           Number(item.profit || 0);
         const calculatedBulkPrice = baseBulkPrice + Math.round(baseBulkPrice * (Number(item.gstRate || 0) / 100));
 
-        const isFashion = item.category?.toLowerCase() === "fashion";
+        const isFashion = item.category?.toLowerCase() === "fashion" || item.category?.toLowerCase() === "lifestyle & fashion";
         const itemQuantity = Number(item.quantity || 0);
 
         if (item.mrp && Number(item.mrp) < calculatedBulkPrice) {
@@ -2371,7 +2371,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 ) : (
-                  category.toLowerCase() === "fashion" ? (
+                  (category.toLowerCase() === "fashion" || category.toLowerCase() === "lifestyle & fashion") ? (
                     <div className="bg-slate-950/30 p-3.5 border border-slate-900 rounded-xl space-y-2.5">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Sizes Inventory</span>
                       <div className="grid grid-cols-5 gap-2">
@@ -2960,7 +2960,7 @@ export default function AdminDashboard() {
                             <td className="px-5 py-4 text-slate-400 font-medium">{product.category}</td>
                             <td className="px-5 py-4 text-slate-400 font-medium">{product.subCategory || "—"}</td>
                             <td className="px-5 py-4">
-                              {product.category?.toLowerCase() === "fashion" && product.sizesInventory ? (
+                              {(product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion") && product.sizesInventory ? (
                                 <div className="text-[10px] text-slate-400 font-semibold space-y-1">
                                   <div className="flex gap-1.5 flex-wrap">
                                     {Object.entries(product.sizesInventory).map(([size, qty]: any) => (

@@ -568,7 +568,7 @@ export default function ProductDetailPage() {
         finalSizeString = [formattedBaseSize, product.color, product.material].filter(Boolean).join(" / ");
       }
     } else {
-      const isFashion = product.category?.toLowerCase() === "fashion";
+      const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
       if (isFashion) {
         if (!selectedSize) {
           setToast("Please select a size first!");
@@ -669,7 +669,7 @@ export default function ProductDetailPage() {
         finalSizeString = [formattedBaseSize, product.color, product.material].filter(Boolean).join(" / ");
       }
     } else {
-      const isFashion = product.category?.toLowerCase() === "fashion";
+      const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
       if (isFashion) {
         if (!selectedSize) {
           setToast("Please select a size first!");
@@ -931,7 +931,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
       ) : (
-        product.category?.toLowerCase() === "fashion" && (
+        (product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion") && (
           <div className="p-4 bg-white border-b border-gray-100">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -1031,7 +1031,7 @@ export default function ProductDetailPage() {
         {/* Availability Status */}
         <div>
           {(() => {
-            const isFashion = product.category?.toLowerCase() === "fashion";
+            const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
             let stock = product.quantity !== undefined && product.quantity !== null ? Number(product.quantity) : 10;
             let hasSelectedOptions = true;
 
@@ -1102,7 +1102,7 @@ export default function ProductDetailPage() {
 
         {/* Quantity and Actions Block */}
         {(() => {
-          const isFashion = product.category?.toLowerCase() === "fashion";
+          const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
           let stock = product.quantity !== undefined && product.quantity !== null ? Number(product.quantity) : 10;
           let hasSelectedOptions = true;
 
@@ -1463,7 +1463,7 @@ export default function ProductDetailPage() {
       {/* Bottom Action Bar removed to use the inline Amazon-style Buying Block */}
 
       {/* Size Guide Modal */}
-      {showSizeGuide && product.category?.toLowerCase() === "fashion" && (
+      {showSizeGuide && (product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion") && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-t-2xl p-6 transform transition-transform duration-300 translate-y-0">
             <div className="flex justify-between items-center mb-6">

@@ -141,7 +141,7 @@ export default function WishlistPage() {
   };
 
   const handleAddToBagClick = (product: any) => {
-    const isFashion = product.category?.toLowerCase() === "fashion";
+    const isFashion = product.category?.toLowerCase() === "fashion" || product.category?.toLowerCase() === "lifestyle & fashion";
     const availableSizes = product.variants
       ? Array.from(new Set(product.variants.map((v: any) => `${v.size}${v.sizeUnit ? ' ' + v.sizeUnit : ''}`).filter(Boolean))) as string[]
       : (product.sizes || ["S", "M", "L", "XL", "XXL"]);

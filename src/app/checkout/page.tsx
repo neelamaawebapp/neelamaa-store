@@ -280,7 +280,7 @@ export default function CheckoutPage() {
         const docSnap = await getDoc(productRef);
         if (docSnap.exists()) {
           const prodData = docSnap.data();
-          const isFashion = prodData.category?.toLowerCase() === "fashion";
+          const isFashion = prodData.category?.toLowerCase() === "fashion" || prodData.category?.toLowerCase() === "lifestyle & fashion";
           if (isFashion) {
             const sizesInv = prodData.sizesInventory || {};
             const selectedSize = item.size || "";

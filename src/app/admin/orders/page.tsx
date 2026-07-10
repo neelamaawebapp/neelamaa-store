@@ -233,7 +233,7 @@ export default function AdminOrders() {
                 const productSnap = await getDoc(productRef);
                 if (productSnap.exists()) {
                   const prodData = productSnap.data();
-                  const isFashion = prodData.category?.toLowerCase() === "fashion";
+                  const isFashion = prodData.category?.toLowerCase() === "fashion" || prodData.category?.toLowerCase() === "lifestyle & fashion";
                   if (isFashion && item.size && prodData.sizesInventory) {
                     await updateDoc(productRef, {
                       [`sizesInventory.${item.size}`]: increment(-Number(item.quantity || 1)),
@@ -259,7 +259,7 @@ export default function AdminOrders() {
                 const productSnap = await getDoc(productRef);
                 if (productSnap.exists()) {
                   const prodData = productSnap.data();
-                  const isFashion = prodData.category?.toLowerCase() === "fashion";
+                  const isFashion = prodData.category?.toLowerCase() === "fashion" || prodData.category?.toLowerCase() === "lifestyle & fashion";
                   if (isFashion && item.size && prodData.sizesInventory) {
                     await updateDoc(productRef, {
                       [`sizesInventory.${item.size}`]: increment(Number(item.quantity || 1)),
