@@ -402,12 +402,14 @@ export default function AdminDashboard() {
   };
 
   // Form calculated values
-  const calculatedPrice = 
+  const basePrice = 
     Number(purchasePrice || 0) + 
     Number(packingCharges || 0) + 
     Number(courierCharges || 0) + 
     Number(otherExpenses || 0) + 
     Number(profit || 0);
+
+  const calculatedPrice = basePrice + Math.round(basePrice * (Number(gstRate || 0) / 100));
 
   const saveFlashSaleTimer = async () => {
     if (!flashSaleStart || !flashSaleEnd) {
@@ -570,15 +572,17 @@ export default function AdminDashboard() {
       profit !== "";
       
     if (hasBreakdown) {
-      const computed = 
+      const base = 
         Number(purchasePrice || 0) + 
         Number(packingCharges || 0) + 
         Number(courierCharges || 0) + 
         Number(otherExpenses || 0) + 
         Number(profit || 0);
+      const rate = Number(gstRate || 0);
+      const computed = base + Math.round(base * (rate / 100));
       setPrice(computed > 0 ? computed.toString() : "");
     }
-  }, [purchasePrice, packingCharges, courierCharges, otherExpenses, profit]);
+  }, [purchasePrice, packingCharges, courierCharges, otherExpenses, profit, gstRate]);
 
   const handleMigrateProducts = async () => {
     if (!confirm("Are you sure you want to migrate all current products in the database? This will update their category and subCategory fields based on the new schema.")) {
@@ -1385,12 +1389,13 @@ export default function AdminDashboard() {
         
         const finalUrl = data.data.url;
 
-        const calculatedBulkPrice = 
+        const baseBulkPrice = 
           Number(item.purchasePrice || 0) + 
           Number(item.packingCharges || 0) + 
           Number(item.courierCharges || 0) + 
           Number(item.otherExpenses || 0) + 
           Number(item.profit || 0);
+        const calculatedBulkPrice = baseBulkPrice + Math.round(baseBulkPrice * (Number(item.gstRate || 0) / 100));
 
         const isFashion = item.category?.toLowerCase() === "fashion";
         const itemQuantity = Number(item.quantity || 0);
@@ -3089,12 +3094,13 @@ export default function AdminDashboard() {
                   </div>
                   
                   {bulkFiles.map((item, index) => {
-                    const calculatedBulkPrice = 
+                    const baseBulkPrice = 
                       Number(item.purchasePrice || 0) + 
                       Number(item.packingCharges || 0) + 
                       Number(item.courierCharges || 0) + 
                       Number(item.otherExpenses || 0) + 
                       Number(item.profit || 0);
+                    const calculatedBulkPrice = baseBulkPrice + Math.round(baseBulkPrice * (Number(item.gstRate || 0) / 100));
 
                     return (
                       <div key={index} className="bg-slate-900/40 p-5 rounded-2xl border border-slate-900 flex flex-col sm:flex-row gap-6 relative">
