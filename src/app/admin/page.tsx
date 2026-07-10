@@ -585,20 +585,24 @@ export default function AdminDashboard() {
   }, [purchasePrice, packingCharges, courierCharges, otherExpenses, profit, gstRate]);
 
   const handleMigrateProducts = async () => {
-    if (!confirm("Are you sure you want to migrate all current products in the database? This will update their category and subCategory fields based on the new schema.")) {
+    if (!confirm("Are you sure you want to migrate all products and orders? This will update category schemas, update product prices to be GST-inclusive, and update existing orders/invoices to apply the new GST calculation.")) {
       return;
     }
     setMigrating(true);
-    setMigrationStatus("Migrating database products...");
+    setMigrationStatus("Migrating products and recalculating prices...");
     try {
       const { getDocs, collection, updateDoc, doc: firestoreDoc } = await import("firebase/firestore");
-      const snap = await getDocs(collection(db, "products"));
-      let count = 0;
       
-      for (const productDoc of snap.docs) {
+      // 1. Migrate Products
+      const productsSnap = await getDocs(collection(db, "products"));
+      let productCount = 0;
+      
+      for (const productDoc of productsSnap.docs) {
         const data = productDoc.data();
-        const oldCategory = data.category || "";
+        const docUpdates: any = {};
         
+        // Category schema migration
+        const oldCategory = data.category || "";
         let newCategory = oldCategory;
         let newSubCategory = data.subCategory || "";
         
@@ -615,18 +619,125 @@ export default function AdminDashboard() {
         }
         
         if (newCategory !== oldCategory || newSubCategory !== data.subCategory) {
-          const docRef = firestoreDoc(db, "products", productDoc.id);
-          await updateDoc(docRef, {
-            category: newCategory,
-            subCategory: newSubCategory
+          docUpdates.category = newCategory;
+          docUpdates.subCategory = newSubCategory;
+        }
+
+        // Price migration (add GST to base cost)
+        const rate = typeof data.gstRate === 'number' ? data.gstRate : 18;
+        
+        // Calculate base price
+        const base = 
+          Number(data.purchasePrice || 0) + 
+          Number(data.packingCharges || 0) + 
+          Number(data.courierCharges || 0) + 
+          Number(data.otherExpenses || 0) + 
+          Number(data.profit || 0);
+          
+        const basePrice = base > 0 ? base : Number(data.price || 0);
+        const newPrice = basePrice + Math.round(basePrice * (rate / 100));
+        const newMrp = (data.mrp && Number(data.mrp) >= newPrice) ? Number(data.mrp) : Math.round(newPrice * 1.5);
+        
+        if (newPrice !== Number(data.price || 0) || newMrp !== Number(data.mrp || 0)) {
+          docUpdates.price = newPrice;
+          docUpdates.mrp = newMrp;
+        }
+
+        // Variant price migration
+        if (data.variants && data.variants.length > 0) {
+          let variantsUpdated = false;
+          const newVariants = data.variants.map((v: any) => {
+            const vBasePrice = Number(v.price || 0);
+            const vNewPrice = vBasePrice + Math.round(vBasePrice * (rate / 100));
+            const vNewMrp = (v.mrp && Number(v.mrp) >= vNewPrice) ? Number(v.mrp) : Math.round(vNewPrice * 1.5);
+            if (vNewPrice !== v.price || vNewMrp !== v.mrp) {
+              variantsUpdated = true;
+            }
+            return {
+              ...v,
+              price: vNewPrice,
+              mrp: vNewMrp
+            };
           });
-          count++;
+          
+          if (variantsUpdated) {
+            docUpdates.variants = newVariants;
+          }
+        }
+        
+        if (Object.keys(docUpdates).length > 0) {
+          const docRef = firestoreDoc(db, "products", productDoc.id);
+          await updateDoc(docRef, docUpdates);
+          productCount++;
         }
       }
-      setMigrationStatus(`Successfully migrated ${count} products!`);
-    } catch (e: any) {
-      console.error(e);
-      setMigrationStatus(`Migration failed: ${e.message}`);
+
+      // 2. Migrate Orders
+      setMigrationStatus("Migrating existing orders/invoices...");
+      const ordersSnap = await getDocs(collection(db, "orders"));
+      let orderCount = 0;
+      
+      for (const orderDoc of ordersSnap.docs) {
+        const data = orderDoc.data();
+        if (!data.items || data.items.length === 0) continue;
+        
+        let orderSubtotal = 0;
+        let orderTotalGst = 0;
+        let orderTotalAmount = 0;
+        let orderUpdated = false;
+        
+        const updatedItems = data.items.map((item: any) => {
+          const rate = typeof item.gstRate === 'number' ? item.gstRate : 18;
+          
+          const currentPrice = Number(item.price || 0);
+          const currentBasePrice = Number(item.basePrice || 0);
+          
+          if (currentBasePrice < currentPrice) {
+            orderUpdated = true;
+            const newBasePrice = currentPrice;
+            const newGstAmount = newBasePrice * (rate / 100);
+            const newPrice = newBasePrice + newGstAmount;
+            
+            const mrp = item.mrp || Math.round(newPrice * 1.5);
+            const newMrp = mrp >= newPrice ? mrp : Math.round(newPrice * 1.5);
+            
+            orderSubtotal += newBasePrice * item.quantity;
+            orderTotalGst += newGstAmount * item.quantity;
+            orderTotalAmount += newPrice * item.quantity;
+            
+            return {
+              ...item,
+              price: Math.round(newPrice),
+              basePrice: Math.round(newBasePrice),
+              gstAmount: Math.round(newGstAmount),
+              mrp: Math.round(newMrp)
+            };
+          } else {
+            orderSubtotal += currentBasePrice * item.quantity;
+            orderTotalGst += Number(item.gstAmount || 0) * item.quantity;
+            orderTotalAmount += currentPrice * item.quantity;
+            return item;
+          }
+        });
+        
+        if (orderUpdated) {
+          const courierFee = data.courierCharges || 0;
+          const finalTotalAmount = orderTotalAmount + courierFee;
+          
+          const docRef = firestoreDoc(db, "orders", orderDoc.id);
+          await updateDoc(docRef, {
+            items: updatedItems,
+            subtotal: Math.round(orderSubtotal),
+            totalGst: Math.round(orderTotalGst),
+            totalAmount: Math.round(finalTotalAmount)
+          });
+          orderCount++;
+        }
+      }
+      
+      setMigrationStatus(`Successfully migrated and updated pricing for ${productCount} products and ${orderCount} orders/invoices.`);
+    } catch (err: any) {
+      setMigrationStatus(`Migration failed: ${err.message}`);
     } finally {
       setMigrating(false);
     }
