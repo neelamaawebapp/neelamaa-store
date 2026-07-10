@@ -46,6 +46,7 @@ export default function ProductDetailPage() {
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState("");
   const [showAddedModal, setShowAddedModal] = useState(false);
+  const [showFullPhoto, setShowFullPhoto] = useState(false);
 
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedVariantColor, setSelectedVariantColor] = useState("");
@@ -748,15 +749,21 @@ export default function ProductDetailPage() {
       <div className="p-4 bg-white border-b border-gray-100">
         <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.title}</h1>
         <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
+        {product.oneLiner && (
+          <p className="text-xs text-slate-500 font-medium mt-1.5 leading-normal tracking-wide bg-slate-50 px-2.5 py-1.5 rounded-lg inline-block border border-slate-100">
+            {product.oneLiner}
+          </p>
+        )}
       </div>
 
       {/* Product Image / Carousel */}
       <div className="relative bg-gray-150">
         <div 
-          className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden select-none touch-pan-y"
+          className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden select-none touch-pan-y cursor-zoom-in"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onClick={() => setShowFullPhoto(true)}
         >
           <OptimizedImage
             src={(matchedVariant && matchedVariant.image) ? matchedVariant.image : (product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image)}
@@ -1606,6 +1613,79 @@ export default function ProductDetailPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Image Viewer Modal */}
+      {showFullPhoto && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col justify-between"
+          onClick={() => setShowFullPhoto(false)}
+        >
+          {/* Header */}
+          <div className="w-full p-4 flex justify-end">
+            <button 
+              className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur cursor-pointer border border-white/10"
+              onClick={(e) => { e.stopPropagation(); setShowFullPhoto(false); }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Main Full Image */}
+          <div className="flex-1 w-full max-w-lg mx-auto relative flex items-center justify-center p-4">
+            <div className="relative w-full h-[75vh]" onClick={(e) => e.stopPropagation()}>
+              <OptimizedImage
+                src={(matchedVariant && matchedVariant.image) ? matchedVariant.image : (product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image)}
+                alt={product.brand}
+                fill
+                className="object-contain select-none"
+              />
+            </div>
+          </div>
+
+          {/* Navigation Arrows for fullscreen lightbox */}
+          {product.images && product.images.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImageIdx(prev => (prev - 1 + product.images.length) % product.images.length);
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white text-2xl transition-all cursor-pointer z-55"
+              >
+                &lsaquo;
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImageIdx(prev => (prev + 1) % product.images.length);
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white text-2xl transition-all cursor-pointer z-55"
+              >
+                &rsaquo;
+              </button>
+            </>
+          )}
+
+          {/* Details / Pagination Dots Footer */}
+          <div className="w-full p-6 text-center bg-gradient-to-t from-black/90 to-transparent flex flex-col items-center">
+            <p className="text-white text-sm font-bold uppercase tracking-wider">{product.brand}</p>
+            <p className="text-gray-300 text-xs mt-1 truncate max-w-xs">{product.title}</p>
+            
+            {/* Dots / Carousel indicators in fullscreen */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex space-x-2 mt-4" onClick={(e) => e.stopPropagation()}>
+                {product.images.map((_: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIdx(idx)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeImageIdx === idx ? 'bg-pink-500 w-5' : 'bg-gray-600 hover:bg-gray-500'}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

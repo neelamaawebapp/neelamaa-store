@@ -59,6 +59,7 @@ export default function AdminDashboard() {
   // Flexible Model Extensions
   const [sku, setSku] = useState("");
   const [shortDescription, setShortDescription] = useState("");
+  const [oneLiner, setOneLiner] = useState("");
   const [fullDescription, setFullDescription] = useState("");
   const [status, setStatus] = useState("Active");
   const [countryOfOrigin, setCountryOfOrigin] = useState("India");
@@ -671,6 +672,7 @@ export default function AdminDashboard() {
     setNewCategoryName("");
     setMigrationStatus("");
     setShortDescription("");
+    setOneLiner("");
     setFullDescription("");
     setStatus("Active");
     setCountryOfOrigin("India");
@@ -746,6 +748,7 @@ export default function AdminDashboard() {
     setSku(product.sku || "");
     setSkuEdited(true);
     setShortDescription(product.shortDescription || "");
+    setOneLiner(product.oneLiner || "");
     setFullDescription(product.fullDescription || "");
     setStatus(product.status || "Active");
     setCountryOfOrigin(product.countryOfOrigin || "India");
@@ -916,6 +919,7 @@ export default function AdminDashboard() {
         // Flexible model fields
         sku: sku.trim() || `${brand ? brand.trim().substring(0, 3).toUpperCase() : "CS"}-${category ? category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
         shortDescription: shortDescription.trim(),
+        oneLiner: oneLiner.trim(),
         fullDescription: fullDescription.trim(),
         status,
         countryOfOrigin: countryOfOrigin.trim(),
@@ -1313,6 +1317,7 @@ export default function AdminDashboard() {
           profit: null,
           sku: rowSku.trim(),
           shortDescription: rowShortDesc.trim(),
+          oneLiner: "",
           fullDescription: rowFullDesc.trim(),
           status: "Active",
           countryOfOrigin: rowOrigin.trim() || "India",
@@ -1410,6 +1415,7 @@ export default function AdminDashboard() {
           gstRate: Number(item.gstRate),
           image: finalUrl,
           sku: `${item.brand ? item.brand.trim().substring(0, 3).toUpperCase() : "CS"}-${item.category ? item.category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
+          oneLiner: "",
           createdAt: serverTimestamp(),
         };
 
@@ -1847,6 +1853,11 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">TITLE</label>
                   <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="e.g. Black Granite Chopping Board" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ONE-LINER DESCRIPTION (1 LINE)</label>
+                  <input type="text" value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-705" placeholder="e.g. Elegant handmade natural marble chopping board" maxLength={85} />
                 </div>
 
                 <div>
