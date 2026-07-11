@@ -32,7 +32,7 @@ export default function ImageEditorModal({
   const [saturation, setSaturation] = useState(100);
 
   // Fit Modes
-  const [fitMode, setFitMode] = useState<"cover" | "contain-blur" | "contain-solid">("cover");
+  const [fitMode, setFitMode] = useState<"cover" | "contain-blur" | "contain-solid" | "stretch" | "original">("cover");
   const [solidColor, setSolidColor] = useState("#ffffff");
   const [blurRadius, setBlurRadius] = useState(20);
 
@@ -237,10 +237,11 @@ export default function ImageEditorModal({
     const imgHeight = img.naturalHeight;
 
     // Convert percentage crop back to actual source image pixels
-    const cropX = (crop.x / 100) * imgWidth;
-    const cropY = (crop.y / 100) * imgHeight;
-    const cropW = (crop.width / 100) * imgWidth;
-    const cropH = (crop.height / 100) * imgHeight;
+    const useFullImage = fitMode !== "cover";
+    const cropX = useFullImage ? 0 : (crop.x / 100) * imgWidth;
+    const cropY = useFullImage ? 0 : (crop.y / 100) * imgHeight;
+    const cropW = useFullImage ? imgWidth : (crop.width / 100) * imgWidth;
+    const cropH = useFullImage ? imgHeight : (crop.height / 100) * imgHeight;
 
     // Compute cropped source dimensions (rotated)
     const isRotatedOrtho = rotation === 90 || rotation === 270;
@@ -278,7 +279,9 @@ export default function ImageEditorModal({
 
     // 2. Compute final canvas dimensions
     let targetRatio = 1;
-    if (typeof initialAspectRatio === "number" && !isNaN(initialAspectRatio)) {
+    if (fitMode === "original") {
+      targetRatio = tempW / tempH;
+    } else if (typeof initialAspectRatio === "number" && !isNaN(initialAspectRatio)) {
       targetRatio = initialAspectRatio;
     } else {
       targetRatio = tempW / tempH;
@@ -287,10 +290,13 @@ export default function ImageEditorModal({
     let finalW = tempW;
     let finalH = tempH;
 
-    if (fitMode === "cover" || !isFixedRatio) {
-      // In cover mode, the crop box ratio matches targetRatio
+    if (fitMode === "cover" || fitMode === "original" || !isFixedRatio) {
+      // In cover/original mode, the crop box ratio matches targetRatio
       finalW = tempW;
       finalH = tempH;
+    } else if (fitMode === "stretch") {
+      finalW = tempW;
+      finalH = tempW / targetRatio;
     } else {
       // In contain mode, pad the canvas to match targetRatio
       const tempRatio = tempW / tempH;
@@ -311,8 +317,8 @@ export default function ImageEditorModal({
       outputW = Math.min(maxExportWidth, finalW);
       outputH = outputW / targetRatio;
     } else {
-      // For preview, draw on a smaller resolution (max width 300px) for performance
-      const maxPreviewWidth = 300;
+      // For preview, draw on a medium resolution (max width 800px) for crisp center viewport display
+      const maxPreviewWidth = 800;
       outputW = Math.min(maxPreviewWidth, finalW);
       outputH = outputW / targetRatio;
     }
@@ -324,7 +330,9 @@ export default function ImageEditorModal({
     ctx.clearRect(0, 0, outputW, outputH);
 
     // 3. Draw background / foreground based on fitMode
-    if (fitMode === "cover" || !isFixedRatio) {
+    if (fitMode === "cover" || fitMode === "original" || !isFixedRatio) {
+      ctx.drawImage(tempCanvas, 0, 0, outputW, outputH);
+    } else if (fitMode === "stretch") {
       ctx.drawImage(tempCanvas, 0, 0, outputW, outputH);
     } else {
       const canvasRatio = outputW / outputH;
@@ -461,7 +469,9 @@ export default function ImageEditorModal({
               src={imageUrl}
               alt="Editor Source"
               onLoad={handleImageLoad}
-              className="max-w-full max-h-[50vh] md:max-h-[70vh] object-contain select-none pointer-events-none"
+              className={`max-w-full max-h-[50vh] md:max-h-[70vh] object-contain select-none pointer-events-none ${
+                fitMode !== "cover" ? "sr-only absolute opacity-0 w-0 h-0" : ""
+              }`}
               style={{
                 filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
                 transform: `rotate(${rotation}deg) scale(${flipH ? -1 : 1}, ${flipV ? -1 : 1})`,
@@ -469,8 +479,16 @@ export default function ImageEditorModal({
               }}
             />
 
+            {/* Live Center Canvas for Non-Cover Modes */}
+            {!loading && fitMode !== "cover" && (
+              <canvas
+                ref={previewCanvasRef}
+                className="max-w-full max-h-[50vh] md:max-h-[70vh] object-contain rounded-xl border border-slate-800 shadow-2xl bg-slate-900"
+              />
+            )}
+
             {/* Crop Draggable Grid */}
-            {!loading && (
+            {!loading && fitMode === "cover" && (
               <div
                 className="absolute border border-pink-500 bg-pink-500/5 cursor-move"
                 style={{
@@ -533,7 +551,7 @@ export default function ImageEditorModal({
 
           <div className="p-4 space-y-5 flex-1">
             {/* Live Output Preview */}
-            {isFixedRatio && (
+            {isFixedRatio && fitMode === "cover" && (
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 w-full text-left">Live Output Preview</span>
                 <div className="w-full flex items-center justify-center bg-slate-900 rounded p-2 min-h-[90px]">
@@ -550,11 +568,13 @@ export default function ImageEditorModal({
             {isFixedRatio && (
               <div className="space-y-2 border-t border-slate-800/60 pt-4">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fit / Layout Mode</label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {[
                     { label: "Fill & Crop", value: "cover" },
                     { label: "Pad & Blur", value: "contain-blur" },
                     { label: "Pad & Solid", value: "contain-solid" },
+                    { label: "Stretch to Fit", value: "stretch" },
+                    { label: "Original (No Crop)", value: "original" },
                   ].map((item) => (
                     <button
                       key={item.value}
@@ -564,7 +584,7 @@ export default function ImageEditorModal({
                         fitMode === item.value
                           ? "bg-gradient-to-r from-pink-500 to-orange-500 border-transparent text-white"
                           : "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
-                      }`}
+                      } ${item.value === "original" ? "col-span-2" : ""}`}
                     >
                       {item.label}
                     </button>
