@@ -101,26 +101,37 @@ export default function AdminDashboard() {
     stock: string;
     sku: string;
     image: string;
+    images: string[];
   }[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
 
-  const handleVariantImageChange = async (idx: number, file: File) => {
-    if (!file) return;
+  const handleVariantImagesUpload = async (idx: number, files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
     setUploadingVariantIdx(idx);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
-      if (data.success) {
-        const newVars = [...variantRows];
-        newVars[idx].image = data.data.url;
-        setVariantRows(newVars);
-      } else {
-        alert("Image upload failed: " + (data.error?.message || "Unknown error"));
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("image", file);
+        const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          const url = data.data.url;
+          setVariantRows(prev => {
+            const updated = [...prev];
+            const currentImages = updated[idx].images || [];
+            const newImages = [...currentImages, url];
+            updated[idx].images = newImages;
+            if (!updated[idx].image) {
+              updated[idx].image = url;
+            }
+            return updated;
+          });
+        } else {
+          alert("Image upload failed: " + (data.error?.message || "Unknown error"));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -1200,7 +1211,8 @@ export default function AdminDashboard() {
         mrp: v.mrp !== undefined ? v.mrp.toString() : "",
         stock: v.stock !== undefined ? v.stock.toString() : "",
         sku: v.sku || "",
-        image: v.image || ""
+        image: v.image || "",
+        images: v.images || (v.image ? [v.image] : [])
       })));
     } else {
       setHasVariants(false);
@@ -1283,7 +1295,8 @@ export default function AdminDashboard() {
         mrp: Number(v.mrp || 0),
         stock: Number(v.stock || 0),
         sku: v.sku.trim(),
-        image: v.image || ""
+        image: v.image || "",
+        images: v.images || (v.image ? [v.image] : [])
       })).filter(v => v.size || v.color || v.material);
 
       if (hasVariants) {
@@ -2442,7 +2455,8 @@ export default function AdminDashboard() {
                           mrp: mrp || "",
                           stock: quantity || "10",
                           sku: "",
-                          image: ""
+                          image: "",
+                          images: []
                         }]);
                       }
                     }}
@@ -2541,49 +2555,160 @@ export default function AdminDashboard() {
                               </div>
                             </div>
 
-                            {/* Column 2: Variant Image Uploader (Optional) */}
-                            <div className="space-y-1.5 flex flex-col justify-between">
-                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Variant Photo (Optional)</label>
-                              <div className="flex items-center gap-3 bg-slate-950/20 border border-slate-900 rounded-xl p-3 flex-1 min-h-[90px]">
-                                {variant.image ? (
-                                  <div className="relative w-16 h-20 rounded-lg overflow-hidden border border-slate-800 bg-black shadow-inner flex-shrink-0 group">
-                                    <img src={variant.image} alt={`Variant #${idx + 1}`} className="w-full h-full object-cover" />
-                                    <button 
-                                      type="button" 
-                                      onClick={() => {
-                                        const newVars = [...variantRows];
-                                        newVars[idx].image = "";
-                                        setVariantRows(newVars);
+                            {/* Column 2: Variant Images Uploader */}
+                            <div className="space-y-3 flex flex-col justify-between">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Variant Photos (Multiple Angles)</label>
+                              
+                              {/* Variant Image Previews Grid */}
+                              {variant.images && variant.images.length > 0 && (
+                                <div className="grid grid-cols-4 gap-2 mb-2">
+                                  {variant.images.map((imgUrl, imgIdx) => (
+                                    <div key={`${variant.id}_img_${imgIdx}`} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex flex-col justify-end shadow-md hover:border-pink-500/30 transition-all">
+                                      <img src={imgUrl} alt={`Variant #${idx + 1} Angle ${imgIdx + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+                                      
+                                      {/* Actions Overlay */}
+                                      <div className="absolute inset-0 bg-black/45 flex flex-col justify-between p-1 opacity-100 transition-opacity">
+                                        <div className="flex justify-between items-center w-full">
+                                          {imgIdx === 0 ? (
+                                            <span className="bg-pink-650 text-white text-[7px] font-extrabold px-1 rounded uppercase tracking-wider shadow-sm">
+                                              Primary
+                                            </span>
+                                          ) : (
+                                            <span></span>
+                                          )}
+                                          <button 
+                                            type="button" 
+                                            onClick={() => {
+                                              const newVars = [...variantRows];
+                                              const filtered = (newVars[idx].images || []).filter((_, i) => i !== imgIdx);
+                                              newVars[idx].images = filtered;
+                                              newVars[idx].image = filtered[0] || "";
+                                              setVariantRows(newVars);
+                                            }}
+                                            className="bg-rose-655 text-white p-0.5 rounded-full hover:bg-rose-700 transition-colors cursor-pointer shadow-sm"
+                                            title="Remove photo"
+                                          >
+                                            <X size={8} />
+                                          </button>
+                                        </div>
+
+                                        <div className="flex justify-end space-x-0.5 w-full">
+                                          {imgIdx > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const newVars = [...variantRows];
+                                                const updatedImages = [...(newVars[idx].images || [])];
+                                                const temp = updatedImages[imgIdx];
+                                                updatedImages[imgIdx] = updatedImages[imgIdx - 1];
+                                                updatedImages[imgIdx - 1] = temp;
+                                                newVars[idx].images = updatedImages;
+                                                newVars[idx].image = updatedImages[0] || "";
+                                                setVariantRows(newVars);
+                                              }}
+                                              className="bg-slate-900/90 hover:bg-black text-white px-1 py-0.5 rounded text-[8px] font-extrabold cursor-pointer"
+                                              title="Move Left"
+                                            >
+                                              &lsaquo;
+                                            </button>
+                                          )}
+                                          {imgIdx < (variant.images.length - 1) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const newVars = [...variantRows];
+                                                const updatedImages = [...(newVars[idx].images || [])];
+                                                const temp = updatedImages[imgIdx];
+                                                updatedImages[imgIdx] = updatedImages[imgIdx + 1];
+                                                updatedImages[imgIdx + 1] = temp;
+                                                newVars[idx].images = updatedImages;
+                                                newVars[idx].image = updatedImages[0] || "";
+                                                setVariantRows(newVars);
+                                              }}
+                                              className="bg-slate-900/90 hover:bg-black text-white px-1 py-0.5 rounded text-[8px] font-extrabold cursor-pointer"
+                                              title="Move Right"
+                                            >
+                                              &rsaquo;
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Upload Zone */}
+                              <div className="flex gap-2 items-center bg-slate-950/20 border border-slate-900 rounded-xl p-2.5 flex-1 min-h-[75px]">
+                                <div className="flex-1 flex flex-col gap-1.5 justify-center">
+                                  <div className="flex gap-1">
+                                    <label className="bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-pink-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-center cursor-pointer transition-all flex-1">
+                                      {uploadingVariantIdx === idx ? "Uploading..." : "Upload Photo(s)"}
+                                      <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        multiple
+                                        onChange={(e) => {
+                                          const files = e.target.files;
+                                          if (files) handleVariantImagesUpload(idx, files);
+                                        }}
+                                        className="hidden" 
+                                      />
+                                    </label>
+                                  </div>
+
+                                  {/* Paste variant photo URL */}
+                                  <div className="flex gap-1">
+                                    <input 
+                                      type="text" 
+                                      placeholder="Or paste photo URL..." 
+                                      id={`var_url_${idx}`}
+                                      className="flex-1 bg-slate-950 border border-slate-900 rounded-lg px-2 py-1 text-[11px] text-white outline-none focus:border-pink-500 transition-all font-sans"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const target = e.target as HTMLInputElement;
+                                          const urlVal = target.value.trim();
+                                          if (urlVal) {
+                                            setVariantRows(prev => {
+                                              const updated = [...prev];
+                                              const currentImages = updated[idx].images || [];
+                                              const newImages = [...currentImages, urlVal];
+                                              updated[idx].images = newImages;
+                                              if (!updated[idx].image) {
+                                                updated[idx].image = urlVal;
+                                              }
+                                              return updated;
+                                            });
+                                            target.value = "";
+                                          }
+                                        }
                                       }}
-                                      className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5 transition-colors cursor-pointer"
-                                      title="Remove Image"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const el = document.getElementById(`var_url_${idx}`) as HTMLInputElement;
+                                        const urlVal = el?.value.trim();
+                                        if (urlVal) {
+                                          setVariantRows(prev => {
+                                            const updated = [...prev];
+                                            const currentImages = updated[idx].images || [];
+                                            const newImages = [...currentImages, urlVal];
+                                            updated[idx].images = newImages;
+                                            if (!updated[idx].image) {
+                                              updated[idx].image = urlVal;
+                                            }
+                                            return updated;
+                                          });
+                                          el.value = "";
+                                        }
+                                      }}
+                                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-800 px-2.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                                     >
-                                      &times;
+                                      Add
                                     </button>
                                   </div>
-                                ) : (
-                                  <div className="w-16 h-20 rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-650 flex-shrink-0 bg-slate-950/40">
-                                    <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                  </div>
-                                )}
-                                
-                                <div className="flex-1 flex flex-col gap-1.5 justify-center">
-                                  <label className="bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-pink-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-center cursor-pointer transition-all">
-                                    {uploadingVariantIdx === idx ? "Uploading..." : "Upload Photo"}
-                                    <input 
-                                      type="file" 
-                                      accept="image/*" 
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleVariantImageChange(idx, file);
-                                      }}
-                                      className="hidden" 
-                                      disabled={uploadingVariantIdx !== null}
-                                    />
-                                  </label>
-                                  <span className="text-[9px] text-slate-500 leading-normal">Allows displaying correct photo color when selected</span>
                                 </div>
                               </div>
                             </div>

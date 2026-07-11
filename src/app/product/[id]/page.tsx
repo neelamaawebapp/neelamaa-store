@@ -119,7 +119,7 @@ export default function ProductDetailPage() {
   const handleTouchEnd = () => {
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
-    const imgCount = product?.images?.length || 0;
+    const imgCount = displayImages?.length || 0;
     if (imgCount <= 1) return;
 
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
@@ -227,6 +227,12 @@ export default function ProductDetailPage() {
     return matchSize && matchColor && matchMaterial;
   });
 
+  const displayImages = (matchedVariant && matchedVariant.images && matchedVariant.images.length > 0)
+    ? matchedVariant.images
+    : ((matchedVariant && matchedVariant.image) 
+       ? [matchedVariant.image] 
+       : (product?.images && product.images.length > 0 ? product.images : [product?.image].filter(Boolean)));
+
   const displayPrice = matchedVariant ? matchedVariant.price : (product?.price || 0);
   const displayMrp = matchedVariant ? matchedVariant.mrp : (product?.mrp || Math.round((product?.price || 0) * 1.5));
 
@@ -250,6 +256,11 @@ export default function ProductDetailPage() {
       setNotifyEmail(user.email || "");
     }
   }, [user]);
+
+  // Reset active image index when variant changes
+  useEffect(() => {
+    setActiveImageIdx(0);
+  }, [matchedVariant?.id]);
 
   // Check if already subscribed to notifications for this item
   useEffect(() => {
@@ -767,7 +778,7 @@ export default function ProductDetailPage() {
           onClick={() => setShowFullPhoto(true)}
         >
           <OptimizedImage
-            src={(matchedVariant && matchedVariant.image) ? matchedVariant.image : (product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image)}
+            src={displayImages[activeImageIdx] || product.image}
             alt={product.brand}
             fill
             priority={activeImageIdx === 0}
@@ -775,16 +786,16 @@ export default function ProductDetailPage() {
           />
           
           {/* Navigation Arrows for Carousel */}
-          {product.images && product.images.length > 1 && (
+          {displayImages && displayImages.length > 1 && (
             <>
               <button 
-                onClick={() => setActiveImageIdx(prev => (prev - 1 + product.images.length) % product.images.length)}
+                onClick={() => setActiveImageIdx(prev => (prev - 1 + displayImages.length) % displayImages.length)}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
               >
                 &lsaquo;
               </button>
               <button 
-                onClick={() => setActiveImageIdx(prev => (prev + 1) % product.images.length)}
+                onClick={() => setActiveImageIdx(prev => (prev + 1) % displayImages.length)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
               >
                 &rsaquo;
@@ -792,7 +803,7 @@ export default function ProductDetailPage() {
               
               {/* Pagination Dots */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
-                {product.images.map((_: any, idx: number) => (
+                {displayImages.map((_: any, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setActiveImageIdx(idx)}
@@ -805,9 +816,9 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Thumbnail strip */}
-        {product.images && product.images.length > 1 && (
+        {displayImages && displayImages.length > 1 && (
           <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 overflow-x-auto hide-scrollbar">
-            {product.images.map((imgUrl: string, idx: number) => (
+            {displayImages.map((imgUrl: string, idx: number) => (
               <button
                 key={idx}
                 onClick={() => setActiveImageIdx(idx)}
@@ -1638,7 +1649,7 @@ export default function ProductDetailPage() {
           <div className="flex-1 w-full max-w-lg mx-auto relative flex items-center justify-center p-4">
             <div className="relative w-full h-[75vh]" onClick={(e) => e.stopPropagation()}>
               <OptimizedImage
-                src={(matchedVariant && matchedVariant.image) ? matchedVariant.image : (product.images && product.images.length > 0 ? product.images[activeImageIdx] : product.image)}
+                src={displayImages[activeImageIdx] || product.image}
                 alt={product.brand}
                 fill
                 className="object-contain select-none"
@@ -1647,12 +1658,12 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Navigation Arrows for fullscreen lightbox */}
-          {product.images && product.images.length > 1 && (
+          {displayImages && displayImages.length > 1 && (
             <>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActiveImageIdx(prev => (prev - 1 + product.images.length) % product.images.length);
+                  setActiveImageIdx(prev => (prev - 1 + displayImages.length) % displayImages.length);
                 }}
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white text-2xl transition-all cursor-pointer z-55"
               >
@@ -1661,7 +1672,7 @@ export default function ProductDetailPage() {
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActiveImageIdx(prev => (prev + 1) % product.images.length);
+                  setActiveImageIdx(prev => (prev + 1) % displayImages.length);
                 }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white text-2xl transition-all cursor-pointer z-55"
               >
@@ -1676,9 +1687,9 @@ export default function ProductDetailPage() {
             <p className="text-gray-300 text-xs mt-1 truncate max-w-xs">{product.title}</p>
             
             {/* Dots / Carousel indicators in fullscreen */}
-            {product.images && product.images.length > 1 && (
+            {displayImages && displayImages.length > 1 && (
               <div className="flex space-x-2 mt-4" onClick={(e) => e.stopPropagation()}>
-                {product.images.map((_: any, idx: number) => (
+                {displayImages.map((_: any, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setActiveImageIdx(idx)}
