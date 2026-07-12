@@ -136,5 +136,21 @@ body.category-overlay-open .category-menu-list {
   animation: cascadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+
 
 

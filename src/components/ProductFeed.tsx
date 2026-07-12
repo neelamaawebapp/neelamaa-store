@@ -366,14 +366,27 @@ export default function ProductFeed() {
     <div className="pb-24 space-y-6 bg-white">
       
       {/* 1. Explore More / Main Grid (Trending) */}
-      <div className={`p-4 pt-8 pb-6 border-b relative ${trendingGrad.bg} ${trendingGrad.border}`}>
+      <div className={`p-4 pt-8 pb-6 border-b relative overflow-hidden ${trendingGrad.bg} ${trendingGrad.border}`}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#1A1A1A] tracking-tight">Trending</h2>
+          <span className="text-[9px] font-bold text-gray-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+            Auto Sliding
+          </span>
         </div>
-        <div className="flex space-x-3 overflow-x-auto hide-scrollbar pb-2 pt-1 px-1 -mx-1">
-          {trending.map((product) => (
-            <ProductCard key={product.id} product={product} isHorizontal={true} />
-          ))}
+        <div className="overflow-hidden -mx-4 px-4 relative">
+          <div className="absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute top-0 bottom-0 right-0 w-8 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none"></div>
+
+          <div className="animate-marquee hover:[animation-play-state:paused] space-x-3 py-2">
+            {/* First copy */}
+            {trending.map((product) => (
+              <ProductCard key={`${product.id}-t1`} product={product} isHorizontal={true} />
+            ))}
+            {/* Second copy for looping */}
+            {trending.map((product) => (
+              <ProductCard key={`${product.id}-t2`} product={product} isHorizontal={true} />
+            ))}
+          </div>
         </div>
       </div>
 
