@@ -165,6 +165,149 @@ export default function ProductFeed() {
     return () => clearInterval(interval);
   }, [flashSaleStartTime, flashSaleEndTime]);
 
+  // HOME MODE (Dynamic Dashboard)
+  // Partition products, keeping Flash Sale and New Arrivals fixed
+  const flashDeals = products.filter(p => p.homeSection === "Flash Sale");
+  const newArrivals = products.filter(p => p.homeSection === "New Arrivals");
+  
+  // Dynamic daily shuffle for Trending and More to Explore
+  // Get date seed (YYYY-MM-DD local date format)
+  const today = new Date();
+  const dateSeed = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  
+  // All products not in Flash Sale or New Arrivals are candidates for Trending and More to Explore
+  const candidates = products.filter(p => p.homeSection !== "Flash Sale" && p.homeSection !== "New Arrivals");
+  
+  // Deterministically shuffle candidates based on today's seed
+  const shuffledCandidates = seededShuffle(candidates, dateSeed);
+  
+  // We want to dynamically select Trending and More to Explore every day.
+  // We'll show up to 6 trending items, and the rest will go to "More to Explore".
+  let trendingLimit = 0;
+  if (shuffledCandidates.length > 0) {
+    trendingLimit = Math.max(1, Math.min(5, Math.floor(shuffledCandidates.length / 2)));
+  }
+  
+  const gradients = getDailyGradients();
+  const trendingGrad = gradients[2];
+  const flashSaleGrad = gradients[3];
+  const newArrivalsGrad = gradients[4];
+  const moreToExploreGrad = gradients[5];
+
+  const trending = shuffledCandidates.slice(0, trendingLimit);
+  const allOtherProducts = shuffledCandidates.slice(trendingLimit);
+
+  useEffect(() => {
+    const el = trendingScrollRef.current;
+    if (!el || trending.length === 0) return;
+
+    let animationFrameId: number;
+    let lastTime = performance.now();
+    let isInteractingRef = false;
+    let interactionTimeout: any;
+
+    const handleStart = () => {
+      isInteractingRef = true;
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+    };
+
+    const handleEnd = () => {
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+      interactionTimeout = setTimeout(() => {
+        isInteractingRef = false;
+        lastTime = performance.now();
+      }, 2000);
+    };
+
+    // Touch events for mobile swiping
+    el.addEventListener('touchstart', handleStart, { passive: true });
+    el.addEventListener('touchend', handleEnd, { passive: true });
+
+    // Drag to scroll events for desktop mouse
+    let isDown = false;
+    let startX: number;
+    let scrollLeftVal: number;
+    let isDragging = false;
+    let clickStartX = 0;
+    let clickStartY = 0;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      isDown = true;
+      isDragging = false;
+      clickStartX = e.clientX;
+      clickStartY = e.clientY;
+      isInteractingRef = true;
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+      startX = e.pageX - el.offsetLeft;
+      scrollLeftVal = el.scrollLeft;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      const x = e.pageX - el.offsetLeft;
+      
+      // Drag threshold
+      if (Math.abs(e.clientX - clickStartX) > 5 || Math.abs(e.clientY - clickStartY) > 5) {
+        isDragging = true;
+      }
+      
+      const walk = (x - startX) * 1.5;
+      el.scrollLeft = scrollLeftVal - walk;
+    };
+
+    const handleMouseUpOrLeave = () => {
+      isDown = false;
+      handleEnd();
+    };
+
+    const handleClickCapture = (e: MouseEvent) => {
+      if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    el.addEventListener('mousedown', handleMouseDown);
+    el.addEventListener('mousemove', handleMouseMove);
+    el.addEventListener('mouseup', handleMouseUpOrLeave);
+    el.addEventListener('mouseleave', handleMouseUpOrLeave);
+    el.addEventListener('click', handleClickCapture, true);
+
+    // Auto-scroll animation loop
+    const scrollSpeed = 30; // speed in pixels per second
+    const loop = (time: number) => {
+      const delta = (time - lastTime) / 1000;
+      lastTime = time;
+
+      if (!isInteractingRef && el) {
+        const itemWidth = el.scrollWidth / 2;
+        if (itemWidth > 0) {
+          el.scrollLeft += scrollSpeed * delta;
+          if (el.scrollLeft >= itemWidth) {
+            el.scrollLeft -= itemWidth;
+          } else if (el.scrollLeft <= 0) {
+            el.scrollLeft += itemWidth;
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(loop);
+    };
+
+    animationFrameId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+      el.removeEventListener('touchstart', handleStart);
+      el.removeEventListener('touchend', handleEnd);
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mousemove', handleMouseMove);
+      el.removeEventListener('mouseup', handleMouseUpOrLeave);
+      el.removeEventListener('mouseleave', handleMouseUpOrLeave);
+      el.removeEventListener('click', handleClickCapture, true);
+    };
+  }, [trending]);
+
   // Filtering Logic
   let filteredProducts = products;
 
@@ -332,147 +475,6 @@ export default function ProductFeed() {
   }
 
   // HOME MODE (Dynamic Dashboard)
-  // Partition products, keeping Flash Sale and New Arrivals fixed
-  const flashDeals = products.filter(p => p.homeSection === "Flash Sale");
-  const newArrivals = products.filter(p => p.homeSection === "New Arrivals");
-  
-  // Dynamic daily shuffle for Trending and More to Explore
-  // Get date seed (YYYY-MM-DD local date format)
-  const today = new Date();
-  const dateSeed = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-  
-  // All products not in Flash Sale or New Arrivals are candidates for Trending and More to Explore
-  const candidates = products.filter(p => p.homeSection !== "Flash Sale" && p.homeSection !== "New Arrivals");
-  
-  // Deterministically shuffle candidates based on today's seed
-  const shuffledCandidates = seededShuffle(candidates, dateSeed);
-  
-  // We want to dynamically select Trending and More to Explore every day.
-  // We'll show up to 6 trending items, and the rest will go to "More to Explore".
-  let trendingLimit = 0;
-  if (shuffledCandidates.length > 0) {
-    trendingLimit = Math.max(1, Math.min(5, Math.floor(shuffledCandidates.length / 2)));
-  }
-  
-  const gradients = getDailyGradients();
-  const trendingGrad = gradients[2];
-  const flashSaleGrad = gradients[3];
-  const newArrivalsGrad = gradients[4];
-  const moreToExploreGrad = gradients[5];
-
-  const trending = shuffledCandidates.slice(0, trendingLimit);
-  const allOtherProducts = shuffledCandidates.slice(trendingLimit);
-
-  useEffect(() => {
-    const el = trendingScrollRef.current;
-    if (!el || trending.length === 0) return;
-
-    let animationFrameId: number;
-    let lastTime = performance.now();
-    let isInteractingRef = false;
-    let interactionTimeout: any;
-
-    const handleStart = () => {
-      isInteractingRef = true;
-      if (interactionTimeout) clearTimeout(interactionTimeout);
-    };
-
-    const handleEnd = () => {
-      if (interactionTimeout) clearTimeout(interactionTimeout);
-      interactionTimeout = setTimeout(() => {
-        isInteractingRef = false;
-        lastTime = performance.now();
-      }, 2000);
-    };
-
-    // Touch events for mobile swiping
-    el.addEventListener('touchstart', handleStart, { passive: true });
-    el.addEventListener('touchend', handleEnd, { passive: true });
-
-    // Drag to scroll events for desktop mouse
-    let isDown = false;
-    let startX: number;
-    let scrollLeftVal: number;
-    let isDragging = false;
-    let clickStartX = 0;
-    let clickStartY = 0;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      isDown = true;
-      isDragging = false;
-      clickStartX = e.clientX;
-      clickStartY = e.clientY;
-      isInteractingRef = true;
-      if (interactionTimeout) clearTimeout(interactionTimeout);
-      startX = e.pageX - el.offsetLeft;
-      scrollLeftVal = el.scrollLeft;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDown) return;
-      const x = e.pageX - el.offsetLeft;
-      
-      // Drag threshold
-      if (Math.abs(e.clientX - clickStartX) > 5 || Math.abs(e.clientY - clickStartY) > 5) {
-        isDragging = true;
-      }
-      
-      const walk = (x - startX) * 1.5;
-      el.scrollLeft = scrollLeftVal - walk;
-    };
-
-    const handleMouseUpOrLeave = () => {
-      isDown = false;
-      handleEnd();
-    };
-
-    const handleClickCapture = (e: MouseEvent) => {
-      if (isDragging) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    el.addEventListener('mousedown', handleMouseDown);
-    el.addEventListener('mousemove', handleMouseMove);
-    el.addEventListener('mouseup', handleMouseUpOrLeave);
-    el.addEventListener('mouseleave', handleMouseUpOrLeave);
-    el.addEventListener('click', handleClickCapture, true);
-
-    // Auto-scroll animation loop
-    const scrollSpeed = 30; // speed in pixels per second
-    const loop = (time: number) => {
-      const delta = (time - lastTime) / 1000;
-      lastTime = time;
-
-      if (!isInteractingRef && el) {
-        const itemWidth = el.scrollWidth / 2;
-        if (itemWidth > 0) {
-          el.scrollLeft += scrollSpeed * delta;
-          if (el.scrollLeft >= itemWidth) {
-            el.scrollLeft -= itemWidth;
-          } else if (el.scrollLeft <= 0) {
-            el.scrollLeft += itemWidth;
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(loop);
-    };
-
-    animationFrameId = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      if (interactionTimeout) clearTimeout(interactionTimeout);
-      el.removeEventListener('touchstart', handleStart);
-      el.removeEventListener('touchend', handleEnd);
-      el.removeEventListener('mousedown', handleMouseDown);
-      el.removeEventListener('mousemove', handleMouseMove);
-      el.removeEventListener('mouseup', handleMouseUpOrLeave);
-      el.removeEventListener('mouseleave', handleMouseUpOrLeave);
-      el.removeEventListener('click', handleClickCapture, true);
-    };
-  }, [trending]);
 
   return (
     <div className="pb-24 space-y-6 bg-white">
