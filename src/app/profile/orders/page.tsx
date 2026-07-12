@@ -301,9 +301,11 @@ export default function CustomerOrdersPage() {
         proofUrl
       };
 
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/return-refund", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders },
         body: JSON.stringify(payload)
       });
       const data = await res.json();

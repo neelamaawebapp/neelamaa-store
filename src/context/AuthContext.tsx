@@ -38,8 +38,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         setLoading(false);
       } else {
-        // No real user, check if we have a mock user
-        const localMockUser = localStorage.getItem("craftstyle_mock_user");
+        // No real user, check if we have a mock user (dev environment only)
+        const localMockUser = process.env.NODE_ENV === "development" ? localStorage.getItem("craftstyle_mock_user") : null;
         if (localMockUser) {
           try {
             const parsed = JSON.parse(localMockUser);
@@ -66,6 +66,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const loginAsMockUser = (email: string, name: string) => {
+    if (process.env.NODE_ENV !== "development") {
+      console.warn("Mock login bypass is disabled in production.");
+      return;
+    }
     const mockUser = {
       uid: `mock_${Date.now()}`,
       email,

@@ -28,7 +28,9 @@ export default function Header() {
 
     const loadBalance = async () => {
       try {
-        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+        const { getAuthHeaders } = await import("@/lib/api-client");
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`, { headers });
         if (res.ok) {
           const data = await res.json();
           if (data.success) {

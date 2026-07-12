@@ -3,10 +3,20 @@ import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function POST(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    const user = await authenticateRequest(req);
+
     const { userId, orderId, amount } = await req.json();
 
     if (!userId || !orderId || amount === undefined || amount <= 0) {
       return NextResponse.json({ error: "Missing required fields or invalid amount" }, { status: 400 });
+    }
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admincraftstyle@gmail.com";
+    const isCallerAdmin = user.email === adminEmail || user.email === "admin@craftstyle.com";
+
+    if (user.uid !== userId && !isCallerAdmin) {
+      return NextResponse.json({ error: "Forbidden: You cannot debit another user's wallet." }, { status: 403 });
     }
 
     const { getFirestore, doc, collection, runTransaction } = await import("firebase/firestore");

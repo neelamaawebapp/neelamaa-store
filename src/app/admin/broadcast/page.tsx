@@ -196,9 +196,11 @@ export default function BroadcastDashboard() {
 
         // Save campaign trace logs
         try {
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const authHeaders = await getAuthHeaders();
           await fetch("/api/send-broadcast", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { ...authHeaders },
             body: JSON.stringify({
               title: marketingTitle.trim(),
               message: marketingMessage.trim(),
@@ -224,9 +226,11 @@ export default function BroadcastDashboard() {
     setError("");
 
     try {
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/send-broadcast", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders },
         body: JSON.stringify({
           title: marketingTitle.trim(),
           message: marketingMessage.trim(),
@@ -561,10 +565,12 @@ export default function BroadcastDashboard() {
 
       // 2. Send Background Web Push Notifications via API route
       try {
+        const { getAuthHeaders } = await import("@/lib/api-client");
+        const authHeaders = await getAuthHeaders();
         const response = await fetch("/api/send-broadcast", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            ...authHeaders,
           },
           body: JSON.stringify({
             title: broadcastData.title,
@@ -1275,9 +1281,11 @@ export default function BroadcastDashboard() {
                   onClick={async () => {
                     setIsQueueActive(false);
                     try {
+                      const { getAuthHeaders } = await import("@/lib/api-client");
+                      const authHeaders = await getAuthHeaders();
                       const res = await fetch("/api/send-broadcast", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { ...authHeaders },
                         body: JSON.stringify({
                           title: marketingTitle.trim(),
                           message: marketingMessage.trim(),

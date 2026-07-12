@@ -3,6 +3,8 @@ import { DEFAULT_WALLET_SETTINGS } from "@/lib/wallet";
 
 export async function GET(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    await authenticateRequest(req);
     const { getFirestore, doc, getDoc } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
@@ -24,6 +26,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const body = await req.json();
     const { signupBonus, referralBonus, cashbackPercent, maxCashbackLimit, expiryDays } = body;
 

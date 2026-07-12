@@ -3,6 +3,9 @@ import nodemailer from 'nodemailer';
 
 export async function POST(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    const user = await authenticateRequest(req);
+
     const { 
       orderId, 
       itemIndex, 
@@ -14,6 +17,10 @@ export async function POST(req: Request) {
       comments, 
       proofUrl 
     } = await req.json();
+
+    if (user.uid !== userId) {
+      return NextResponse.json({ error: "Forbidden: You can only request returns for your own orders." }, { status: 403 });
+    }
 
     if (!orderId || itemIndex === undefined || !userId || !customerName || !customerEmail || !requestType || !reason) {
       return NextResponse.json({ error: "Missing required fields for return request." }, { status: 400 });
@@ -202,6 +209,9 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const { returnRequestId, status } = await req.json();
 
     if (!returnRequestId || !status || !["Approved", "Rejected"].includes(status)) {

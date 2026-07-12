@@ -124,9 +124,11 @@ export default function AdminReturns() {
         }
       } else {
         // Send actual PATCH request to Firestore API
+        const { getAuthHeaders } = await import("@/lib/api-client");
+        const authHeaders = await getAuthHeaders();
         const res = await fetch("/api/return-refund", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { ...authHeaders },
           body: JSON.stringify({ returnRequestId: requestId, status: newStatus })
         });
         const data = await res.json();

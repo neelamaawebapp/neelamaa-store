@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function GET(req: Request) {
-  return handleCronExpire();
+  return handleCronExpire(req);
 }
 
 export async function POST(req: Request) {
-  return handleCronExpire();
+  return handleCronExpire(req);
 }
 
-async function handleCronExpire() {
+async function handleCronExpire(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const { getFirestore, doc, collection, query, where, getDocs, runTransaction } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);

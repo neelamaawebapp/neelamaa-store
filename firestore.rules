@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Is the user logged in?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper: Is the logged-in user the owner of the document?
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: Is the logged-in user an administrator?
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'admincraftstyle@gmail.com' || request.auth.token.email == 'admin@craftstyle.com');
+    }
+
+    // 1. Products Collection: Public read, Admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 2. Wallets Collection: User can read their own, Admin can read/write
+    match /wallets/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin(); // Users should NOT be able to modify their balance directly!
+    }
+
+    // 3. Wallet Transactions: User can read their own, only Admin can write
+    match /wallet_transactions/{txId} {
+      allow read: if isAuthenticated() && resource.data.walletId == request.auth.uid || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 4. Orders Collection: User can read/create their own, Admin has full access
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin(); // Prevent users from changing status to 'Delivered' or 'Refunded'
+    }
+
+    // 5. Return Requests: User can create/read their own, Admin has full access
+    match /returnRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // 6. Settings Collection: Public read, Admin write
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

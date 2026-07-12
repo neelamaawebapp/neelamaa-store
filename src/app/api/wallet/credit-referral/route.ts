@@ -3,10 +3,17 @@ import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function POST(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    const user = await authenticateRequest(req);
+
     const { userId, referredByCode } = await req.json();
 
     if (!userId || !referredByCode) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
+    }
+
+    if (user.uid !== userId) {
+      return NextResponse.json({ error: "Forbidden: You can only apply referral codes for your own account." }, { status: 403 });
     }
 
     const normalizedCode = referredByCode.trim().toUpperCase();

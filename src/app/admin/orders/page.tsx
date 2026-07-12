@@ -283,9 +283,11 @@ export default function AdminOrders() {
       // Trigger cashback on Delivered
       if (newStatus === "Delivered") {
         try {
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const authHeaders = await getAuthHeaders();
           await fetch("/api/wallet/credit-cashback", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { ...authHeaders },
             body: JSON.stringify({
               orderId: orderId,
               userId: order.userId || "guest",
@@ -300,9 +302,11 @@ export default function AdminOrders() {
       // 3. Trigger customer status update notification (Delivered or Cancelled)
       if (newStatus === "Delivered" || newStatus === "Cancelled") {
         try {
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const authHeaders = await getAuthHeaders();
           const res = await fetch("/api/send-status-update", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { ...authHeaders },
             body: JSON.stringify({
               name: order.customerName || "Customer",
               email: order.customerEmail || order.email || "",
@@ -447,9 +451,11 @@ export default function AdminOrders() {
       }
 
       // 2. Notify User
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/send-shipping", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders },
         body: JSON.stringify({
           name: order.customerName || "Customer",
           email: customerEmail,

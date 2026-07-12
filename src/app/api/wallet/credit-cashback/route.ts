@@ -4,17 +4,29 @@ import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function POST(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    const user = await authenticateRequest(req);
+
     const { orderId, userId, mockOrderTotal } = await req.json();
 
     if (!orderId || !userId) {
       return NextResponse.json({ error: "Missing orderId or userId parameters" }, { status: 400 });
     }
 
+    if (user.uid !== userId) {
+      return NextResponse.json({ error: "Forbidden: You can only request cashback for your own account." }, { status: 403 });
+    }
+
+    const isMock = orderId.startsWith("mock_");
+    const isDev = process.env.NODE_ENV === "development";
+
+    if (isMock && !isDev) {
+      return NextResponse.json({ error: "Forbidden: Mock orders are not permitted in production." }, { status: 403 });
+    }
+
     const { getFirestore, doc, getDoc, collection, query, where, getDocs, runTransaction } = await import("firebase/firestore");
     const { app } = await import("@/lib/firebase");
     const db = getFirestore(app);
-
-    const isMock = orderId.startsWith("mock_");
 
     // 1. If it's a mock order, do a pre-query to ensure we haven't already credited it.
     if (isMock) {

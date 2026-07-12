@@ -34,8 +34,16 @@ export async function POST(req: Request) {
     }
 
     // 4. Verify OTP code
+    const attempts = Number(resetData.attempts || 0) + 1;
+    if (attempts >= 5) {
+      await deleteDoc(resetDocRef);
+      return NextResponse.json({ error: "Too many failed attempts. This OTP has been invalidated. Please request a new one." }, { status: 400 });
+    }
+
     if (resetData.otp !== trimmedOtp) {
-      return NextResponse.json({ error: "Invalid OTP code. Please try again." }, { status: 400 });
+      const { updateDoc } = await import("firebase/firestore/lite");
+      await updateDoc(resetDocRef, { attempts });
+      return NextResponse.json({ error: `Invalid OTP code. You have ${5 - attempts} attempts remaining.` }, { status: 400 });
     }
 
     // 5. Clean up successfully verified record

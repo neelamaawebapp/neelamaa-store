@@ -126,7 +126,9 @@ export default function CheckoutPage() {
         } else {
           let apiSucceeded = false;
           try {
-            const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+            const { getAuthHeaders } = await import("@/lib/api-client");
+            const authHeaders = await getAuthHeaders();
+            const res = await fetch(`/api/wallet/balance?userId=${user.uid}`, { headers: authHeaders });
             if (res.ok) {
               const data = await res.json();
               if (data.success && (data.balance > 0 || (data.transactions && data.transactions.length > 0))) {
@@ -555,9 +557,11 @@ export default function CheckoutPage() {
 
             // Fallback to API route if client-side write failed
             if (!debitSucceeded) {
+              const { getAuthHeaders } = await import("@/lib/api-client");
+              const authHeaders = await getAuthHeaders();
               const debitRes = await fetch("/api/wallet/debit", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { ...authHeaders },
                 body: JSON.stringify({
                   userId: orderData.userId,
                   orderId: orderId,
@@ -671,9 +675,11 @@ export default function CheckoutPage() {
               }
 
               if (!debitSucceeded) {
+                const { getAuthHeaders } = await import("@/lib/api-client");
+                const authHeaders = await getAuthHeaders();
                 await fetch("/api/wallet/debit", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json" },
+                  headers: { ...authHeaders },
                   body: JSON.stringify({
                     userId: orderData.userId,
                     orderId: orderId,

@@ -4,11 +4,21 @@ import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function GET(req: Request) {
   try {
+    const { authenticateRequest } = await import("@/lib/auth-server");
+    const user = await authenticateRequest(req);
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
 
     if (!userId) {
       return NextResponse.json({ error: "Missing userId parameter" }, { status: 400 });
+    }
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admincraftstyle@gmail.com";
+    const isCallerAdmin = user.email === adminEmail || user.email === "admin@craftstyle.com";
+
+    if (user.uid !== userId && !isCallerAdmin) {
+      return NextResponse.json({ error: "Forbidden: You cannot view another user's balance." }, { status: 403 });
     }
 
     // 1. Initialize Firestore (using full SDK for transactions)

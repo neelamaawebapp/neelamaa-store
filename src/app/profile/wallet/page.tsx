@@ -82,7 +82,9 @@ export default function UserWalletPage() {
       } else {
         let apiSucceeded = false;
         try {
-          const res = await fetch(`/api/wallet/balance?userId=${user.uid}`);
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const headers = await getAuthHeaders();
+          const res = await fetch(`/api/wallet/balance?userId=${user.uid}`, { headers });
           if (res.ok) {
             const data = await res.json();
             if (data.success && (data.balance > 0 || (data.transactions && data.transactions.length > 0))) {

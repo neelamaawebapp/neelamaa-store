@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const body = await req.json();
     const title = body.title;
     const message = body.message;

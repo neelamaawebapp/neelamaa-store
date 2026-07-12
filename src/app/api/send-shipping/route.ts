@@ -3,6 +3,9 @@ import nodemailer from 'nodemailer';
 
 export async function POST(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const { name, email, phone, orderId, shippingCompany, trackingNumber } = await req.json();
 
     const isConfigured = (val?: string) => !!val && val.trim() !== "" && !val.includes("YOUR_");

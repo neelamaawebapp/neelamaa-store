@@ -146,9 +146,11 @@ function SignupContent() {
       // 4. Trigger referral credits if valid code entered
       if (trimmedRefInput) {
         try {
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const authHeaders = await getAuthHeaders();
           await fetch("/api/wallet/credit-referral", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { ...authHeaders },
             body: JSON.stringify({
               userId: user.uid,
               referredByCode: trimmedRefInput

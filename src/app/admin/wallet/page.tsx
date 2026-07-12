@@ -39,7 +39,9 @@ export default function AdminWalletSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/wallet/admin-settings");
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/wallet/admin-settings", { headers });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.settings) {
@@ -136,9 +138,11 @@ export default function AdminWalletSettings() {
     setErrorMsg("");
 
     try {
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/wallet/admin-settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders },
         body: JSON.stringify({
           signupBonus,
           referralBonus,
@@ -166,7 +170,12 @@ export default function AdminWalletSettings() {
     setCronRunning(true);
     setCronResult(null);
     try {
-      const res = await fetch("/api/wallet/cron-expire", { method: "POST" });
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/wallet/cron-expire", {
+        method: "POST",
+        headers: { ...authHeaders }
+      });
       const data = await res.json();
       if (data.success) {
         setCronResult(data);

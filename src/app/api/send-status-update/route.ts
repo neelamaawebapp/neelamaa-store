@@ -3,6 +3,9 @@ import nodemailer from 'nodemailer';
 
 export async function POST(req: Request) {
   try {
+    const { verifyAdminRequest } = await import("@/lib/auth-server");
+    await verifyAdminRequest(req);
+
     const { name, email, phone, orderId, status } = await req.json();
 
     if (!email || !email.includes("@") || !status || !orderId) {
