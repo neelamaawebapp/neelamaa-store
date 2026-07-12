@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { 
   RotateCcw, CheckCircle, XCircle, Clock, Search, X, 
   User, Mail, AlertCircle, RefreshCw, Eye 
 } from "lucide-react";
 
 export default function AdminReturns() {
+  const { user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -21,6 +23,28 @@ export default function AdminReturns() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    const isMock = !user || user.uid.startsWith("mock_");
+
+    if (isMock) {
+      let localRequests: any[] = [];
+      if (typeof window !== "undefined") {
+        try {
+          const localReturnsStr = localStorage.getItem("craftstyle_local_return_requests");
+          if (localReturnsStr) {
+            localRequests = JSON.parse(localReturnsStr);
+            localRequests.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          }
+        } catch (e) {
+          console.error("Failed to parse local return requests", e);
+        }
+      }
+      setRequests(localRequests);
+      setLoading(false);
+      return;
+    }
+
     // 1. Subscribe to remote return requests from Firestore
     const q = query(collection(db, "returnRequests"), orderBy("createdAt", "desc"));
     const unsubscribeRequests = onSnapshot(q, (snapshot) => {
@@ -72,7 +96,7 @@ export default function AdminReturns() {
     });
 
     return () => unsubscribeRequests();
-  }, []);
+  }, [user, authLoading]);
 
   const handleAction = async (requestId: string, newStatus: "Approved" | "Rejected") => {
     if (!confirm(`Are you sure you want to mark this request as ${newStatus.toLowerCase()}?`)) return;

@@ -33,8 +33,10 @@ import {
 import { autoAdjustImage } from "@/lib/imageUtils";
 import { useRef } from "react";
 import ImageEditorModal from "@/components/ImageEditorModal";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BroadcastDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"history" | "restock" | "marketing">("marketing");
   
   // State for Broadcast Composer
@@ -297,6 +299,32 @@ export default function BroadcastDashboard() {
 
   // Fetch Restock Alert Subscriptions
   useEffect(() => {
+    if (authLoading) return;
+
+    const isMock = !user || user.uid.startsWith("mock_");
+
+    if (isMock) {
+      let localSubs: any[] = [];
+      try {
+        const stored = localStorage.getItem("craftstyle_stock_subscriptions");
+        if (stored) {
+          localSubs = JSON.parse(stored).map((s: any) => ({
+            id: `local_${s.productId}_${s.email}`,
+            isLocal: true,
+            ...s
+          }));
+          localSubs.sort((a: any, b: any) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+        }
+      } catch (e) {}
+      setSubscriptions(localSubs);
+      setFetchingSubs(false);
+      return;
+    }
+
     const q = collection(db, "back_in_stock_subscriptions");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -362,10 +390,35 @@ export default function BroadcastDashboard() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user, authLoading]);
 
   // Fetch Broadcasts History
   useEffect(() => {
+    if (authLoading) return;
+
+    const isMock = !user || user.uid.startsWith("mock_");
+
+    if (isMock) {
+      let localBroadcasts: any[] = [];
+      try {
+        const stored = localStorage.getItem("craftstyle_local_notifications");
+        if (stored) {
+          localBroadcasts = JSON.parse(stored).filter((n: any) => n.id?.startsWith("broadcast_")).map((n: any) => ({
+            ...n,
+            isLocal: true
+          }));
+          localBroadcasts.sort((a: any, b: any) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+        }
+      } catch (e) {}
+      setBroadcasts(localBroadcasts);
+      setFetchingBroadcasts(false);
+      return;
+    }
+
     const q = collection(db, "broadcast_notifications");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -428,7 +481,7 @@ export default function BroadcastDashboard() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user, authLoading]);
 
   const handleUploadImageFile = async (file: File) => {
     // Deprecated direct upload - now goes through ImageEditorModal

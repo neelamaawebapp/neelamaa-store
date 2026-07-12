@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isAdmin) return;
 
+    const isMock = !user || user.uid.startsWith("mock_");
     let remotePendingCount = 0;
 
     const updateCount = () => {
@@ -29,6 +30,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
       setPendingCount(remotePendingCount + localPending);
     };
+
+    if (isMock) {
+      updateCount();
+      const interval = setInterval(updateCount, 1500);
+      return () => clearInterval(interval);
+    }
 
     const q = query(collection(db, "returnRequests"), where("status", "==", "Pending"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -45,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       unsubscribe();
       clearInterval(interval);
     };
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   useEffect(() => {
     if (!loading && !isAdmin) {

@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Package, Truck, CheckCircle, XCircle, Clock, FileText, AlertTriangle, HelpCircle, Search, X, Printer } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AdminOrders() {
+  const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,6 +114,34 @@ export default function AdminOrders() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
+
+    const isMock = !user || user.uid.startsWith("mock_");
+
+    if (isMock) {
+      let localOrders: any[] = [];
+      if (typeof window !== "undefined") {
+        const localOrdersStr = localStorage.getItem("craftstyle_local_orders");
+        if (localOrdersStr) {
+          try {
+            const localOrdersParsed = JSON.parse(localOrdersStr);
+            localOrders = localOrdersParsed.map((o: any) => ({
+              ...o,
+              createdAt: {
+                toDate: () => new Date(),
+                toLocaleString: () => new Date().toLocaleString()
+              }
+            }));
+          } catch (e) {
+            console.error("Failed to parse local orders", e);
+          }
+        }
+      }
+      setOrders(localOrders);
+      setLoading(false);
+      return;
+    }
+
     // 1. Subscribe to orders
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
     const unsubscribeOrders = onSnapshot(q, (snapshot) => {
@@ -176,7 +206,7 @@ export default function AdminOrders() {
       unsubscribeOrders();
       unsubscribeProducts();
     };
-  }, []);
+  }, [user, authLoading]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
