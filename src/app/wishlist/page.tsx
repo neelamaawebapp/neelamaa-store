@@ -217,7 +217,7 @@ export default function WishlistPage() {
                 </button>
 
                 {/* Product Image Link */}
-                <Link href={`/product/${product.id}`} className="block relative aspect-[4/5] bg-gray-50 overflow-hidden">
+                <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] bg-gray-50 overflow-hidden">
                   <OptimizedImage 
                     src={product.image} 
                     alt={product.title} 

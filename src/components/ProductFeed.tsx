@@ -193,9 +193,9 @@ export default function ProductFeed() {
       <Link 
         href={`/product/${product.id}`} 
         className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none
-          ${isHorizontal ? 'w-44 flex-shrink-0' : 'w-full'}`}
+          ${isHorizontal ? 'w-52 flex-shrink-0' : 'w-full'}`}
       >
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#F9F9F9]">
           <OptimizedImage
             src={product.image}
             alt={product.brand}
@@ -207,6 +207,11 @@ export default function ProductFeed() {
               <span className="bg-rose-600 text-white text-[9px] font-black px-2.5 py-1.5 rounded-full uppercase tracking-widest shadow-md">
                 Out of Stock
               </span>
+            </div>
+          )}
+          {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) > 0 && Number(product.quantity) <= 5 && (
+            <div className="absolute top-2 left-2 bg-slate-700/90 backdrop-blur-xs text-white text-[8px] font-bold px-2 py-0.5 rounded shadow-sm z-10 font-sans uppercase tracking-wider">
+              Only {product.quantity} left
             </div>
           )}
           {(() => {
@@ -249,12 +254,6 @@ export default function ProductFeed() {
               );
             })()}
           </div>
-
-          {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) > 0 && Number(product.quantity) <= 5 && (
-            <div className="mt-2 inline-flex items-center gap-1 bg-slate-700 text-white text-[9px] font-semibold px-2 py-0.5 rounded shadow-sm w-max font-sans uppercase tracking-wider">
-              <span>⚡ Only {product.quantity} left</span>
-            </div>
-          )}
         </div>
       </Link>
     );
@@ -321,7 +320,7 @@ export default function ProductFeed() {
             No products found matching "{searchQuery}".
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 pb-24">
+          <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 pb-24">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -351,7 +350,7 @@ export default function ProductFeed() {
   // We'll show up to 6 trending items, and the rest will go to "More to Explore".
   let trendingLimit = 0;
   if (shuffledCandidates.length > 0) {
-    trendingLimit = Math.max(1, Math.min(6, Math.floor(shuffledCandidates.length / 2)));
+    trendingLimit = Math.max(1, Math.min(5, Math.floor(shuffledCandidates.length / 2)));
   }
   
   const gradients = getDailyGradients();

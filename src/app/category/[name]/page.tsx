@@ -228,9 +228,9 @@ export default function CategoryProductsPage() {
           <p className="text-xs text-gray-400">There are no products available in this category selection.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-0.5 bg-gray-100 flex-1">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 flex-1">
           {filteredProducts.map((product) => (
-            <Link href={`/product/${product.id}`} key={product.id} className="bg-white flex flex-col relative group cursor-pointer">
+            <Link href={`/product/${product.id}`} key={product.id} className="bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none">
               <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-55">
                 <OptimizedImage
                   src={product.image}

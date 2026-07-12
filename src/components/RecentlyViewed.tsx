@@ -161,7 +161,7 @@ export default function RecentlyViewed() {
               href={`/product/${product.id}`} 
               className="bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 border border-gray-100/40 w-36 flex-shrink-0"
             >
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F9F9F9]">
+              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#F9F9F9]">
                 <OptimizedImage
                   src={product.image}
                   alt={product.brand}
