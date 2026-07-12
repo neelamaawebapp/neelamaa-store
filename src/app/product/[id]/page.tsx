@@ -759,8 +759,8 @@ export default function ProductDetailPage() {
 
       {/* Top Section: Product Name and Short Description with divider lines */}
       <div className="p-4 bg-white border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">{product.title}</h1>
-        <h2 className="text-sm font-semibold text-gray-500 mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
+        <h1 className="font-sans font-semibold text-[18px] text-[#222222] leading-tight tracking-tight">{product.title}</h1>
+        <h2 className="font-sans font-normal text-[12px] text-[#666666] mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
         {product.oneLiner && (
           <p className="text-xs text-slate-500 font-medium mt-1.5 leading-normal tracking-wide bg-slate-50 px-2.5 py-1.5 rounded-lg inline-block border border-slate-100">
             {product.oneLiner}
@@ -926,13 +926,13 @@ export default function ProductDetailPage() {
                       {getVariantLabel(v)}
                     </p>
                     <div className="flex items-baseline gap-1 flex-wrap">
-                      <span className="text-xs font-black text-pink-600">₹{v.price}</span>
+                      <span className="font-sans font-bold text-xs text-[#000000]">₹{v.price}</span>
                       {v.mrp > v.price && (
-                        <span className="text-[9px] text-gray-400 line-through">₹{v.mrp}</span>
+                        <span className="font-sans font-normal text-[9px] text-[#999999] line-through">₹{v.mrp}</span>
                       )}
                     </div>
                     {discountPercent > 0 && (
-                      <span className="text-[8px] bg-red-50/50 text-red-650 font-extrabold px-1 py-0.5 rounded uppercase tracking-wide block w-fit">
+                      <span className="font-sans font-bold text-[8px] bg-emerald-50 text-[#10B981] px-1 py-0.5 rounded uppercase tracking-wide block w-fit">
                         {discountPercent}% OFF
                       </span>
                     )}
@@ -989,7 +989,7 @@ export default function ProductDetailPage() {
       {/* Price & Option Details */}
       <div className="p-4 bg-white border-b border-gray-100">
         <div className="flex items-baseline space-x-3 flex-wrap">
-          <span className="text-3xl font-extrabold text-pink-600">₹{displayPrice}</span>
+          <span className="text-3xl font-bold text-[#000000] font-sans">₹{displayPrice}</span>
           {(() => {
             const mrpVal = displayMrp;
             const discountPercent = mrpVal > displayPrice ? Math.round(((mrpVal - displayPrice) / mrpVal) * 100) : 0;
@@ -997,8 +997,8 @@ export default function ProductDetailPage() {
               <>
                 {mrpVal > displayPrice && (
                   <>
-                    <span className="text-sm text-gray-400 line-through font-medium">₹{mrpVal}</span>
-                    <span className="text-sm font-bold text-orange-500">({discountPercent}% OFF)</span>
+                    <span className="text-sm font-sans font-normal text-[#999999] line-through">₹{mrpVal}</span>
+                    <span className="text-sm font-sans font-bold text-[#10B981]">({discountPercent}% OFF)</span>
                   </>
                 )}
               </>
@@ -1423,7 +1423,7 @@ export default function ProductDetailPage() {
       {/* Suggested Items Section */}
       {suggestions.length > 0 && (
         <div className="p-4 bg-white border-t border-gray-100 mt-4 pb-20">
-          <h2 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider text-gray-500 mb-3.5">You May Also Like</h2>
+          <h2 className="font-sans font-bold text-[#1A1A1A] uppercase text-[12px] tracking-wider mb-3.5">You May Also Like</h2>
           <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-3 snap-x">
             {suggestions.map((item) => {
               const itemMrp = item.mrp || Math.round(item.price * 1.5);
@@ -1443,18 +1443,18 @@ export default function ProductDetailPage() {
                   <div className="w-32 h-44 bg-gray-150 rounded-xl overflow-hidden relative shadow-sm border border-gray-100/50 group-hover:shadow-md transition-all duration-300">
                     <OptimizedImage src={item.image} alt={item.brand} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     {discountPercent > 0 && (
-                      <div className="absolute top-2 left-2 bg-pink-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow">
+                      <div className="absolute top-2 left-2 bg-[#10B981] text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow">
                         {discountPercent}% OFF
                       </div>
                     )}
                   </div>
                   <div className="mt-2 text-left">
-                    <h3 className="font-bold text-[11px] text-gray-900 truncate uppercase tracking-tight">{item.title}</h3>
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5 leading-normal">{item.brand}</p>
+                    <p className="text-[12px] font-normal text-[#666666] truncate font-sans">{item.brand}</p>
+                    <h3 className="font-semibold text-[14px] text-[#222222] truncate mt-0.5 font-sans">{item.title}</h3>
                     <div className="mt-1 flex items-baseline space-x-1.5">
-                      <span className="text-[11px] font-extrabold text-pink-600 font-sans">₹{item.price}</span>
+                      <span className="text-[16px] font-bold text-[#000000] font-sans">₹{item.price}</span>
                       {itemMrp > item.price && (
-                        <span className="text-[9px] text-gray-400 line-through font-sans">₹{itemMrp}</span>
+                        <span className="text-[12px] text-[#999999] line-through font-sans">₹{itemMrp}</span>
                       )}
                     </div>
                   </div>

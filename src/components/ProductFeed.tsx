@@ -231,26 +231,28 @@ export default function ProductFeed() {
           )}
         </div>
         <div className="p-3">
-          <h3 className="font-bold text-sm text-gray-900 truncate tracking-tight">{product.brand}</h3>
-          <p className="text-xs text-gray-500 truncate mt-0.5">{product.title}</p>
+          <h4 className="font-sans font-normal text-[12px] text-[#666666] truncate">{product.brand}</h4>
+          <h3 className="font-sans font-semibold text-[14px] text-[#222222] truncate mt-0.5">{product.title}</h3>
+          
           <div className="mt-2 flex items-baseline space-x-2 flex-wrap">
-            <span className="font-extrabold text-[15px] text-pink-600">₹{product.price}</span>
+            <span className="font-sans font-bold text-[16px] text-[#000000]">₹{product.price}</span>
             {(() => {
               const mrpVal = product.mrp || Math.round(product.price * 1.5);
               const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
               return (
                 mrpVal > product.price && (
                   <>
-                    <span className="text-[10px] text-gray-400 line-through font-medium">₹{mrpVal}</span>
-                    <span className="text-[10px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                    <span className="font-sans font-normal text-[12px] text-[#999999] line-through">₹{mrpVal}</span>
+                    <span className="font-sans font-bold text-[12px] text-[#10B981]">({discountPercent}% OFF)</span>
                   </>
                 )
               );
             })()}
           </div>
+
           {product.quantity !== undefined && product.quantity !== null && Number(product.quantity) > 0 && Number(product.quantity) <= 5 && (
-            <div className="mt-1.5 text-[10px] font-bold text-amber-600 uppercase tracking-wide">
-              ⚡ Only {product.quantity} pieces available!
+            <div className="mt-2 inline-flex items-center gap-1 bg-slate-700 text-white text-[9px] font-semibold px-2 py-0.5 rounded shadow-sm w-max font-sans uppercase tracking-wider">
+              <span>⚡ Only {product.quantity} left</span>
             </div>
           )}
         </div>
@@ -367,7 +369,7 @@ export default function ProductFeed() {
       {/* 1. Explore More / Main Grid (Trending) */}
       <div className={`p-4 pt-8 pb-6 border-b relative ${trendingGrad.bg} ${trendingGrad.border}`}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">Trending</h2>
+          <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#1A1A1A] tracking-tight">Trending</h2>
         </div>
         <div className="flex space-x-3 overflow-x-auto hide-scrollbar pb-2 pt-1 px-1 -mx-1">
           {trending.map((product) => (
@@ -390,7 +392,7 @@ export default function ProductFeed() {
                   {flashSaleState === 'upcoming' ? "Coming Soon" : "Limited Time"}
                 </span>
               </div>
-              <h2 className={`text-2xl font-serif font-bold leading-none ${flashSaleState === 'upcoming' ? "text-slate-800" : "text-pink-600"}`}>Flash Sale</h2>
+              <h2 className={`font-sans font-bold text-[18px] md:text-[20px] leading-none ${flashSaleState === 'upcoming' ? "text-slate-800" : "text-[#1A1A1A]"}`}>Flash Sale</h2>
             </div>
             <div className={`px-2 py-1 rounded shadow-sm border text-xs font-mono font-bold tracking-wider transition-all duration-300
               ${flashSaleState === 'upcoming' 
@@ -412,7 +414,7 @@ export default function ProductFeed() {
       {newArrivals.length > 0 && (
         <div className={`p-4 py-8 border-b relative ${newArrivalsGrad.bg} ${newArrivalsGrad.border}`}>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">New Arrivals</h2>
+            <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#1A1A1A] tracking-tight">New Arrivals</h2>
             <Link href={`/category/${encodeURIComponent("New Arrivals")}`} className="text-xs font-bold text-gray-500 flex items-center hover:text-pink-600 transition-colors uppercase tracking-wider">
               View All <ChevronRight size={14} className="ml-0.5" />
             </Link>
@@ -428,7 +430,7 @@ export default function ProductFeed() {
       {/* 4. All Other Products (Standard) */}
       <div className={`p-4 pt-6 min-h-screen ${moreToExploreGrad.bg}`}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-serif font-bold text-pink-600 tracking-tight">More to Explore</h2>
+          <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#1A1A1A] tracking-tight">More to Explore</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {allOtherProducts.map((product) => (

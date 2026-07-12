@@ -267,23 +267,19 @@ export default function WishlistPage() {
                   ) : null}
 
                   <div>
-                    <h3 className="font-extrabold text-xs text-gray-900 truncate tracking-tight uppercase">
-                      {product.title}
-                    </h3>
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                      {product.brand}
-                    </p>
+                    <h4 className="font-sans font-normal text-[12px] text-[#666666] truncate">{product.brand}</h4>
+                    <h3 className="font-sans font-semibold text-[14px] text-[#222222] truncate mt-0.5">{product.title}</h3>
                     
                     <div className="mt-1.5 flex items-baseline space-x-1.5 flex-wrap">
-                      <span className="font-black text-xs text-pink-600">₹{product.price}</span>
+                      <span className="font-sans font-bold text-[16px] text-[#000000]">₹{product.price}</span>
                       {(() => {
                         const mrpVal = product.mrp || Math.round(product.price * 1.5);
                         const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
                         return (
                           mrpVal > product.price && (
                             <>
-                              <span className="text-[9px] text-gray-400 line-through font-medium">₹{mrpVal}</span>
-                              <span className="text-[8px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                              <span className="font-sans font-normal text-[12px] text-[#999999] line-through">₹{mrpVal}</span>
+                              <span className="font-sans font-bold text-[12px] text-[#10B981]">({discountPercent}% OFF)</span>
                             </>
                           )
                         );

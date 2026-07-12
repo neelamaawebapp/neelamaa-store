@@ -143,9 +143,9 @@ export default function RecentlyViewed() {
   return (
     <div className={`p-4 pt-6 pb-6 border-y relative ${gradient.bg} ${gradient.border}`}>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-serif font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+        <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#1A1A1A] tracking-tight flex items-center gap-1.5">
           <span>Keep Shopping For</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-pink-600 animate-pulse"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-700 animate-pulse"></span>
         </h2>
         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${gradient.badge}`}>
           From where you left
@@ -198,19 +198,19 @@ export default function RecentlyViewed() {
               </div>
               <div className="p-2.5 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-extrabold text-xs text-gray-900 truncate tracking-tight">{product.brand}</h3>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">{product.title}</p>
+                  <h4 className="font-sans font-normal text-[12px] text-[#666666] truncate">{product.brand}</h4>
+                  <h3 className="font-sans font-semibold text-[14px] text-[#222222] truncate mt-0.5">{product.title}</h3>
                 </div>
                 <div className="mt-1.5 flex items-baseline space-x-1.5 flex-wrap">
-                  <span className="font-black text-xs text-pink-600">₹{product.price}</span>
+                  <span className="font-sans font-bold text-[16px] text-[#000000]">₹{product.price}</span>
                   {(() => {
                     const mrpVal = product.mrp || Math.round(product.price * 1.5);
                     const discountPercent = mrpVal > product.price ? Math.round(((mrpVal - product.price) / mrpVal) * 100) : 0;
                     return (
                       mrpVal > product.price && (
                         <>
-                          <span className="text-[9px] text-gray-400 line-through font-medium">₹{mrpVal}</span>
-                          <span className="text-[8px] font-bold text-orange-500">({discountPercent}% OFF)</span>
+                          <span className="font-sans font-normal text-[12px] text-[#999999] line-through">₹{mrpVal}</span>
+                          <span className="font-sans font-bold text-[12px] text-[#10B981]">({discountPercent}% OFF)</span>
                         </>
                       )
                     );

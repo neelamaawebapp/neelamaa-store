@@ -95,7 +95,7 @@ export default function CustomerCare() {
 
       {/* Hero Intro */}
       <div className="bg-gradient-to-br from-pink-500 to-orange-500 p-6 text-white text-center rounded-b-3xl shadow-md">
-        <h2 className="font-serif text-2xl font-bold italic tracking-wide">How can we help you?</h2>
+        <h2 className="font-sans text-2xl font-bold tracking-wide">How can we help you?</h2>
         <p className="text-xs text-white/90 mt-2 font-medium">We are available 24/7 to resolve your shopping queries.</p>
       </div>
 
