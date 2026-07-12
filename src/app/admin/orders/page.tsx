@@ -774,6 +774,7 @@ export default function AdminOrders() {
                         onChange={(e) => handleShippingChange(order.id, 'company', e.target.value)} 
                       >
                         <option value="" disabled>Select Courier</option>
+                        <option value="Shiprocket">Shiprocket (Real-time)</option>
                         <option value="Delhivery">Delhivery</option>
                         <option value="BlueDart">BlueDart</option>
                         <option value="DTDC">DTDC</option>
