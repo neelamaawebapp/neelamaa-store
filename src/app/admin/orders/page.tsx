@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Package, Truck, CheckCircle, XCircle, Clock, FileText, AlertTriangle, HelpCircle, Search, X } from "lucide-react";
+import { Package, Truck, CheckCircle, XCircle, Clock, FileText, AlertTriangle, HelpCircle, Search, X, Printer } from "lucide-react";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -488,6 +488,46 @@ export default function AdminOrders() {
     }
   };
 
+  const [printingManifestId, setPrintingManifestId] = useState<string | null>(null);
+
+  const handlePrintManifest = async (order: any) => {
+    if (!order.trackingNumber) {
+      alert("Please assign a tracking number first.");
+      return;
+    }
+    
+    if (order.id.startsWith("mock_")) {
+      alert("Opening mock manifest print URL in development mode...");
+      window.open("https://shiprocket-manifests.s3.amazonaws.com/mock_manifest.pdf", "_blank");
+      return;
+    }
+
+    setPrintingManifestId(order.id);
+    try {
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/print-manifest", {
+        method: "POST",
+        headers: { ...authHeaders },
+        body: JSON.stringify({
+          trackingNumber: order.trackingNumber,
+          shipmentId: order.shipmentId || null
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.manifestUrl) {
+        window.open(data.manifestUrl, "_blank");
+      } else {
+        alert("Error: " + (data.error || "Failed to generate print manifest. Ensure Shiprocket credentials are correct."));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to print manifest: " + err.message);
+    } finally {
+      setPrintingManifestId(null);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "Pending": return <Clock size={15} className="text-orange-400" />;
@@ -601,6 +641,16 @@ export default function AdminOrders() {
                     <FileText size={14} />
                     Invoice
                   </a>
+                  {(order.status === 'Shipped' || order.status === 'Delivered') && order.trackingNumber && (
+                    <button
+                      onClick={() => handlePrintManifest(order)}
+                      disabled={printingManifestId === order.id}
+                      className="bg-slate-950 border border-slate-850 hover:bg-slate-900 rounded-lg px-3 py-1.5 text-xs font-extrabold text-slate-300 hover:text-white focus:outline-none flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Printer size={14} />
+                      {printingManifestId === order.id ? "Printing..." : "Manifest"}
+                    </button>
+                  )}
                 </div>
               </div>
 

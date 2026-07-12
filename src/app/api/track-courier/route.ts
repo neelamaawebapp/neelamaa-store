@@ -1,42 +1,5 @@
 import { NextResponse } from 'next/server';
 
-let cachedToken: string | null = null;
-let tokenExpiry = 0;
-
-/**
- * Authenticates with Shiprocket API and retrieves cacheable Bearer token.
- */
-async function getShiprocketToken(email: string, pass: string): Promise<string | null> {
-  const now = Date.now();
-  if (cachedToken && now < tokenExpiry) {
-    return cachedToken;
-  }
-
-  try {
-    const res = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: pass }),
-    });
-
-    if (!res.ok) {
-      console.warn("Shiprocket auth endpoint rejected credentials.");
-      return null;
-    }
-
-    const data = await res.json();
-    if (data.token) {
-      cachedToken = data.token;
-      // Cache token for 23 hours (normally valid for 24+ hours)
-      tokenExpiry = now + 23 * 60 * 60 * 1000;
-      return cachedToken;
-    }
-  } catch (err) {
-    console.error("Error authenticating with Shiprocket API:", err);
-  }
-  return null;
-}
-
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -58,7 +21,8 @@ export async function GET(req: Request) {
       !shiprocketPassword.includes("YOUR_");
 
     if (isShiprocketConfigured) {
-      const token = await getShiprocketToken(shiprocketEmail, shiprocketPassword);
+      const { getShiprocketToken } = await import("@/lib/shiprocket");
+      const token = await getShiprocketToken();
       if (token) {
         try {
           const trackingRes = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${tracking}`, {
