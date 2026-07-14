@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag, Coins } from "lucide-react";
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag, Coins, Plus } from "lucide-react";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Script from "next/script";
 
@@ -33,6 +33,38 @@ export default function CheckoutPage() {
   const [pin, setPin] = useState("");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Multi-address States
+  interface SavedAddress {
+    id: string;
+    name: string;
+    phone: string;
+    street: string;
+    city: string;
+    pin: string;
+    isDefault?: boolean;
+  }
+  const [addressesList, setAddressesList] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [showNewAddressForm, setShowNewAddressForm] = useState<boolean>(false);
+  
+  // New Address Form State
+  const [newAddrName, setNewAddrName] = useState("");
+  const [newAddrPhone, setNewAddrPhone] = useState("");
+  const [newAddrStreet, setNewAddrStreet] = useState("");
+  const [newAddrCity, setNewAddrCity] = useState("");
+  const [newAddrPin, setNewAddrPin] = useState("");
+  const [newAddrIsDefault, setNewAddrIsDefault] = useState(false);
+  const [savingNewAddress, setSavingNewAddress] = useState(false);
+
+  const handleSelectAddress = (addr: SavedAddress) => {
+    setSelectedAddressId(addr.id);
+    setName(addr.name);
+    setPhone(addr.phone);
+    setStreet(addr.street);
+    setCity(addr.city);
+    setPin(addr.pin);
+  };
 
   // Payment Selection & Dialog State
   const [payMethod, setPayMethod] = useState<"COD" | "Online">("COD");
@@ -193,46 +225,186 @@ export default function CheckoutPage() {
     fetchWallet();
   }, [user]);
 
-  // Auto-fill from user profile
+  // Auto-fill from user profile & load saved addresses
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchUserProfileAndAddresses = async () => {
       if (!user) return;
 
+      let loadedAddresses: SavedAddress[] = [];
+      let legacyAddress: SavedAddress | null = null;
+
       // 1. Try local storage mock fallback first
-      const localAddr = localStorage.getItem("craftstyle_mock_user_address");
-      if (localAddr) {
+      const localAddressesStr = localStorage.getItem("craftstyle_mock_user_addresses");
+      const localAddrLegacyStr = localStorage.getItem("craftstyle_mock_user_address");
+
+      if (localAddressesStr) {
         try {
-          const parsed = JSON.parse(localAddr);
-          const namePart = user.displayName || user.email?.split("@")[0] || "Customer";
-          if (namePart) setName(namePart);
-          if (parsed.phone) setPhone(parsed.phone);
-          if (parsed.street) setStreet(parsed.street);
-          if (parsed.city) setCity(parsed.city);
-          if (parsed.pin) setPin(parsed.pin);
-          return;
+          loadedAddresses = JSON.parse(localAddressesStr);
         } catch (e) {
-          console.error(e);
+          console.error("Failed to parse mock addresses list", e);
+        }
+      }
+      if (localAddrLegacyStr) {
+        try {
+          const parsed = JSON.parse(localAddrLegacyStr);
+          if (parsed.street || parsed.city) {
+            legacyAddress = {
+              id: "base",
+              name: user.displayName || user.email?.split("@")[0] || "Customer",
+              phone: parsed.phone || "",
+              street: parsed.street || "",
+              city: parsed.city || "",
+              pin: parsed.pin || "",
+              isDefault: true,
+            };
+          }
+        } catch (e) {
+          console.error("Failed to parse mock legacy address", e);
         }
       }
 
-      // 2. Fall back to Firestore
+      // 2. Try Firestore
+      let firestoreAddresses: SavedAddress[] = [];
+      let firestoreLegacyAddress: SavedAddress | null = null;
+      
       try {
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.name) setName(data.name);
-          if (data.phone) setPhone(data.phone);
-          if (data.street) setStreet(data.street);
-          if (data.city) setCity(data.city);
-          if (data.pin) setPin(data.pin);
+          if (Array.isArray(data.addresses)) {
+            firestoreAddresses = data.addresses;
+          }
+          if (data.street || data.city) {
+            firestoreLegacyAddress = {
+              id: "base",
+              name: data.name || user.displayName || user.email?.split("@")[0] || "Customer",
+              phone: data.phone || "",
+              street: data.street || "",
+              city: data.city || "",
+              pin: data.pin || "",
+              isDefault: true,
+            };
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch profile", err);
+        console.error("Failed to fetch profile from Firestore", err);
+      }
+
+      // Consolidate loaded lists
+      let finalAddresses = firestoreAddresses.length > 0 ? firestoreAddresses : loadedAddresses;
+
+      // Migrate legacy address if list is empty
+      if (finalAddresses.length === 0) {
+        const fallbackLegacy = firestoreLegacyAddress || legacyAddress;
+        if (fallbackLegacy) {
+          finalAddresses = [fallbackLegacy];
+          // Write migrated address to storage asynchronously
+          try {
+            localStorage.setItem("craftstyle_mock_user_addresses", JSON.stringify(finalAddresses));
+            await updateDoc(doc(db, "users", user.uid), { addresses: finalAddresses });
+          } catch (writeErr) {
+            console.error("Failed to save migrated addresses list", writeErr);
+          }
+        }
+      }
+
+      setAddressesList(finalAddresses);
+
+      // Select default/base address or first address
+      if (finalAddresses.length > 0) {
+        const defaultAddr = finalAddresses.find(a => a.isDefault) || finalAddresses[0];
+        setSelectedAddressId(defaultAddr.id);
+        setName(defaultAddr.name);
+        setPhone(defaultAddr.phone);
+        setStreet(defaultAddr.street);
+        setCity(defaultAddr.city);
+        setPin(defaultAddr.pin);
+      } else {
+        // No address at all, show the new address form
+        setShowNewAddressForm(true);
       }
     };
-    fetchUserProfile();
+
+    fetchUserProfileAndAddresses();
   }, [user]);
+
+  const handleSaveNewAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    if (!newAddrName.trim() || !newAddrPhone.trim() || !newAddrStreet.trim() || !newAddrCity.trim() || !newAddrPin.trim()) {
+      alert("Please fill all required fields for the new address.");
+      return;
+    }
+
+    setSavingNewAddress(true);
+
+    try {
+      const newAddress: SavedAddress = {
+        id: "addr_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        name: newAddrName.trim(),
+        phone: newAddrPhone.trim(),
+        street: newAddrStreet.trim(),
+        city: newAddrCity.trim(),
+        pin: newAddrPin.trim(),
+        isDefault: newAddrIsDefault || addressesList.length === 0, // Make default if checked or if it is the first address
+      };
+
+      let updatedList = [...addressesList];
+      
+      if (newAddress.isDefault) {
+        // Unmark all other addresses as default
+        updatedList = updatedList.map(a => ({ ...a, isDefault: false }));
+      }
+      
+      updatedList.push(newAddress);
+
+      // Save list to local storage
+      localStorage.setItem("craftstyle_mock_user_addresses", JSON.stringify(updatedList));
+
+      // Save list to Firestore
+      const userRef = doc(db, "users", user.uid);
+      
+      const payload: any = { addresses: updatedList };
+      // If this is default, sync legacy single fields too so Profile and legacy views are updated
+      if (newAddress.isDefault) {
+        payload.name = newAddress.name;
+        payload.phone = newAddress.phone;
+        payload.street = newAddress.street;
+        payload.city = newAddress.city;
+        payload.pin = newAddress.pin;
+        payload.address = `${newAddress.street}, ${newAddress.city}, ${newAddress.pin}`;
+
+        // Sync legacy localStorage
+        localStorage.setItem("craftstyle_mock_user_address", JSON.stringify({
+          phone: newAddress.phone,
+          street: newAddress.street,
+          city: newAddress.city,
+          pin: newAddress.pin
+        }));
+      }
+
+      await setDoc(userRef, payload, { merge: true });
+
+      setAddressesList(updatedList);
+      handleSelectAddress(newAddress);
+      
+      // Clear inputs
+      setNewAddrName("");
+      setNewAddrPhone("");
+      setNewAddrStreet("");
+      setNewAddrCity("");
+      setNewAddrPin("");
+      setNewAddrIsDefault(false);
+      setShowNewAddressForm(false);
+    } catch (err) {
+      console.error("Failed to save new address", err);
+      alert("Failed to save the new address. Please try again.");
+    } finally {
+      setSavingNewAddress(false);
+    }
+  };
 
   const [discountPercent, setDiscountPercent] = useState(0);
 
@@ -854,36 +1026,176 @@ export default function CheckoutPage() {
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
+        {/* Hidden checkout order form */}
+        <form id="checkout-form" onSubmit={handlePlaceOrder} className="hidden">
+          <input type="hidden" name="name" value={name} />
+          <input type="hidden" name="phone" value={phone} />
+          <input type="hidden" name="street" value={street} />
+          <input type="hidden" name="city" value={city} />
+          <input type="hidden" name="pin" value={pin} />
+        </form>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 animate-fade-in">
           <div className="flex items-center space-x-2 mb-4 pb-2 border-b border-gray-100 text-gray-800">
             <MapPin size={20} className="text-pink-600" />
             <h2 className="font-bold text-sm uppercase tracking-wide">Delivery Address</h2>
           </div>
           
-          <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
-              <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Mobile Number *</label>
-              <input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Street Address *</label>
-              <input type="text" required value={street} onChange={e => setStreet(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">City *</label>
-                <input type="text" required value={city} onChange={e => setCity(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+          {showNewAddressForm ? (
+            <form id="add-address-form" onSubmit={handleSaveNewAddress} className="space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                <span className="font-bold text-xs uppercase tracking-wider text-pink-600">Add New Shipping Address</span>
+                {addressesList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAddressForm(false)}
+                    className="text-xs text-gray-500 hover:text-gray-700 font-bold"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Pincode *</label>
-                <input type="text" required value={pin} onChange={e => setPin(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" />
+                <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Full Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Receiver's name"
+                  value={newAddrName} 
+                  onChange={e => setNewAddrName(e.target.value)} 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" 
+                />
               </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Mobile Number (to contact) *</label>
+                <input 
+                  type="tel" 
+                  required 
+                  placeholder="10-digit mobile number"
+                  value={newAddrPhone} 
+                  onChange={e => setNewAddrPhone(e.target.value)} 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Street Address *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="House No., Building, Street Name"
+                  value={newAddrStreet} 
+                  onChange={e => setNewAddrStreet(e.target.value)} 
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">City *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="e.g. Jaipur"
+                    value={newAddrCity} 
+                    onChange={e => setNewAddrCity(e.target.value)} 
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Pincode *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="6-digit PIN"
+                    value={newAddrPin} 
+                    onChange={e => setNewAddrPin(e.target.value)} 
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-pink-500 outline-none text-gray-900" 
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-1 select-none">
+                <input 
+                  type="checkbox" 
+                  id="make-default-check"
+                  checked={newAddrIsDefault || addressesList.length === 0} 
+                  disabled={addressesList.length === 0}
+                  onChange={e => setNewAddrIsDefault(e.target.checked)} 
+                  className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 cursor-pointer" 
+                />
+                <label htmlFor="make-default-check" className="text-xs text-gray-600 cursor-pointer font-medium">
+                  Make this my Default (Base) Address
+                </label>
+              </div>
+              <div className="pt-2 flex space-x-2">
+                {addressesList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAddressForm(false)}
+                    className="w-1/3 border border-gray-300 text-gray-700 font-bold py-2.5 rounded text-xs hover:bg-slate-50 transition-colors cursor-pointer uppercase tracking-wider"
+                  >
+                    Back
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={savingNewAddress}
+                  className={`bg-pink-500 text-white font-bold py-2.5 rounded text-xs hover:bg-pink-600 transition-colors shadow-sm cursor-pointer uppercase tracking-wider ${addressesList.length > 0 ? "w-2/3" : "w-full"}`}
+                >
+                  {savingNewAddress ? "Saving..." : "Save and Ship Here"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-3">
+              {addressesList.map((addr) => {
+                const isSelected = selectedAddressId === addr.id;
+                return (
+                  <div 
+                    key={addr.id}
+                    onClick={() => handleSelectAddress(addr)}
+                    className={`p-3.5 border rounded-xl cursor-pointer transition-all ${isSelected ? "border-pink-500 bg-pink-50/10 shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-sm text-gray-900">{addr.name}</span>
+                        {addr.isDefault && (
+                          <span className="bg-pink-100 text-pink-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded tracking-wide uppercase">
+                            Default (Base)
+                          </span>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="w-4.5 h-4.5 rounded-full bg-pink-500 flex items-center justify-center text-white flex-shrink-0">
+                          <Check size={12} className="stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2 leading-relaxed">{addr.street}</p>
+                    <p className="text-xs text-gray-600 leading-normal">{addr.city} - {addr.pin}</p>
+                    <p className="text-xs font-semibold text-gray-800 mt-2">
+                      <span className="text-gray-500 font-normal">Contact:</span> {addr.phone}
+                    </p>
+                  </div>
+                );
+              })}
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setNewAddrName("");
+                  setNewAddrPhone("");
+                  setNewAddrStreet("");
+                  setNewAddrCity("");
+                  setNewAddrPin("");
+                  setNewAddrIsDefault(false);
+                  setShowNewAddressForm(true);
+                }}
+                className="w-full mt-2 py-3 border border-dashed border-gray-300 hover:border-pink-500 rounded-xl text-xs font-bold text-gray-650 hover:text-pink-600 transition-colors flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+              >
+                <Plus size={16} />
+                <span>Deliver to a New Address</span>
+              </button>
             </div>
-          </form>
+          )}
         </div>
 
         {/* Courier Charges Alert */}
@@ -999,6 +1311,73 @@ export default function CheckoutPage() {
           )}
         </div>
 
+        {/* Items in Order */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4 text-gray-800">
+            <h3 className="font-bold text-sm uppercase tracking-wide">Items in Order ({checkoutItems.length})</h3>
+            <span className="text-[10px] text-gray-400 font-medium">Standard Delivery</span>
+          </div>
+
+          <div className="space-y-4">
+            {checkoutItems.map((item) => (
+              <div key={item.id} className="flex space-x-3 text-sm pb-4 border-b border-slate-50 last:border-b-0 last:pb-0">
+                {/* Product Image */}
+                <div className="w-16 h-20 bg-slate-50 border border-slate-100 rounded-md overflow-hidden flex-shrink-0 relative">
+                  {item.image ? (
+                    <img 
+                      src={item.image} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.target as any).src = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120";
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                      <MapPin size={20} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Details */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-extrabold text-[11px] text-gray-900 uppercase tracking-wide truncate">{item.brand}</h4>
+                  <p className="text-xs text-gray-600 truncate mt-0.5">{item.title}</p>
+                  
+                  <div className="flex items-center space-x-2 mt-1.5">
+                    {item.size && (
+                      <span className="bg-slate-100 text-gray-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        Size: {item.size}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-gray-500 font-semibold bg-slate-100/70 px-1.5 py-0.5 rounded">
+                      Qty: {item.quantity}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5 mt-2">
+                    <span className="font-bold text-gray-800 text-[12px]">₹{item.price}</span>
+                    {item.mrp && item.mrp > item.price && (
+                      <>
+                        <span className="line-through text-gray-400 text-[10px]">₹{item.mrp}</span>
+                        <span className="text-pink-500 font-bold text-[9px] uppercase">
+                          ({Math.round(((item.mrp - item.price) / item.mrp) * 100)}% OFF)
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Subtotal */}
+                <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
+                  <span className="font-extrabold text-gray-900 text-sm">₹{item.price * item.quantity}</span>
+                  <span className="text-[10px] text-gray-400 font-semibold font-mono">₹{item.price} x {item.quantity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Price Details */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <h3 className="font-bold text-sm text-gray-900 mb-4 uppercase tracking-wide border-b border-gray-100 pb-2">Price Summary</h3>
@@ -1099,11 +1478,19 @@ export default function CheckoutPage() {
           </div>
           <button 
             type="submit"
-            form="checkout-form"
+            form={showNewAddressForm ? "add-address-form" : "checkout-form"}
             disabled={placing}
             className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center w-[60%]"
           >
-            {placing ? "PROCESSING..." : remainingToPay === 0 ? "PLACE ORDER" : payMethod === "Online" ? "PROCEED TO PAY" : "CONFIRM ORDER"}
+            {showNewAddressForm 
+              ? "SAVE ADDRESS" 
+              : placing 
+                ? "PROCESSING..." 
+                : remainingToPay === 0 
+                  ? "PLACE ORDER" 
+                  : payMethod === "Online" 
+                    ? "PROCEED TO PAY" 
+                    : "CONFIRM ORDER"}
           </button>
         </div>
       </div>
