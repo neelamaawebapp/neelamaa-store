@@ -55,5 +55,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // 7. Users Collection: Owner can read/write their own document and subcollections, Admin has full access
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // 8. Notifications Collection: User can read/write their own, admin has full access
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid || isAdmin();
+      allow update, delete: if isAdmin();
+    }
   }
 }
