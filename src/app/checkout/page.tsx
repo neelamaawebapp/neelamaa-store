@@ -15,16 +15,45 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("craftstyle_checked_cart_ids");
       if (stored) {
-        setCheckedIds(JSON.parse(stored));
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCheckedIds(parsed);
+            setIsInitialized(true);
+            return;
+          }
+        } catch (e) {}
       }
     }
   }, []);
 
-  const checkoutItems = checkedIds.length > 0 ? cart.filter(item => checkedIds.includes(item.id)) : cart;
+  // Sync checkedIds with cart to check all items if they haven't been initialized
+  useEffect(() => {
+    if (cart.length > 0 && !isInitialized) {
+      const allIds = cart.map(item => item.id);
+      setCheckedIds(allIds);
+      setIsInitialized(true);
+      localStorage.setItem("craftstyle_checked_cart_ids", JSON.stringify(allIds));
+    }
+  }, [cart, isInitialized]);
+
+  const checkoutItems = cart.filter(item => checkedIds.includes(item.id));
+
+  const handleToggleCheck = (itemId: string) => {
+    setCheckedIds(prev => {
+      const updated = prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId];
+      localStorage.setItem("craftstyle_checked_cart_ids", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1319,62 +1348,83 @@ export default function CheckoutPage() {
           </div>
 
           <div className="space-y-4">
-            {checkoutItems.map((item) => (
-              <div key={item.id} className="flex space-x-3 text-sm pb-4 border-b border-slate-50 last:border-b-0 last:pb-0">
-                {/* Product Image */}
-                <div className="w-16 h-20 bg-slate-50 border border-slate-100 rounded-md overflow-hidden flex-shrink-0 relative">
-                  {item.image ? (
-                    <img 
-                      src={item.image} 
-                      alt={item.title} 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        (e.target as any).src = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120";
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                      <MapPin size={20} />
+            {cart.map((item) => {
+              const isChecked = checkedIds.includes(item.id);
+              return (
+                <div 
+                  key={item.id} 
+                  className={`flex space-x-3 text-sm pb-4 border-b border-slate-50 last:border-b-0 last:pb-0 transition-all duration-200 ${
+                    isChecked ? "opacity-100" : "opacity-60"
+                  }`}
+                >
+                  {/* Selection Checkbox */}
+                  <div 
+                    className="self-center flex-shrink-0 cursor-pointer p-1.5 -ml-1.5" 
+                    onClick={(e) => { e.preventDefault(); handleToggleCheck(item.id); }}
+                  >
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+                      ${isChecked 
+                        ? 'bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/25' 
+                        : 'bg-white border-gray-300 text-transparent hover:border-pink-500'}`}>
+                      <Check size={12} className="stroke-[3]" />
                     </div>
-                  )}
-                </div>
-
-                {/* Product Details */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-extrabold text-[11px] text-gray-900 uppercase tracking-wide truncate">{item.brand}</h4>
-                  <p className="text-xs text-gray-600 truncate mt-0.5">{item.title}</p>
-                  
-                  <div className="flex items-center space-x-2 mt-1.5">
-                    {item.size && (
-                      <span className="bg-slate-100 text-gray-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        Size: {item.size}
-                      </span>
-                    )}
-                    <span className="text-[11px] text-gray-500 font-semibold bg-slate-100/70 px-1.5 py-0.5 rounded">
-                      Qty: {item.quantity}
-                    </span>
                   </div>
 
-                  <div className="flex items-center space-x-1.5 mt-2">
-                    <span className="font-bold text-gray-800 text-[12px]">₹{item.price}</span>
-                    {item.mrp && item.mrp > item.price && (
-                      <>
-                        <span className="line-through text-gray-400 text-[10px]">₹{item.mrp}</span>
-                        <span className="text-pink-500 font-bold text-[9px] uppercase">
-                          ({Math.round(((item.mrp - item.price) / item.mrp) * 100)}% OFF)
+                  {/* Product Image */}
+                  <div className="w-16 h-20 bg-slate-50 border border-slate-100 rounded-md overflow-hidden flex-shrink-0 relative">
+                    {item.image ? (
+                      <img 
+                        src={item.image} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          (e.target as any).src = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                        <MapPin size={20} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-extrabold text-[11px] text-gray-900 uppercase tracking-wide truncate">{item.brand}</h4>
+                    <p className="text-xs text-gray-600 truncate mt-0.5">{item.title}</p>
+                    
+                    <div className="flex items-center space-x-2 mt-1.5">
+                      {item.size && (
+                        <span className="bg-slate-100 text-gray-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          Size: {item.size}
                         </span>
-                      </>
-                    )}
+                      )}
+                      <span className="text-[11px] text-gray-500 font-semibold bg-slate-100/70 px-1.5 py-0.5 rounded">
+                        Qty: {item.quantity}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 mt-2">
+                      <span className="font-bold text-gray-800 text-[12px]">₹{item.price}</span>
+                      {item.mrp && item.mrp > item.price && (
+                        <>
+                          <span className="line-through text-gray-400 text-[10px]">₹{item.mrp}</span>
+                          <span className="text-pink-500 font-bold text-[9px] uppercase">
+                            ({Math.round(((item.mrp - item.price) / item.mrp) * 100)}% OFF)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Subtotal */}
+                  <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
+                    <span className="font-extrabold text-gray-900 text-sm">₹{item.price * item.quantity}</span>
+                    <span className="text-[10px] text-gray-400 font-semibold font-mono">₹{item.price} x {item.quantity}</span>
                   </div>
                 </div>
-
-                {/* Subtotal */}
-                <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
-                  <span className="font-extrabold text-gray-900 text-sm">₹{item.price * item.quantity}</span>
-                  <span className="text-[10px] text-gray-400 font-semibold font-mono">₹{item.price} x {item.quantity}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -1479,7 +1529,7 @@ export default function CheckoutPage() {
           <button 
             type="submit"
             form={showNewAddressForm ? "add-address-form" : "checkout-form"}
-            disabled={placing}
+            disabled={placing || (!showNewAddressForm && checkoutItems.length === 0)}
             className="bg-pink-500 text-white font-bold py-3.5 px-8 rounded-md hover:bg-pink-600 transition-colors disabled:opacity-70 flex justify-center items-center w-[60%]"
           >
             {showNewAddressForm 

@@ -38,7 +38,7 @@ const parseShortDescription = (text: string): string[] => {
 export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { addToBag } = useCart();
+  const { addToBag, cart } = useCart();
   const { user } = useAuth();
   
   const [product, setProduct] = useState<any>(null);
@@ -720,6 +720,27 @@ export default function ProductDetailPage() {
       mrp: finalMrp,
     }, quantity);
     setAdding(false);
+
+    try {
+      const cartItemId = `${product.id}_${finalSizeString || "Default"}`;
+      let checkedIdsList: string[] = [];
+      const storedChecked = localStorage.getItem("craftstyle_checked_cart_ids");
+      if (storedChecked) {
+        checkedIdsList = JSON.parse(storedChecked);
+      }
+      
+      if (checkedIdsList.length === 0 && cart && cart.length > 0) {
+        checkedIdsList = cart.map(item => item.id);
+      }
+
+      if (!checkedIdsList.includes(cartItemId)) {
+        checkedIdsList.push(cartItemId);
+      }
+      localStorage.setItem("craftstyle_checked_cart_ids", JSON.stringify(checkedIdsList));
+    } catch (e) {
+      console.error("Failed to update checked IDs in localStorage during Buy Now:", e);
+    }
+
     router.push("/checkout");
   };
 
