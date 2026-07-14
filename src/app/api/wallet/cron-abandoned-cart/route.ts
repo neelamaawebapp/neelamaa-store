@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       socketTimeout: 10000,
     });
 
-    const isEmailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    const isEmailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.EMAIL_PASS !== "YOUR_GMAIL_APP_PASSWORD");
 
     // 2. Fetch all users who have had cart updates and haven't fully exhausted the recovery sequence (stage < 3)
     const usersSnapshot = await getDocs(collection(db, "users"));
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
       `;
 
       // Stage 1 (1 hour later) - Send SMS
-      if (elapsed >= 1 && elapsed < 2 && currentStage === 0) {
+      if (elapsed >= 1 && currentStage === 0) {
         const smsMessage = `Hi ${user.name || "Customer"}, we saved your Craft Style cart! 🛒 View items & checkout now: https://myntra-clone-delta-blue.vercel.app/bag`;
         let smsSent = false;
 
@@ -125,7 +125,7 @@ export async function GET(req: Request) {
       }
 
       // Stage 2 (2 hours later) - Send WhatsApp (with company logo)
-      else if (elapsed >= 2 && elapsed < 5 && currentStage === 1) {
+      else if (elapsed >= 2 && currentStage === 1) {
         const logoUrl = "https://myntra-clone-delta-blue.vercel.app/icon.png";
         const whatsAppMessage = `Hi ${user.name || "Customer"}, your items are waiting in your cart! 🛍️ Grab them before they sell out. Checkout here: https://myntra-clone-delta-blue.vercel.app/bag`;
 
