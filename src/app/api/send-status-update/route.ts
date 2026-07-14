@@ -129,7 +129,29 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, emailSent: true, smsSent });
+    // 3. Send WhatsApp using Twilio if phone is provided
+    let whatsappSent = false;
+    if (phone) {
+      try {
+        const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
+        let whatsAppBody = "";
+        if (status === "Delivered") {
+          whatsAppBody = `Hi ${name}, your order #${displayOrderId} has been delivered successfully! 🚚 We hope you love it! Thank you for shopping with Craft Style.`;
+        } else if (status === "Cancelled") {
+          whatsAppBody = `Hi ${name}, your order #${displayOrderId} has been cancelled. ❌ Refunds (if applicable) will be processed in 5-7 business days. Contact support for help.`;
+        } else {
+          whatsAppBody = `Hi ${name}, your order #${displayOrderId} status has been updated to: *${status}*. 📦 Check details on your Craft Style dashboard.`;
+        }
+
+        const logoUrl = "https://myntra-clone-delta-blue.vercel.app/icon.png";
+        const res = await sendWhatsAppMessage(phone, whatsAppBody, logoUrl);
+        whatsappSent = res.success;
+      } catch (whatsAppErr) {
+        console.error("Failed to send status update WhatsApp message", whatsAppErr);
+      }
+    }
+
+    return NextResponse.json({ success: true, emailSent: true, smsSent, whatsappSent });
 
   } catch (error) {
     console.error('Status Update API error:', error);

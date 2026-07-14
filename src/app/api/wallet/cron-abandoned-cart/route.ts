@@ -156,11 +156,20 @@ export async function GET(req: Request) {
           console.error("Failed to write in-app WhatsApp notification:", e);
         }
 
-        console.log(`[WHATSAPP] Sent WhatsApp message to ${user.phone || 'N/A'} (with logo ${logoUrl}): ${whatsAppMessage}`);
+        let realWhatsAppSent = false;
+        if (user.phone) {
+          try {
+            const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
+            const res = await sendWhatsAppMessage(user.phone, whatsAppMessage, logoUrl);
+            realWhatsAppSent = res.success;
+          } catch (whatsAppErr) {
+            console.error("Failed to send real Twilio WhatsApp:", whatsAppErr);
+          }
+        }
 
         await updateDoc(doc(db, "users", user.id), { abandonedCartStage: 2 });
         processedUsers.push(user.id);
-        logs.push(`User ${user.id} transitioned to Stage 2 (WhatsApp Sent)`);
+        logs.push(`User ${user.id} transitioned to Stage 2 (WhatsApp Sent. Twilio sent: ${realWhatsAppSent})`);
       }
 
       // Stage 3 (5 hours later) - Send Email in their account
