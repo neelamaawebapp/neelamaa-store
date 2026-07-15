@@ -1,8 +1,11 @@
 import * as admin from "firebase-admin";
+import { getMessaging } from "firebase-admin/messaging";
+import { getFirestore } from "firebase-admin/firestore";
 
 const initFirebaseAdmin = () => {
-  if (admin.apps.length > 0) {
-    return admin.apps[0]!;
+  const apps = admin.getApps();
+  if (apps.length > 0) {
+    return apps[0]!;
   }
 
   const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -25,4 +28,6 @@ const initFirebaseAdmin = () => {
 };
 
 const adminApp = initFirebaseAdmin();
-export const messaging = admin.messaging(adminApp);
+export const messaging = getMessaging(adminApp);
+export const firestore = getFirestore(adminApp);
+

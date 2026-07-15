@@ -81,7 +81,7 @@ self.addEventListener('push', function(event) {
     vibrate: [100, 50, 100],
     image: data.image || undefined,
     data: {
-      url: '/'
+      url: data.url || '/'
     }
   };
 
@@ -97,12 +97,12 @@ self.addEventListener('notificationclick', function(event) {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url === new URL(event.notification.data.url, self.location.origin).href && 'focus' in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(event.notification.data.url || '/');
       }
     })
   );
