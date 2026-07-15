@@ -4,7 +4,7 @@ import { calculateTransactionHash } from "@/lib/wallet-server";
 
 export async function GET(req: Request) {
   try {
-    const { getFirestore, doc, collection, getDocs, runTransaction, updateDoc, addDoc } = await import("firebase/firestore");
+    const { getFirestore, doc, collection, getDocs, getDoc, runTransaction, updateDoc, addDoc } = await import("firebase/firestore");
     const { app, auth } = await import("@/lib/firebase");
     const db = getFirestore(app);
 
@@ -23,6 +23,8 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const simulateMin = url.searchParams.get("simulateMin") === "true";
+    const forceSend = url.searchParams.get("forceSend") === "true";
+    const targetUserId = url.searchParams.get("userId");
     const scale = simulateMin ? (1000 * 60) : (1000 * 60 * 60); // minutes vs hours
 
     // 1. Setup email transporter
@@ -41,11 +43,20 @@ export async function GET(req: Request) {
 
     const isEmailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.EMAIL_PASS !== "YOUR_GMAIL_APP_PASSWORD");
 
-    // 2. Fetch all users who have had cart updates and haven't completed the recovery sequence (stage < 1)
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const activeCarts = usersSnapshot.docs
-      .map(d => ({ id: d.id, ...d.data() } as any))
-      .filter(u => u.cartUpdatedAt && (u.abandonedCartStage === undefined || u.abandonedCartStage < 1));
+    // 2. Fetch users
+    let activeCarts: any[] = [];
+    if (targetUserId) {
+      const userRef = doc(db, "users", targetUserId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        activeCarts = [{ id: userSnap.id, ...userSnap.data() }];
+      }
+    } else {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      activeCarts = usersSnapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(u => u.cartUpdatedAt && (u.abandonedCartStage === undefined || u.abandonedCartStage < 1));
+    }
 
     const processedUsers: string[] = [];
     const logs: string[] = [];
@@ -63,7 +74,9 @@ export async function GET(req: Request) {
       }
 
       const cartItems = cartSnap.docs.map(d => d.data());
-      const elapsed = (Date.now() - new Date(user.cartUpdatedAt).getTime()) / scale;
+      const elapsed = user.cartUpdatedAt 
+        ? (Date.now() - new Date(user.cartUpdatedAt).getTime()) / scale 
+        : 0;
       const currentStage = user.abandonedCartStage || 0;
 
       // Construct cart items list for emails
@@ -91,8 +104,8 @@ export async function GET(req: Request) {
         </table>
       `;
 
-      // Single Stage Recovery: Send Email after 1 hour of cart updates
-      if (elapsed >= 1 && currentStage === 0) {
+      // Single Stage Recovery: Send Email after 1 hour of cart updates, or force sending
+      if ((elapsed >= 1 && currentStage === 0) || (targetUserId && forceSend)) {
         const subject = "Your Craft Style shopping cart is waiting for you! 🛒";
         const emailText = `Hi ${user.name || "Customer"},\n\nWe noticed you left some great items in your shopping cart. They are still reserved and waiting for you to complete your checkout!\n\nYour Cart Summary:\n${cartSummaryText}\n\nCheckout now: https://myntra-clone-delta-blue.vercel.app/bag\n\nBest,\nThe Craft Style Team`;
         const emailHtml = `
@@ -130,11 +143,14 @@ export async function GET(req: Request) {
         }
 
         try {
+          const firstItem = cartItems[0];
+          const itemImage = (firstItem as any)?.image || "";
           const notifRef = collection(db, "notifications");
           await addDoc(notifRef, {
             userId: user.id,
-            title: "Cart Recovery Email Sent ✉️",
-            message: "We've sent an email to remind you of the items waiting in your cart.",
+            title: "Your items are waiting! 🛍️",
+            message: `Hi ${user.name || "Customer"}, you left ${cartItems.length} item(s) in your cart. Complete checkout before they sell out!`,
+            image: itemImage,
             type: "CART_ABANDONMENT",
             createdAt: new Date().toISOString(),
             read: false

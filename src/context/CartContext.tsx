@@ -30,6 +30,7 @@ interface CartContextType {
   couponDiscountPercent: number;
   applyCouponCode: (code: string) => Promise<{ success: boolean; message: string }>;
   removeCouponCode: () => void;
+  updatingItems: Record<string, 'updating' | 'deleting' | null>;
 }
 
 const CartContext = createContext<CartContextType>({
@@ -44,6 +45,7 @@ const CartContext = createContext<CartContextType>({
   couponDiscountPercent: 0,
   applyCouponCode: async () => ({ success: false, message: "" }),
   removeCouponCode: () => {},
+  updatingItems: {},
 });
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
@@ -51,6 +53,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [couponCode, setCouponCode] = useState<string>("");
   const [couponDiscountPercent, setCouponDiscountPercent] = useState<number>(0);
+  const [updatingItems, setUpdatingItems] = useState<Record<string, 'updating' | 'deleting' | null>>({});
 
   useEffect(() => {
     const savedCode = sessionStorage.getItem("craftstyle_applied_coupon");
@@ -152,19 +155,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    setUpdatingItems(prev => ({ ...prev, [cartItemId]: 'updating' }));
+
     // Handle Firestore
     try {
       const itemRef = doc(db, `users/${user.uid}/cartItems`, cartItemId);
       const existingItem = cart.find(item => item.id === cartItemId);
 
-      if (existingItem) {
-        await updateDoc(itemRef, {
-          quantity: existingItem.quantity + quantity
-        });
-      } else {
-        await setDoc(itemRef, newCartItem);
-      }
-      await updateCartAbandonmentTracker(false);
+      await Promise.all([
+        existingItem
+          ? updateDoc(itemRef, { quantity: existingItem.quantity + quantity })
+          : setDoc(itemRef, newCartItem),
+        updateCartAbandonmentTracker(false)
+      ]);
     } catch (err) {
       console.error("Firestore addToBag failed, falling back to local storage", err);
       // Fallback
@@ -177,27 +180,35 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setCart(currentCart);
       localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [cartItemId]: null }));
     }
   };
 
   const removeFromBag = async (id: string) => {
+    setUpdatingItems(prev => ({ ...prev, [id]: 'deleting' }));
     if (!user) {
       const currentCart = cart.filter(item => item.id !== id);
       setCart(currentCart);
       localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+      setUpdatingItems(prev => ({ ...prev, [id]: null }));
       return;
     }
 
     try {
       const itemRef = doc(db, `users/${user.uid}/cartItems`, id);
-      await deleteDoc(itemRef);
       const isNowEmpty = cart.filter(item => item.id !== id).length === 0;
-      await updateCartAbandonmentTracker(isNowEmpty);
+      await Promise.all([
+        deleteDoc(itemRef),
+        updateCartAbandonmentTracker(isNowEmpty)
+      ]);
     } catch (err) {
       console.error("Firestore delete failed, falling back to local storage", err);
       const currentCart = cart.filter(item => item.id !== id);
       setCart(currentCart);
       localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [id]: null }));
     }
   };
 
@@ -207,22 +218,28 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    setUpdatingItems(prev => ({ ...prev, [id]: 'updating' }));
     if (!user) {
       const currentCart = cart.map(item => item.id === id ? { ...item, quantity: qty } : item);
       setCart(currentCart);
       localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+      setUpdatingItems(prev => ({ ...prev, [id]: null }));
       return;
     }
 
     try {
       const itemRef = doc(db, `users/${user.uid}/cartItems`, id);
-      await updateDoc(itemRef, { quantity: qty });
-      await updateCartAbandonmentTracker(false);
+      await Promise.all([
+        updateDoc(itemRef, { quantity: qty }),
+        updateCartAbandonmentTracker(false)
+      ]);
     } catch (err) {
       console.error("Firestore update failed, falling back to local storage", err);
       const currentCart = cart.map(item => item.id === id ? { ...item, quantity: qty } : item);
       setCart(currentCart);
       localStorage.setItem("craftstyle_local_cart", JSON.stringify(currentCart));
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [id]: null }));
     }
   };
 
@@ -382,7 +399,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       couponCode,
       couponDiscountPercent,
       applyCouponCode,
-      removeCouponCode
+      removeCouponCode,
+      updatingItems
     }}>
       {children}
     </CartContext.Provider>

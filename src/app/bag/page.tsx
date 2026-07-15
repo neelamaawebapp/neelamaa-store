@@ -18,7 +18,8 @@ export default function BagPage() {
     couponCode,
     couponDiscountPercent,
     applyCouponCode,
-    removeCouponCode
+    removeCouponCode,
+    updatingItems
   } = useCart();
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
   const [loadingStock, setLoadingStock] = useState(true);
@@ -186,103 +187,126 @@ export default function BagPage() {
       ) : (
         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
           {/* Cart Items */}
-          {cart.map((item) => (
-            <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex items-start space-x-3 relative">
-              {/* Selection Checkbox */}
+          {cart.map((item) => {
+            const isUpdating = updatingItems[item.id] === 'updating';
+            const isDeleting = updatingItems[item.id] === 'deleting';
+            const isPending = isUpdating || isDeleting;
+
+            return (
               <div 
-                className="self-center flex-shrink-0 cursor-pointer p-1.5 -ml-1.5" 
-                onClick={(e) => { e.preventDefault(); handleToggleCheck(item.id); }}
+                key={item.id} 
+                className={`bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex items-start space-x-3 relative transition-all duration-350
+                  ${isPending ? 'opacity-65 pointer-events-none filter saturate-50' : ''}`}
               >
-                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                  ${checkedItemIds.includes(item.id) 
-                    ? 'bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/25' 
-                    : 'bg-white border-gray-300 text-transparent hover:border-pink-500'}`}>
-                  <Check size={12} className="stroke-[3]" />
+                {/* Selection Checkbox */}
+                <div 
+                  className="self-center flex-shrink-0 cursor-pointer p-1.5 -ml-1.5" 
+                  onClick={(e) => { e.preventDefault(); handleToggleCheck(item.id); }}
+                >
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+                    ${checkedItemIds.includes(item.id) 
+                      ? 'bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/25' 
+                      : 'bg-white border-gray-300 text-transparent hover:border-pink-500'}`}>
+                    <Check size={12} className="stroke-[3]" />
+                  </div>
                 </div>
-              </div>
 
-              <Link 
-                href={`/product/${item.productId}`}
-                className="w-20 h-28 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity relative"
-              >
-                <OptimizedImage src={item.image} alt={item.brand} fill className="object-cover" />
-              </Link>
-              <div className="flex-1 flex flex-col pt-1">
-                <Link href={`/product/${item.productId}`} className="group cursor-pointer block">
-                  <h3 className="font-bold text-sm text-gray-900 group-hover:text-pink-600 transition-colors">{item.title}</h3>
-                  <p className="text-xs text-gray-500 truncate mb-1 group-hover:text-pink-500 transition-colors">{item.brand}</p>
+                <Link 
+                  href={`/product/${item.productId}`}
+                  className="w-20 h-28 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 block cursor-pointer hover:opacity-90 transition-opacity relative"
+                >
+                  <OptimizedImage src={item.image} alt={item.brand} fill className="object-cover" />
                 </Link>
-                {item.size && (
-                  <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>
-                )}
-                {(() => {
-                  const mrpVal = item.mrp || Math.round(item.price * 1.5);
-                  const discountPercent = mrpVal > item.price ? Math.round(((mrpVal - item.price) / mrpVal) * 100) : 0;
-                  const discountAmount = mrpVal - item.price;
-                  return (
-                    <div className="mt-1 space-y-1">
-                      <div className="flex items-center space-x-2 text-[11px] flex-wrap text-gray-500">
-                        <span>MRP:</span>
-                        <span className="line-through">₹{mrpVal}</span>
-                        {mrpVal > item.price && (
-                          <>
-                            <span className="text-pink-600 font-bold">({discountPercent}% OFF)</span>
-                            <span className="text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded text-[10px]">
-                              Save ₹{discountAmount}
+                <div className="flex-1 flex flex-col pt-1">
+                  <Link href={`/product/${item.productId}`} className="group cursor-pointer block">
+                    <h3 className="font-bold text-sm text-gray-900 group-hover:text-pink-600 transition-colors">{item.title}</h3>
+                    <p className="text-xs text-gray-500 truncate mb-1 group-hover:text-pink-500 transition-colors">{item.brand}</p>
+                  </Link>
+                  {item.size && (
+                    <p className="text-xs text-gray-500 mb-2">Size: <span className="font-bold text-gray-800">{item.size}</span></p>
+                  )}
+                  {(() => {
+                    const mrpVal = item.mrp || Math.round(item.price * 1.5);
+                    const discountPercent = mrpVal > item.price ? Math.round(((mrpVal - item.price) / mrpVal) * 100) : 0;
+                    const discountAmount = mrpVal - item.price;
+                    return (
+                      <div className="mt-1 space-y-1">
+                        <div className="flex items-center space-x-2 text-[11px] flex-wrap text-gray-500">
+                          <span>MRP:</span>
+                          <span className="line-through">₹{mrpVal}</span>
+                          {mrpVal > item.price && (
+                            <>
+                              <span className="text-pink-600 font-bold">({discountPercent}% OFF)</span>
+                              <span className="text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded text-[10px]">
+                                Save ₹{discountAmount}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-baseline space-x-2">
+                          <span className="text-xs text-gray-500 font-medium">Price:</span>
+                          <span className="font-extrabold text-sm text-gray-900">₹{item.price}</span>
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-gray-400 font-normal">
+                              (Total: ₹{item.price * item.quantity})
                             </span>
-                          </>
-                        )}
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-baseline space-x-2">
-                        <span className="text-xs text-gray-500 font-medium">Price:</span>
-                        <span className="font-extrabold text-sm text-gray-900">₹{item.price}</span>
-                        {item.quantity > 1 && (
-                          <span className="text-xs text-gray-400 font-normal">
-                            (Total: ₹{item.price * item.quantity})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
 
-                {stockLevels[item.id] !== undefined && stockLevels[item.id] <= 0 && (
-                  <div className="text-red-600 text-[11px] font-extrabold mb-2 bg-red-50/50 border border-red-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
-                    <AlertTriangle size={11} /> Out of Stock
-                  </div>
-                )}
-                {stockLevels[item.id] !== undefined && stockLevels[item.id] > 0 && stockLevels[item.id] < item.quantity && (
-                  <div className="text-orange-600 text-[11px] font-extrabold mb-2 bg-orange-50/50 border border-orange-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
-                    <AlertTriangle size={11} /> Only {stockLevels[item.id]} available
-                  </div>
-                )}
-                
-                <div className="mt-auto flex items-center space-x-4">
-                  <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-gray-50">
-                    <button 
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-8 text-center text-sm font-medium text-gray-900">{item.quantity}</span>
-                    <button 
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-pink-600 hover:bg-slate-50"
-                    >
-                      <Plus size={14} />
-                    </button>
+                  {stockLevels[item.id] !== undefined && stockLevels[item.id] <= 0 && (
+                    <div className="text-red-600 text-[11px] font-extrabold mb-2 bg-red-50/50 border border-red-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
+                      <AlertTriangle size={11} /> Out of Stock
+                    </div>
+                  )}
+                  {stockLevels[item.id] !== undefined && stockLevels[item.id] > 0 && stockLevels[item.id] < item.quantity && (
+                    <div className="text-orange-600 text-[11px] font-extrabold mb-2 bg-orange-50/50 border border-orange-150 px-2 py-1 rounded w-max flex items-center gap-1 uppercase tracking-wide">
+                      <AlertTriangle size={11} /> Only {stockLevels[item.id]} available
+                    </div>
+                  )}
+                  
+                  <div className="mt-auto flex items-center space-x-4">
+                    <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-gray-50">
+                      <button 
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={isPending}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-8 text-center text-sm font-medium text-gray-900 flex items-center justify-center min-w-[2rem] h-8">
+                        {isUpdating ? (
+                          <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          item.quantity
+                        )}
+                      </span>
+                      <button 
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={isPending}
+                        className="w-8 h-8 flex items-center justify-center text-pink-600 hover:bg-slate-50 disabled:opacity-40"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
+                <button 
+                  onClick={() => removeFromBag(item.id)}
+                  disabled={isPending}
+                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 p-1 disabled:opacity-40 flex items-center justify-center w-7 h-7"
+                >
+                  {isDeleting ? (
+                    <div className="w-4.5 h-4.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Trash2 size={18} />
+                  )}
+                </button>
               </div>
-              <button 
-                onClick={() => removeFromBag(item.id)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-red-500 p-1"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Courier Charges Alert */}
           {courierCharges > 0 && (

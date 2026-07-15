@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X, Trash2 } from "lucide-react";
+import { User, Mail, Phone, MapPin, Package, Calendar, Tag, ChevronDown, ChevronUp, Search, X, Trash2, ShoppingCart } from "lucide-react";
 
 const getCustomerTime = (createdAt: any): number => {
   if (!createdAt) return 0;
@@ -25,6 +25,11 @@ export default function AdminCustomers() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  // Cart & Recovery States
+  const [userCarts, setUserCarts] = useState<Record<string, any[]>>({});
+  const [loadingCarts, setLoadingCarts] = useState<Record<string, boolean>>({});
+  const [sendingRecovery, setSendingRecovery] = useState<Record<string, boolean>>({});
 
   // Search & Sorting States
   const [searchQuery, setSearchQuery] = useState("");
@@ -300,8 +305,40 @@ export default function AdminCustomers() {
     return "Recently";
   };
 
-  const toggleExpand = (userId: string) => {
+  const toggleExpand = async (userId: string) => {
+    const isExpanding = expandedUser !== userId;
     setExpandedUser(prev => prev === userId ? null : userId);
+    
+    if (isExpanding && !userCarts[userId] && !loadingCarts[userId]) {
+      setLoadingCarts(prev => ({ ...prev, [userId]: true }));
+      try {
+        const cartSnap = await getDocs(collection(db, `users/${userId}/cartItems`));
+        const items = cartSnap.docs.map(doc => doc.data());
+        setUserCarts(prev => ({ ...prev, [userId]: items }));
+      } catch (err) {
+        console.error(`Failed to fetch cart items for user ${userId}:`, err);
+      } finally {
+        setLoadingCarts(prev => ({ ...prev, [userId]: false }));
+      }
+    }
+  };
+
+  const handleSendCartRecovery = async (userId: string) => {
+    setSendingRecovery(prev => ({ ...prev, [userId]: true }));
+    try {
+      const res = await fetch(`/api/wallet/cron-abandoned-cart?userId=${userId}&forceSend=true`);
+      const data = await res.json();
+      if (data.success) {
+        alert("Cart recovery notification successfully triggered for this customer!");
+      } else {
+        alert("Failed to send notification: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error: " + err.message);
+    } finally {
+      setSendingRecovery(prev => ({ ...prev, [userId]: false }));
+    }
   };
 
   if (loading) {
@@ -441,6 +478,61 @@ export default function AdminCustomers() {
                         </div>
                       ) : (
                         <p className="text-xs text-slate-500 italic">No saved delivery address details for this profile yet.</p>
+                      )}
+                    </div>
+
+                    {/* Shopping Cart Items & Recovery Action */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3.5">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                          <ShoppingCart size={13} /> Active Shopping Cart items
+                        </h3>
+                        {userCarts[customer.id] && userCarts[customer.id].length > 0 && (
+                          <button
+                            onClick={() => handleSendCartRecovery(customer.id)}
+                            disabled={sendingRecovery[customer.id]}
+                            className="bg-pink-600 hover:bg-pink-700 disabled:bg-pink-850 text-white font-extrabold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl border border-pink-500/25 transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-pink-600/10 disabled:opacity-50"
+                          >
+                            {sendingRecovery[customer.id] ? (
+                              <>
+                                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                Sending...
+                              </>
+                            ) : (
+                              "Send Recovery Notification"
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      
+                      {loadingCarts[customer.id] ? (
+                        <div className="flex items-center gap-2 text-xs text-slate-500 italic py-2">
+                          <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                          Loading cart contents...
+                        </div>
+                      ) : userCarts[customer.id] && userCarts[customer.id].length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                          {userCarts[customer.id].map((item: any, idx: number) => (
+                            <div key={idx} className="bg-slate-950/60 rounded-xl border border-slate-900 p-3 shadow-inner flex items-center gap-3 text-xs">
+                              {item.image && (
+                                <div className="w-12 h-16 bg-slate-900 rounded overflow-hidden flex-shrink-0 relative">
+                                  <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-extrabold text-slate-100 truncate">{item.title}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{item.brand}</p>
+                                <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                                  Qty: <span className="font-bold text-slate-200">{item.quantity}</span>
+                                  {item.size && <span className="ml-2">Size: <span className="font-bold text-slate-200">{item.size}</span></span>}
+                                  <span className="ml-2.5 text-pink-500 font-bold">₹{item.price * item.quantity}</span>
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">No active items in cart.</p>
                       )}
                     </div>
 
