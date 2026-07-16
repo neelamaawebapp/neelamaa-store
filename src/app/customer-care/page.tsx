@@ -93,10 +93,23 @@ export default function CustomerCare() {
         </div>
       </header>
 
-      {/* Hero Intro */}
-      <div className="bg-gradient-to-br from-pink-500 to-orange-500 p-6 text-white text-center rounded-b-3xl shadow-md">
-        <h2 className="font-sans text-2xl font-bold tracking-wide">How can we help you?</h2>
-        <p className="text-xs text-white/90 mt-2 font-medium">We are available 24/7 to resolve your shopping queries.</p>
+      {/* Hero Intro with Aarohi mascot */}
+      <div className="bg-gradient-to-br from-pink-500 to-orange-500 px-5 py-6 text-white rounded-b-3xl shadow-md">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-left flex-1">
+            <h2 className="font-sans text-xl font-extrabold tracking-wide leading-tight">How can we help you?</h2>
+            <p className="text-xs text-white/90 mt-1.5 leading-relaxed font-medium">
+              Hi, I'm Aarohi! I am here 24/7 to help resolve your shopping and delivery queries.
+            </p>
+          </div>
+          <div className="relative w-20 h-20 rounded-full border-2 border-white/90 overflow-hidden shrink-0 bg-white/10 shadow-md animate-fade-in flex items-center justify-center">
+            <img 
+              src="/mascot/aarohi_waving.png" 
+              alt="Aarohi mascot" 
+              className="w-full h-full object-cover object-center scale-110 translate-y-0.5"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Direct Contact Cards Grid */}

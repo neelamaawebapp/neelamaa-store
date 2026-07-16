@@ -171,15 +171,21 @@ export default function BagPage() {
       </div>
 
       {cart.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-            <span className="text-5xl">🛍️</span>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
+          <div className="relative mb-6 p-4 bg-gradient-to-b from-[#fffbeb] to-[#fff5f5] rounded-3xl border border-orange-100/50 shadow-inner flex items-center justify-center">
+            <img 
+              src="/mascot/aarohi_front.png" 
+              alt="Aarohi Brand Mascot" 
+              className="h-48 w-auto object-contain animate-fade-in drop-shadow-md"
+            />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Hey, it feels so light!</h2>
-          <p className="text-gray-500 text-sm mb-8">There is nothing in your bag. Let's add some items.</p>
+          <h2 className="text-xl font-extrabold text-gray-900 mb-2 tracking-tight">Hey, your bag feels so light!</h2>
+          <p className="text-gray-500 text-xs mb-8 max-w-xs leading-relaxed">
+            Let's fill it with beautiful, handcrafted love. Aarohi is here to help you find your perfect style!
+          </p>
           <button 
             onClick={() => router.push("/wishlist")}
-            className="border-2 border-pink-500 text-pink-600 font-bold py-3 px-8 rounded-md hover:bg-slate-50 transition-colors"
+            className="border-2 border-pink-500 text-pink-600 font-extrabold py-3 px-8 rounded-md hover:bg-slate-50 transition-colors uppercase tracking-wider text-xs shadow-sm cursor-pointer"
           >
             ADD ITEMS FROM WISHLIST
           </button>

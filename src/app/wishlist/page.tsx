@@ -180,15 +180,19 @@ export default function WishlistPage() {
           <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : products.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center mt-10">
-          <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center mb-6">
-            <Heart size={32} className="text-pink-400 fill-pink-100" />
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto">
+          <div className="relative mb-6 p-4 bg-gradient-to-b from-[#fffbeb] to-[#fff5f5] rounded-3xl border border-orange-100/50 shadow-inner flex items-center justify-center">
+            <img 
+              src="/mascot/aarohi_three_quarter.png" 
+              alt="Aarohi Brand Mascot" 
+              className="h-48 w-auto object-contain animate-fade-in drop-shadow-md"
+            />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Your wishlist is empty</h2>
-          <p className="text-xs text-gray-500 mb-6 max-w-xs leading-relaxed">
-            Save items that you like in your wishlist. Review them anytime and easily move them to the bag.
+          <h2 className="text-xl font-extrabold text-gray-900 mb-2 tracking-tight">Your wishlist is empty</h2>
+          <p className="text-gray-500 text-xs mb-8 max-w-xs leading-relaxed">
+            Aarohi says: Save the handcrafted items you love here! You can review them anytime and easily move them to your bag.
           </p>
-          <Link href="/" className="px-8 py-3 bg-pink-500 text-white font-bold rounded-md hover:bg-pink-600 transition-colors shadow-sm text-xs uppercase tracking-wider">
+          <Link href="/" className="px-8 py-3 bg-pink-500 text-white font-extrabold rounded-md hover:bg-pink-600 transition-colors shadow-md text-xs uppercase tracking-wider cursor-pointer">
             CONTINUE SHOPPING
           </Link>
         </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import MascotAssistant from "@/components/MascotAssistant";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import NotificationListener from "@/components/NotificationListener";
@@ -60,6 +61,7 @@ export default function RootLayout({
             <Footer />
             <BottomNav />
             <WhatsAppButton />
+            <MascotAssistant />
           </CartProvider>
         </AuthProvider>
       </body>

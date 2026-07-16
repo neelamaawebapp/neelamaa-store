@@ -1002,21 +1002,29 @@ export default function CheckoutPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center animate-fade-in">
-        <div className="w-20 h-20 bg-green-50 border border-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
-          <span className="text-4xl">🎉</span>
+        <div className="relative mb-6 p-4 bg-gradient-to-b from-[#fffbeb] to-[#fff5f5] rounded-3xl border border-orange-100/50 shadow-inner flex items-center justify-center">
+          <img 
+            src="/mascot/aarohi_waving.png" 
+            alt="Aarohi Brand Mascot Celebrating" 
+            className="h-36 w-auto object-contain animate-fade-in drop-shadow-md"
+          />
+          <div className="absolute -top-2 -right-2 text-2xl animate-bounce">🎉</div>
+          <div className="absolute -bottom-2 -left-2 text-2xl animate-bounce delay-150">✨</div>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2 uppercase tracking-wide">Order Successful!</h1>
-        <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed">Thank you for shopping with us. Your order has been registered and is being processed.</p>
+        <h1 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-wide">Order Successful!</h1>
+        <p className="text-xs text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed">
+          Thank you for shopping with us. Aarohi and the Craft Style team have received your order and are working on it!
+        </p>
         <div className="space-y-3 w-full">
           <button 
             onClick={() => router.push("/profile/orders")}
-            className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors uppercase tracking-wider text-sm shadow-md"
+            className="w-full bg-pink-500 text-white font-extrabold py-3.5 rounded-md hover:bg-pink-600 transition-colors uppercase tracking-wider text-xs shadow-md cursor-pointer"
           >
             Track My Orders
           </button>
           <button 
             onClick={() => router.push("/")}
-            className="w-full border border-gray-300 text-gray-700 bg-white font-bold py-3.5 rounded-md hover:bg-gray-50 transition-colors uppercase tracking-wider text-sm"
+            className="w-full border border-gray-300 text-gray-700 bg-white font-extrabold py-3.5 rounded-md hover:bg-gray-50 transition-colors uppercase tracking-wider text-xs cursor-pointer"
           >
             Continue Shopping
           </button>
@@ -1028,14 +1036,20 @@ export default function CheckoutPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center w-full max-w-md mx-auto p-6 text-center">
-        <div className="w-24 h-24 bg-pink-100 rounded-full flex items-center justify-center mb-6">
-          <MapPin className="text-pink-500" size={40} />
+        <div className="relative mb-6 p-4 bg-gradient-to-b from-[#fffbeb] to-[#fff5f5] rounded-3xl border border-orange-100/50 shadow-inner flex items-center justify-center">
+          <img 
+            src="/mascot/aarohi_waving.png" 
+            alt="Aarohi Mascot Welcoming" 
+            className="h-36 w-auto object-contain animate-fade-in drop-shadow-md"
+          />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h1>
-        <p className="text-gray-500 mb-8">Please login or create an account to proceed with your checkout and place an order.</p>
+        <h1 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-wide">Login Required</h1>
+        <p className="text-xs text-gray-550 mb-8 max-w-xs leading-relaxed">
+          Hi! Please login or create an account to proceed with checkout. Aarohi is here to guide you through!
+        </p>
         <button 
           onClick={() => router.push("/login?redirect=/checkout")}
-          className="w-full bg-pink-500 text-white font-bold py-3.5 rounded-md hover:bg-pink-600 transition-colors"
+          className="w-full bg-pink-500 text-white font-extrabold py-3.5 rounded-md hover:bg-pink-600 transition-colors uppercase tracking-wider text-xs shadow-md cursor-pointer"
         >
           LOGIN / SIGNUP
         </button>
