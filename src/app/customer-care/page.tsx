@@ -102,11 +102,11 @@ export default function CustomerCare() {
               Hi, I'm Aarohi! I am here 24/7 to help resolve your shopping and delivery queries.
             </p>
           </div>
-          <div className="relative w-20 h-20 rounded-full border-2 border-white/90 overflow-hidden shrink-0 p-1 bg-white shadow-md animate-fade-in flex items-center justify-center group cursor-pointer">
+          <div className="relative w-20 h-20 rounded-full border-2 border-white/90 overflow-hidden shrink-0 bg-white shadow-md animate-fade-in flex items-center justify-center group cursor-pointer">
             <img 
               src="/mascot/aarohi_waving.png" 
               alt="Aarohi mascot" 
-              className="w-full h-full object-contain object-center aarohi-wave-active group-hover:aarohi-wave-hover"
+              className="w-full h-full object-cover object-top scale-[1.3] translate-y-2.5 aarohi-wave-active group-hover:aarohi-wave-hover"
             />
           </div>
         </div>
