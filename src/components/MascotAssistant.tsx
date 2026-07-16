@@ -59,12 +59,12 @@ export default function MascotAssistant() {
           setShowTooltip(false);
           sessionStorage.setItem("aarohi_tooltip_dismissed", "true");
         }}
-        className="relative w-14 h-14 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none"
+        className="relative w-14 h-14 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 p-1 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none"
       >
         <img
           src="/mascot/aarohi_waving.png"
           alt="Aarohi Mascot Assistant"
-          className="w-full h-full object-cover object-center scale-110 translate-y-0.5 group-hover:scale-120 transition-all duration-300"
+          className="w-full h-full object-contain object-center transition-all duration-300"
         />
         {/* Subtle pulsating online indicator */}
         <span className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
@@ -101,11 +101,11 @@ export default function MascotAssistant() {
         <div className="absolute left-0 bottom-16 w-[280px] bg-white/95 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl shadow-pink-500/10 p-5 animate-fade-in-up z-50 text-left overflow-hidden">
           {/* Header section with brand colors */}
           <div className="flex items-center gap-3 border-bottom border-gray-100 pb-3 mb-3.5">
-            <div className="w-12 h-12 rounded-full border border-pink-400/30 bg-pink-50 overflow-hidden shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500/10 to-orange-500/10">
+            <div className="w-12 h-12 rounded-full border border-pink-400/30 bg-pink-50 overflow-hidden shrink-0 p-1 flex items-center justify-center bg-gradient-to-br from-pink-500/10 to-orange-500/10">
               <img
                 src="/mascot/aarohi_waving.png"
                 alt="Aarohi mascot"
-                className="w-full h-full object-cover object-center scale-110 translate-y-0.5"
+                className="w-full h-full object-contain object-center"
               />
             </div>
             <div>
