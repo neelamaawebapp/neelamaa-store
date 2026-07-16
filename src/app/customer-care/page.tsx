@@ -102,11 +102,11 @@ export default function CustomerCare() {
               Hi, I'm Aarohi! I am here 24/7 to help resolve your shopping and delivery queries.
             </p>
           </div>
-          <div className="relative w-20 h-20 rounded-full border-2 border-white/90 overflow-hidden shrink-0 p-1 bg-white shadow-md animate-fade-in flex items-center justify-center">
+          <div className="relative w-20 h-20 rounded-full border-2 border-white/90 overflow-hidden shrink-0 p-1 bg-white shadow-md animate-fade-in flex items-center justify-center group cursor-pointer">
             <img 
               src="/mascot/aarohi_waving.png" 
               alt="Aarohi mascot" 
-              className="w-full h-full object-contain object-center"
+              className="w-full h-full object-contain object-center aarohi-wave-active group-hover:aarohi-wave-hover"
             />
           </div>
         </div>
@@ -242,6 +242,29 @@ export default function CustomerCare() {
           </div>
         )}
       </div>
+      <style>{`
+        @keyframes aarohi-wave {
+          0%, 80%, 100% { transform: rotate(0deg); }
+          83% { transform: rotate(-7deg); }
+          86% { transform: rotate(5deg); }
+          89% { transform: rotate(-5deg); }
+          92% { transform: rotate(4deg); }
+        }
+        @keyframes aarohi-wave-fast {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-9deg); }
+          50% { transform: rotate(7deg); }
+          75% { transform: rotate(-7deg); }
+        }
+        .aarohi-wave-active {
+          animation: aarohi-wave 6s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+        .group:hover .aarohi-wave-hover {
+          animation: aarohi-wave-fast 1.2s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+      `}</style>
     </div>
   );
 }

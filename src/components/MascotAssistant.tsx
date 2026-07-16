@@ -59,12 +59,12 @@ export default function MascotAssistant() {
           setShowTooltip(false);
           sessionStorage.setItem("aarohi_tooltip_dismissed", "true");
         }}
-        className="relative w-14 h-14 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 p-1 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none"
+        className="relative w-16 h-16 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 p-1.5 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none"
       >
         <img
           src="/mascot/aarohi_waving.png"
           alt="Aarohi Mascot Assistant"
-          className="w-full h-full object-contain object-center transition-all duration-300"
+          className="w-full h-full object-contain object-center aarohi-wave-active group-hover:aarohi-wave-hover transition-all duration-300"
         />
         {/* Subtle pulsating online indicator */}
         <span className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
@@ -162,6 +162,29 @@ export default function MascotAssistant() {
           </div>
         </div>
       )}
+      <style>{`
+      @keyframes aarohi-wave {
+        0%, 80%, 100% { transform: rotate(0deg); }
+        83% { transform: rotate(-7deg); }
+        86% { transform: rotate(5deg); }
+        89% { transform: rotate(-5deg); }
+        92% { transform: rotate(4deg); }
+      }
+      @keyframes aarohi-wave-fast {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-9deg); }
+        50% { transform: rotate(7deg); }
+        75% { transform: rotate(-7deg); }
+      }
+      .aarohi-wave-active {
+        animation: aarohi-wave 6s ease-in-out infinite;
+        transform-origin: bottom center;
+      }
+      .group:hover .aarohi-wave-hover {
+        animation: aarohi-wave-fast 1.2s ease-in-out infinite;
+        transform-origin: bottom center;
+      }
+    `}</style>
     </div>
   );
 }
