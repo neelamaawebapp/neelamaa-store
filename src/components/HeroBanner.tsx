@@ -13,6 +13,15 @@ import { autoAdjustImage } from "@/lib/imageUtils";
 const defaultBanners = [
   {
     id: 1,
+    image: "/mascot/aarohi_ganesha_ad.png",
+    title: "Divine Ganesha",
+    subtitle: "LAUNCH SPECIAL - ₹1,770",
+    brand1: "CRAFT STYLE",
+    brand2: "HANDMADE",
+    link: "/product/divine-lord-ganesha-tabletop-showpiece-with-artistic-tree-design"
+  },
+  {
+    id: 2,
     image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&h=800&fit=crop",
     title: "Everyday Picks",
     subtitle: "MIN. 82% OFF",
