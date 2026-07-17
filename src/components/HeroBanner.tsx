@@ -75,6 +75,7 @@ export default function HeroBanner() {
   const [isEditing, setIsEditing] = useState(false);
   const [editBanners, setEditBanners] = useState(defaultBanners);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [activePromoName, setActivePromoName] = useState<string | null>(null);
 
   // Image Editor States
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -106,8 +107,10 @@ export default function HeroBanner() {
             link: activePromo.targetCategory ? `/category/${activePromo.targetCategory.toLowerCase()}` : "/category/all"
           };
           setBanners([promoSlide]);
+          setActivePromoName(activePromo.title);
         } else {
           setBanners(defaultBannersData);
+          setActivePromoName(null);
         }
       } catch (err) {
         console.error("Failed to fetch banners", err);
@@ -196,8 +199,10 @@ export default function HeroBanner() {
           link: activePromo.targetCategory ? `/category/${activePromo.targetCategory.toLowerCase()}` : "/category/all"
         };
         setBanners([promoSlide]);
+        setActivePromoName(activePromo.title);
       } else {
         setBanners(editBanners);
+        setActivePromoName(null);
       }
       
       setIsEditing(false);
@@ -230,6 +235,8 @@ export default function HeroBanner() {
     setEditBanners(newBanners);
   };
 
+  const displayBanners = isEditing ? editBanners : banners;
+
   return (
     <div className="flex flex-col relative">
       {/* Magic Edit Button */}
@@ -255,7 +262,7 @@ export default function HeroBanner() {
              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          banners.map((banner, idx) => (
+          displayBanners.map((banner, idx) => (
             <Link 
               href={banner.link || "/categories"}
               key={banner.id || idx}
@@ -280,7 +287,7 @@ export default function HeroBanner() {
 
       {/* Carousel Dots */}
       <div className="flex justify-center space-x-1.5 py-3">
-        {banners.map((_, idx) => (
+        {displayBanners.map((_, idx) => (
           <button 
             key={idx}
             onClick={() => setCurrentIndex(idx)}
@@ -305,6 +312,17 @@ export default function HeroBanner() {
 
             {/* Modal Body */}
             <div className="overflow-y-auto p-4 flex-1 space-y-8 bg-gray-50">
+              {activePromoName && (
+                <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-850 font-bold flex items-start gap-2.5 shadow-sm">
+                  <AlertTriangle size={18} className="shrink-0 text-amber-500 mt-0.5" />
+                  <div>
+                    <p className="font-extrabold text-amber-900">Active Scheduled Sale: "{activePromoName}"</p>
+                    <p className="text-[10px] text-amber-700 font-medium mt-1 leading-normal">
+                      A scheduled storefront promotion is currently live. The new banners you upload/save below will be saved as the default storefront banners and will automatically take effect as soon as the scheduled promotion ends.
+                    </p>
+                  </div>
+                </div>
+              )}
               {editBanners.map((banner, idx) => (
                 <div key={banner.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative">
                   <div className="absolute -top-3 -left-3 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold border-4 border-gray-50 z-10">
