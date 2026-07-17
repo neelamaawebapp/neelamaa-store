@@ -15,7 +15,12 @@ service cloud.firestore {
     // Helper: Is the logged-in user an administrator?
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email == 'admincraftstyle@gmail.com' || request.auth.token.email == 'admin@craftstyle.com');
+        (
+          request.auth.token.email == 'admincraftstyle@gmail.com' || 
+          request.auth.token.email == 'admin@craftstyle.com' ||
+          request.auth.token.email == 'manishagaur1983@gmail.com' ||
+          request.auth.token.email == 'guddu20484@gmail.com'
+        );
     }
 
     // 1. Products Collection: Public read, Admin write
