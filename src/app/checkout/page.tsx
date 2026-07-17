@@ -62,6 +62,8 @@ export default function CheckoutPage() {
   const [pin, setPin] = useState("");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [courierCharges, setCourierCharges] = useState(0);
+  const [loadingShipping, setLoadingShipping] = useState(false);
 
   // Multi-address States
   interface SavedAddress {
@@ -458,7 +460,91 @@ export default function CheckoutPage() {
 
   const discount = storeDiscountAmount;
   const finalAmount = Math.max(0, totalMRP - totalDiscountAmount);
-  const courierCharges = finalAmount < 500 && finalAmount > 0 ? 100 : 0;
+
+  // Dynamic Shipping Rate Calculator
+  useEffect(() => {
+    if (!pin || pin.length < 6 || checkoutItems.length === 0 || finalAmount === 0) {
+      setCourierCharges(0);
+      return;
+    }
+
+    if (finalAmount >= 500) {
+      setCourierCharges(0);
+      return;
+    }
+
+    const fetchShippingRate = async () => {
+      setLoadingShipping(true);
+      try {
+        // 1. Calculate total weight of selected items
+        let totalWeight = 0;
+        for (const item of checkoutItems) {
+          const productRef = doc(db, "products", item.productId);
+          const productSnap = await getDoc(productRef);
+          if (productSnap.exists()) {
+            const prodData = productSnap.data();
+            let itemWeight = 0.5; // Default 0.5kg
+            if (prodData.shipping && typeof prodData.shipping.packageWeight !== "undefined" && prodData.shipping.packageWeight !== "") {
+              itemWeight = Number(prodData.shipping.packageWeight);
+            } else if (typeof prodData.packageWeight !== "undefined" && prodData.packageWeight !== "") {
+              itemWeight = Number(prodData.packageWeight);
+            }
+            totalWeight += itemWeight * item.quantity;
+          } else {
+            totalWeight += 0.5 * item.quantity;
+          }
+        }
+
+        // 2. Fetch rate from dynamic endpoint
+        const res = await fetch("/api/shipping-cost", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            delivery_postcode: pin,
+            weight: totalWeight,
+            cod: payMethod === "COD" ? 1 : 0
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setCourierCharges(data.shippingCost);
+          } else {
+            throw new Error(data.message || "Failed to calculate cost");
+          }
+        } else {
+          throw new Error("HTTP failure");
+        }
+      } catch (err) {
+        console.error("Error calculating shipping charges:", err);
+        // Failover simulation
+        const firstDigit = pin.trim().charAt(0);
+        let baseRate = 75;
+        switch (firstDigit) {
+          case "3": baseRate = 55; break;
+          case "1": case "2": baseRate = 75; break;
+          case "4": case "5": case "6": baseRate = 95; break;
+          case "7": case "8": baseRate = 115; break;
+          case "9": baseRate = 135; break;
+          default: baseRate = 75;
+        }
+        const weightCharge = Math.ceil(checkoutItems.length * 0.5) * 25;
+        const codCharge = payMethod === "COD" ? 40 : 0;
+        setCourierCharges(baseRate + weightCharge + codCharge);
+      } finally {
+        setLoadingShipping(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchShippingRate();
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [pin, payMethod, finalAmount, checkoutItems]);
+
+  // courierCharges is dynamic state
   const totalToPay = finalAmount + courierCharges;
 
   const walletDiscount = useWallet ? Math.min(totalToPay, walletBalance, 50) : 0;
@@ -1469,7 +1555,9 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Courier Charges</span>
-              {courierCharges > 0 ? (
+              {loadingShipping ? (
+                <span className="w-12 h-4 bg-gray-200 animate-pulse rounded inline-block"></span>
+              ) : courierCharges > 0 ? (
                 <span className="text-gray-900 font-bold">₹{courierCharges}</span>
               ) : (
                 <span className="text-green-600 font-bold">FREE</span>

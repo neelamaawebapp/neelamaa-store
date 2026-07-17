@@ -105,6 +105,11 @@ export default function AdminDashboard() {
   }[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
 
+  // Bulk pricing states
+  const [bulkPricingRows, setBulkPricingRows] = useState<any[]>([]);
+  const [expandedProductIds, setExpandedProductIds] = useState<string[]>([]);
+  const [savingBulkPricing, setSavingBulkPricing] = useState(false);
+
   const handleVariantImagesUpload = async (idx: number, files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setUploadingVariantIdx(idx);
@@ -682,6 +687,46 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, []);
 
+  // Initialize Bulk Pricing Spreadsheet Rows
+  useEffect(() => {
+    if (viewMode === "bulk-pricing" && products.length > 0) {
+      setBulkPricingRows(products.map(p => ({
+        id: p.id,
+        image: p.image || "",
+        title: p.title || "",
+        brand: p.brand || "",
+        sku: p.sku || "",
+        purchasePrice: p.purchasePrice !== undefined && p.purchasePrice !== null ? p.purchasePrice.toString() : "",
+        packingCharges: p.packingCharges !== undefined && p.packingCharges !== null ? p.packingCharges.toString() : "",
+        courierCharges: p.courierCharges !== undefined && p.courierCharges !== null ? p.courierCharges.toString() : "",
+        otherExpenses: p.otherExpenses !== undefined && p.otherExpenses !== null ? p.otherExpenses.toString() : "",
+        profit: p.profit !== undefined && p.profit !== null ? p.profit.toString() : "",
+        gstRate: p.gstRate !== undefined && p.gstRate !== null ? p.gstRate.toString() : "18",
+        price: p.price !== undefined && p.price !== null ? p.price.toString() : "",
+        mrp: p.mrp !== undefined && p.mrp !== null ? p.mrp.toString() : "",
+        quantity: p.quantity !== undefined && p.quantity !== null ? p.quantity.toString() : "0",
+        hasVariants: !!(p.variants && p.variants.length > 0),
+        variants: p.variants ? p.variants.map((v: any) => ({
+          id: v.id || `var_${Date.now()}_${Math.random()}`,
+          size: v.size || "",
+          sizeUnit: v.sizeUnit || "",
+          color: v.color || "",
+          material: v.material || "",
+          price: v.price !== undefined && v.price !== null ? v.price.toString() : "",
+          mrp: v.mrp !== undefined && v.mrp !== null ? v.mrp.toString() : "",
+          stock: v.stock !== undefined && v.stock !== null ? v.stock.toString() : "0",
+          sku: v.sku || "",
+          image: v.image || "",
+          images: v.images || []
+        })) : []
+      })));
+    } else if (viewMode !== "bulk-pricing") {
+      // Clear rows when switching away
+      setBulkPricingRows([]);
+      setExpandedProductIds([]);
+    }
+  }, [viewMode, products]);
+
 
 
   // Pricing checking helpers
@@ -697,6 +742,159 @@ export default function AdminDashboard() {
 
   const isPricingIncomplete = (product: any) => {
     return getMissingPricingFields(product).length > 0;
+  };
+
+  // Bulk Pricing Spreadsheet Handlers
+  const handleBulkPricingChange = (idx: number, field: string, value: string) => {
+    setBulkPricingRows(prev => {
+      const updated = [...prev];
+      const updatedItem = { ...updated[idx] };
+      
+      updatedItem[field] = value;
+      
+      // Auto-calculate Selling Price using expected profit if cost details are changed
+      const costFields = ["purchasePrice", "packingCharges", "courierCharges", "otherExpenses", "profit"];
+      if (costFields.includes(field) || field === "gstRate") {
+        const base = 
+          Number(updatedItem.purchasePrice || 0) + 
+          Number(updatedItem.packingCharges || 0) + 
+          Number(updatedItem.courierCharges || 0) + 
+          Number(updatedItem.otherExpenses || 0) + 
+          Number(updatedItem.profit || 0);
+        const rate = Number(updatedItem.gstRate || 0);
+        const computed = base + Math.round(base * (rate / 100));
+        updatedItem.price = computed > 0 ? computed.toString() : updatedItem.price;
+      }
+      
+      updated[idx] = updatedItem;
+      return updated;
+    });
+  };
+
+  const handleBulkPricingVariantChange = (prodIdx: number, varIdx: number, field: string, value: string) => {
+    setBulkPricingRows(prev => {
+      const updated = [...prev];
+      const updatedItem = { ...updated[prodIdx] };
+      const updatedVariants = [...updatedItem.variants];
+      
+      updatedVariants[varIdx] = {
+        ...updatedVariants[varIdx],
+        [field]: value
+      };
+      
+      updatedItem.variants = updatedVariants;
+      
+      // Update total stock from the variant stock totals
+      const totalStock = updatedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+      updatedItem.quantity = totalStock.toString();
+      
+      updated[prodIdx] = updatedItem;
+      return updated;
+    });
+  };
+
+  const handleBulkPricingSyncCalculated = (idx: number) => {
+    setBulkPricingRows(prev => {
+      const updated = [...prev];
+      const updatedItem = { ...updated[idx] };
+      const base = 
+        Number(updatedItem.purchasePrice || 0) + 
+        Number(updatedItem.packingCharges || 0) + 
+        Number(updatedItem.courierCharges || 0) + 
+        Number(updatedItem.otherExpenses || 0) + 
+        Number(updatedItem.profit || 0);
+      const rate = Number(updatedItem.gstRate || 0);
+      const computed = base + Math.round(base * (rate / 100));
+      
+      if (computed > 0) {
+        updatedItem.price = computed.toString();
+      }
+      updated[idx] = updatedItem;
+      return updated;
+    });
+  };
+
+  const handleBulkPricingSave = async () => {
+    setSavingBulkPricing(true);
+    setError("");
+    setSuccess("");
+    
+    try {
+      const { doc: fsDoc, writeBatch } = await import("firebase/firestore");
+      const batch = writeBatch(db);
+      let changedCount = 0;
+      
+      for (const row of bulkPricingRows) {
+        const original = products.find(p => p.id === row.id);
+        if (!original) continue;
+        
+        const hasVariants = !!(row.variants && row.variants.length > 0);
+        
+        const isChanged = 
+          row.sku !== (original.sku || "") ||
+          Number(row.purchasePrice || 0) !== Number(original.purchasePrice || 0) ||
+          Number(row.packingCharges || 0) !== Number(original.packingCharges || 0) ||
+          Number(row.courierCharges || 0) !== Number(original.courierCharges || 0) ||
+          Number(row.otherExpenses || 0) !== Number(original.otherExpenses || 0) ||
+          Number(row.profit || 0) !== Number(original.profit || 0) ||
+          Number(row.gstRate || 0) !== Number(original.gstRate || 18) ||
+          Number(row.price || 0) !== Number(original.price || 0) ||
+          Number(row.mrp || 0) !== Number(original.mrp || 0) ||
+          Number(row.quantity || 0) !== Number(original.quantity || 0) ||
+          JSON.stringify(row.variants) !== JSON.stringify(original.variants || []);
+          
+        if (isChanged) {
+          const docRef = fsDoc(db, "products", row.id);
+          const updateData: any = {
+            sku: row.sku,
+            purchasePrice: row.purchasePrice !== "" ? Number(row.purchasePrice) : null,
+            packingCharges: row.packingCharges !== "" ? Number(row.packingCharges) : null,
+            courierCharges: row.courierCharges !== "" ? Number(row.courierCharges) : null,
+            otherExpenses: row.otherExpenses !== "" ? Number(row.otherExpenses) : null,
+            profit: row.profit !== "" ? Number(row.profit) : null,
+            gstRate: Number(row.gstRate),
+            price: Number(row.price || 0),
+            mrp: row.mrp !== "" ? Number(row.mrp) : null,
+            quantity: Number(row.quantity || 0),
+          };
+          
+          if (hasVariants) {
+            updateData.variants = row.variants.map((v: any) => ({
+              id: v.id,
+              size: v.size,
+              sizeUnit: v.sizeUnit || "",
+              color: v.color || "",
+              material: v.material || "",
+              price: Number(v.price || 0),
+              mrp: Number(v.mrp || 0),
+              stock: Number(v.stock || 0),
+              sku: v.sku || "",
+              image: v.image || "",
+              images: v.images || []
+            }));
+          }
+          
+          batch.update(docRef, updateData);
+          changedCount++;
+        }
+      }
+      
+      if (changedCount > 0) {
+        await batch.commit();
+        setSuccess(`Successfully saved bulk pricing modifications for ${changedCount} item(s)!`);
+        setTimeout(() => setSuccess(""), 4000);
+      } else {
+        setSuccess("No modifications detected in catalog spreadsheet.");
+        setTimeout(() => setSuccess(""), 3000);
+      }
+      
+      setViewMode("inventory");
+    } catch (err: any) {
+      console.error("Bulk pricing save failed:", err);
+      setError(err.message || "Failed to batch save product rate updates.");
+    } finally {
+      setSavingBulkPricing(false);
+    }
   };
 
   const handleSizeInventoryChange = (size: string, value: string) => {
@@ -1981,6 +2179,23 @@ export default function AdminDashboard() {
     });
   }
 
+  // Real-time Pricing Simulator calculations
+  const simPurchaseCost = Number(purchasePrice || 0);
+  const simPackingCost = Number(packingCharges || 0);
+  const simCourierCost = Number(courierCharges || 0);
+  const simOtherCost = Number(otherExpenses || 0);
+  const simLandedCost = simPurchaseCost + simPackingCost + simCourierCost + simOtherCost;
+  
+  const simSellingPrice = Number(price || 0);
+  const simGstRate = Number(gstRate || 0);
+  
+  const simGstAmount = Math.round(simSellingPrice * (simGstRate / (100 + simGstRate)));
+  const simNetRevenue = simSellingPrice - simGstAmount;
+  const simNetProfit = simNetRevenue - simLandedCost;
+  
+  const simNetMargin = simNetRevenue > 0 ? (simNetProfit / simNetRevenue) * 100 : 0;
+  const simMarkup = simLandedCost > 0 ? (simNetProfit / simLandedCost) * 100 : 0;
+
   return (
     <div className="max-w-7xl mx-auto pb-20 text-slate-100 font-sans">
       
@@ -2052,6 +2267,13 @@ export default function AdminDashboard() {
           >
             <Layers size={14} />
             <span>Bulk Upload Mode</span>
+          </button>
+          <button 
+            onClick={() => { setViewMode("bulk-pricing"); resetForm(); }}
+            className={`px-5 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "bulk-pricing" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <Coins size={14} />
+            <span>Bulk Pricing Edit</span>
           </button>
           <button 
             onClick={() => { setViewMode("reports"); resetForm(); }}
@@ -2954,6 +3176,84 @@ export default function AdminDashboard() {
                       />
                     </div>
                   </div>
+
+                  {/* Dynamic Pricing Simulator Panel */}
+                  <div className="bg-slate-950/60 p-4 border border-slate-850 rounded-xl space-y-3.5 mt-4 shadow-inner">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-900">
+                      <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest flex items-center gap-1">
+                        <Coins size={12} />
+                        Dynamic Price Simulator
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const base = simLandedCost + Number(profit || 0);
+                          const computed = base + Math.round(base * (simGstRate / 100));
+                          setPrice(computed > 0 ? computed.toString() : "");
+                        }}
+                        className="text-[9px] bg-pink-500/10 text-pink-500 hover:bg-pink-500 hover:text-white border border-pink-500/20 hover:border-transparent px-2 py-1 rounded-md uppercase font-extrabold transition-all cursor-pointer"
+                        title="Auto-apply calculated expected profit + GST to Selling Price"
+                      >
+                        Apply Expected Price
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-400 font-semibold leading-relaxed">
+                      <div className="flex justify-between">
+                        <span>Landed Cost:</span>
+                        <span className="text-slate-200 font-bold">₹{simLandedCost}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>GST portion:</span>
+                        <span className="text-slate-200 font-bold">₹{simGstAmount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Net Revenue:</span>
+                        <span className="text-slate-200 font-bold">₹{simNetRevenue}</span>
+                      </div>
+                      <div className="flex justify-between border-l border-slate-800 pl-2">
+                        <span>Net Profit:</span>
+                        <span className={`font-black ${simNetProfit > 0 ? 'text-emerald-400' : simNetProfit < 0 ? 'text-rose-405' : 'text-slate-300'}`}>
+                          ₹{simNetProfit}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar of Margin Health */}
+                    <div className="space-y-2 pt-2 border-t border-slate-900/60">
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                        <span className="text-slate-400">Margin vs Markup</span>
+                        <span className={simNetProfit > 0 ? 'text-emerald-400' : simNetProfit < 0 ? 'text-rose-405' : 'text-slate-400'}>
+                          Margin: {simNetMargin.toFixed(1)}% | Markup: {simMarkup.toFixed(1)}%
+                        </span>
+                      </div>
+                      
+                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-850/30">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            simNetMargin >= 20 
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                              : simNetMargin > 0 
+                                ? 'bg-gradient-to-r from-amber-500 to-yellow-500' 
+                                : simNetMargin < 0 
+                                  ? 'bg-gradient-to-r from-rose-500 to-red-500' 
+                                  : 'bg-slate-700'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(0, simNetMargin))}%` }}
+                        ></div>
+                      </div>
+
+                      <span className="text-[10px] text-slate-500 block leading-relaxed font-medium">
+                        {simNetMargin >= 20 
+                          ? "✓ Healthy profit margin! Excellent pricing structure." 
+                          : simNetMargin > 0 
+                            ? "⚠ Thin margin. Ensure courier and packaging fees are exact." 
+                            : simNetMargin < 0 
+                              ? "✗ Selling at a net LOSS. Adjust Selling Price or reduce costs!" 
+                              : "Enter purchase, expenses, and expected profit to simulate."}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Collapsible Section: Technical Specifications */}
@@ -3245,6 +3545,336 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+          )}
+
+          {/* Bulk Pricing Spreadsheet Column */}
+          {viewMode === "bulk-pricing" && (
+            <div className="lg:col-span-12 space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Coins className="text-pink-500" />
+                    Bulk Catalog Price Spreadsheet Editor
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Edit SKU, costs, margins, selling price, and stock levels across all catalog items in real-time. Expand variants to modify sub-sizes.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to overwrite all Selling Prices with their calculated base cost + expected profit + GST values?")) {
+                        bulkPricingRows.forEach((_, idx) => handleBulkPricingSyncCalculated(idx));
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-350 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Sync All Calculated Rates
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("inventory")}
+                    className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-350 hover:text-white border border-slate-800 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkPricingSave}
+                    disabled={savingBulkPricing}
+                    className="px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-lg shadow-pink-500/10 transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                  >
+                    {savingBulkPricing ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save All Changes</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Wrapper */}
+              <div className="bg-slate-900/40 backdrop-blur rounded-2xl border border-slate-900 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto select-none">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950/60 border-b border-slate-900 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                        <th className="px-3 py-4 w-12 text-center">Variants</th>
+                        <th className="px-4 py-4 w-52">Item Details</th>
+                        <th className="px-3 py-4 w-32">SKU Code</th>
+                        <th className="px-3 py-4 w-20">Purchase (₹)</th>
+                        <th className="px-3 py-4 w-20">Packing (₹)</th>
+                        <th className="px-3 py-4 w-20">Courier (₹)</th>
+                        <th className="px-3 py-4 w-20">Other Exp (₹)</th>
+                        <th className="px-3 py-4 w-20">Expected Profit</th>
+                        <th className="px-3 py-4 w-20">GST Rate</th>
+                        <th className="px-3 py-4 w-24">Selling Price (₹)</th>
+                        <th className="px-3 py-4 w-24">MRP (₹)</th>
+                        <th className="px-3 py-4 w-20">Stock</th>
+                        <th className="px-4 py-4 w-40 text-center">Net Margin / Markup</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900/50">
+                      {bulkPricingRows.map((row, idx) => {
+                        const isExpanded = expandedProductIds.includes(row.id);
+                        
+                        // Simulator variables for this row
+                        const landed = 
+                          Number(row.purchasePrice || 0) + 
+                          Number(row.packingCharges || 0) + 
+                          Number(row.courierCharges || 0) + 
+                          Number(row.otherExpenses || 0);
+                        const sell = Number(row.price || 0);
+                        const rate = Number(row.gstRate || 0);
+                        const gstComponent = Math.round(sell * (rate / (100 + rate)));
+                        const netRev = sell - gstComponent;
+                        const netProf = netRev - landed;
+                        const marginPercent = netRev > 0 ? (netProf / netRev) * 100 : 0;
+                        
+                        return (
+                          <>
+                            <tr key={row.id} className={`hover:bg-slate-900/20 transition-all ${isExpanded ? 'bg-slate-900/10' : ''}`}>
+                              <td className="px-3 py-4 text-center">
+                                {row.hasVariants ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedProductIds(prev => 
+                                        isExpanded ? prev.filter(id => id !== row.id) : [...prev, row.id]
+                                      );
+                                    }}
+                                    className="p-1 rounded bg-slate-800 hover:bg-pink-600 hover:text-white transition-colors cursor-pointer text-[10px] font-bold text-slate-350"
+                                    title="View variants for this product"
+                                  >
+                                    {isExpanded ? 'Hide' : `Show (${row.variants.length})`}
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-600 font-bold">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center space-x-2.5">
+                                  <img src={row.image} alt={row.brand} className="w-8 h-10 object-cover rounded bg-slate-950 border border-slate-900 flex-shrink-0" />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-extrabold text-slate-100 truncate w-32">{row.title}</span>
+                                    <span className="text-[9px] text-slate-500 truncate w-32 mt-0.5">{row.brand}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="text"
+                                  value={row.sku}
+                                  onChange={(e) => handleBulkPricingChange(idx, "sku", e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 focus:border-pink-500 rounded px-2 py-1.5 text-xs text-white font-mono outline-none"
+                                  placeholder="SKU"
+                                />
+                              </td>
+                              
+                              {/* Cost Fields: Disabled if product has variants since variant pricing is specific */}
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.purchasePrice}
+                                  onChange={(e) => handleBulkPricingChange(idx, "purchasePrice", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.packingCharges}
+                                  onChange={(e) => handleBulkPricingChange(idx, "packingCharges", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.courierCharges}
+                                  onChange={(e) => handleBulkPricingChange(idx, "courierCharges", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.otherExpenses}
+                                  onChange={(e) => handleBulkPricingChange(idx, "otherExpenses", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.profit}
+                                  onChange={(e) => handleBulkPricingChange(idx, "profit", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+
+                              <td className="px-3 py-4">
+                                <select 
+                                  value={row.gstRate} 
+                                  onChange={(e) => handleBulkPricingChange(idx, "gstRate", e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 focus:border-pink-500 rounded px-1 py-1 text-[11px] text-white outline-none cursor-pointer"
+                                >
+                                  <option value="0">0%</option>
+                                  <option value="5">5%</option>
+                                  <option value="12">12%</option>
+                                  <option value="18">18%</option>
+                                  <option value="28">28%</option>
+                                </select>
+                              </td>
+
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.price}
+                                  onChange={(e) => handleBulkPricingChange(idx, "price", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center font-bold outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.mrp}
+                                  onChange={(e) => handleBulkPricingChange(idx, "mrp", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1.5 py-1 text-xs text-white text-center font-semibold outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+
+                              <td className="px-3 py-4">
+                                <input
+                                  type="number"
+                                  disabled={row.hasVariants}
+                                  value={row.quantity}
+                                  onChange={(e) => handleBulkPricingChange(idx, "quantity", e.target.value)}
+                                  className="w-full bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-800 focus:border-pink-500 rounded px-1 py-1 text-xs text-white text-center outline-none"
+                                  placeholder="0"
+                                />
+                              </td>
+
+                              <td className="px-4 py-4 text-center font-sans">
+                                {row.hasVariants ? (
+                                  <span className="text-[10px] text-slate-500 font-semibold italic">Managed in variants</span>
+                                ) : (
+                                  <div className="flex flex-col items-center">
+                                    <span className={`font-extrabold ${netProf > 0 ? 'text-emerald-400' : netProf < 0 ? 'text-rose-405' : 'text-slate-400'}`}>
+                                      ₹{netProf}
+                                    </span>
+                                    <span className={`text-[9px] font-bold ${netProf > 0 ? 'text-emerald-500/80' : netProf < 0 ? 'text-rose-500/80' : 'text-slate-500'}`}>
+                                      ({marginPercent.toFixed(1)}%)
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                            
+                            {/* Nested Variants Expandable Block */}
+                            {isExpanded && row.hasVariants && (
+                              <tr className="bg-slate-950/40">
+                                <td colSpan={13} className="px-6 py-3.5 border-l-4 border-pink-500">
+                                  <div className="space-y-3">
+                                    <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest block">Variant Listing ({row.variants.length})</span>
+                                    
+                                    <div className="bg-slate-950/90 rounded-xl border border-slate-900 overflow-hidden max-w-4xl shadow-inner">
+                                      <table className="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                          <tr className="bg-slate-900 border-b border-slate-950 text-slate-400 font-bold uppercase tracking-wider text-[8px]">
+                                            <th className="px-4 py-3 w-44">Variant Specs</th>
+                                            <th className="px-4 py-3 w-48">Variant SKU</th>
+                                            <th className="px-4 py-3 w-28 text-center">Selling Price (₹)</th>
+                                            <th className="px-4 py-3 w-28 text-center">MRP (₹)</th>
+                                            <th className="px-4 py-3 w-24 text-center">Stock</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-950/45">
+                                          {row.variants.map((v: any, varIdx: number) => {
+                                            const specs = [
+                                              v.size ? `${v.size}${v.sizeUnit || ''}` : '',
+                                              v.color,
+                                              v.material
+                                            ].filter(Boolean).join(" / ");
+                                            
+                                            return (
+                                              <tr key={v.id} className="hover:bg-slate-900/50">
+                                                <td className="px-4 py-2.5 font-bold text-slate-300">{specs || "Default Option"}</td>
+                                                <td className="px-4 py-2.5">
+                                                  <input
+                                                    type="text"
+                                                    value={v.sku}
+                                                    onChange={(e) => handleBulkPricingVariantChange(idx, varIdx, "sku", e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-850 focus:border-pink-500 rounded px-2.5 py-1 text-xs text-white font-mono outline-none"
+                                                    placeholder="Variant SKU"
+                                                  />
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                  <input
+                                                    type="number"
+                                                    value={v.price}
+                                                    onChange={(e) => handleBulkPricingVariantChange(idx, varIdx, "price", e.target.value)}
+                                                    className="w-24 bg-slate-950 border border-slate-850 focus:border-pink-500 rounded px-2 py-1 text-xs text-white text-center font-bold outline-none"
+                                                    placeholder="Price"
+                                                  />
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                  <input
+                                                    type="number"
+                                                    value={v.mrp}
+                                                    onChange={(e) => handleBulkPricingVariantChange(idx, varIdx, "mrp", e.target.value)}
+                                                    className="w-24 bg-slate-950 border border-slate-850 focus:border-pink-500 rounded px-2 py-1 text-xs text-white text-center font-semibold outline-none"
+                                                    placeholder="MRP"
+                                                  />
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                  <input
+                                                    type="number"
+                                                    value={v.stock}
+                                                    onChange={(e) => handleBulkPricingVariantChange(idx, varIdx, "stock", e.target.value)}
+                                                    className="w-20 bg-slate-950 border border-slate-850 focus:border-pink-500 rounded px-2 py-1 text-xs text-white text-center font-medium outline-none"
+                                                    placeholder="0"
+                                                  />
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Catalog Inventory Column */}

@@ -46,7 +46,7 @@ const FAQ_DATA: FAQItem[] = [
     id: "faq-6",
     category: "shipping",
     question: "Are there any shipping costs?",
-    answer: "We offer free standard shipping on all orders over ₹999. For orders below ₹999, a nominal shipping charge of ₹49 is applied at checkout."
+    answer: "We offer free standard shipping on all orders over ₹500. For orders below ₹500, dynamic shipping charges based on package weight and your delivery location are calculated in real-time at checkout."
   },
   {
     id: "faq-7",
