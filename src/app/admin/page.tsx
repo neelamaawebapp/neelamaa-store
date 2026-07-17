@@ -3,13 +3,31 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell, ArrowUpDown, ChevronUp, ChevronDown, Calendar } from "lucide-react";
 import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
 export default function AdminDashboard() {
-  const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk" | "reports">("inventory");
+  const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk" | "bulk-pricing" | "reports" | "scheduler" | "alerts">("inventory");
+
+  // Scheduler States
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [promoTitle, setPromoTitle] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(10);
+  const [promoStartDate, setPromoStartDate] = useState("");
+  const [promoEndDate, setPromoEndDate] = useState("");
+  const [promoCategory, setPromoCategory] = useState("All");
+  const [promoBannerFile, setPromoBannerFile] = useState<File | null>(null);
+  const [promoBannerUrl, setPromoBannerUrl] = useState("");
+  const [promoIsActive, setPromoIsActive] = useState(true);
+  const [savingPromo, setSavingPromo] = useState(false);
+  const [uploadingPromoBanner, setUploadingPromoBanner] = useState(false);
+
+  // Stock alerts / notifications state
+  const [backInStockSubs, setBackInStockSubs] = useState<any[]>([]);
+  const [loadingSubs, setLoadingSubs] = useState(false);
+  const [subsFilter, setSubsFilter] = useState<"All" | "Pending" | "Sent">("Pending");
 
   // Product List State
   const [products, setProducts] = useState<any[]>([]);
@@ -686,6 +704,136 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  // Fetch promotions and stock alerts
+  useEffect(() => {
+    // 1. Fetch promotions
+    const unsubscribePromos = onSnapshot(query(collection(db, "promotions"), orderBy("createdAt", "desc")), (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPromotions(list);
+    });
+
+    // 2. Fetch stock subscriptions
+    const unsubscribeSubs = onSnapshot(query(collection(db, "back_in_stock_subscriptions"), orderBy("createdAt", "desc")), (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBackInStockSubs(list);
+    });
+
+    return () => {
+      unsubscribePromos();
+      unsubscribeSubs();
+    };
+  }, []);
+
+  const handlePromoBannerUpload = async (file: File) => {
+    setUploadingPromoBanner(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const res = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+        method: "POST",
+        body: formData
+      });
+      
+      if (res.ok) {
+        const resJson = await res.json();
+        const url = resJson?.data?.url;
+        if (url) {
+          setPromoBannerUrl(url);
+          setSuccess("Promo banner uploaded successfully!");
+          setTimeout(() => setSuccess(""), 3000);
+        } else {
+          setError("Failed to resolve uploaded banner image link.");
+        }
+      } else {
+        setError("ImgBB server upload rejected.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to upload promo banner image: " + err.message);
+    } finally {
+      setUploadingPromoBanner(false);
+    }
+  };
+
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoTitle.trim()) {
+      alert("Please enter a title for the promotion.");
+      return;
+    }
+    if (!promoStartDate || !promoEndDate) {
+      alert("Please select start and end dates.");
+      return;
+    }
+    if (promoStartDate >= promoEndDate) {
+      alert("Start date must be before end date.");
+      return;
+    }
+    if (!promoBannerUrl) {
+      alert("Please upload a promo banner first.");
+      return;
+    }
+
+    setSavingPromo(true);
+    try {
+      const newPromo = {
+        title: promoTitle.trim(),
+        discountPercent: Number(promoDiscount),
+        bannerUrl: promoBannerUrl,
+        targetCategory: promoCategory,
+        startDate: new Date(promoStartDate).toISOString(),
+        endDate: new Date(promoEndDate).toISOString(),
+        isActive: promoIsActive,
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, "promotions"), newPromo);
+      setSuccess("Promotion scheduled successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+
+      // Reset fields
+      setPromoTitle("");
+      setPromoDiscount(10);
+      setPromoStartDate("");
+      setPromoEndDate("");
+      setPromoCategory("All");
+      setPromoBannerFile(null);
+      setPromoBannerUrl("");
+      setPromoIsActive(true);
+    } catch (err: any) {
+      console.error("Failed to schedule promotion:", err);
+      setError("Failed to schedule promotion: " + err.message);
+    } finally {
+      setSavingPromo(false);
+    }
+  };
+
+  const handleTogglePromo = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, "promotions", id), {
+        isActive: !currentStatus
+      });
+      setSuccess("Promotion status updated!");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to update status: " + err.message);
+    }
+  };
+
+  const handleDeletePromo = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this scheduled promotion?")) return;
+    try {
+      await deleteDoc(doc(db, "promotions", id));
+      setSuccess("Promotion deleted successfully!");
+      setTimeout(() => setSuccess(""), 2500);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to delete promotion: " + err.message);
+    }
+  };
 
   // Initialize Bulk Pricing Spreadsheet Rows
   useEffect(() => {
@@ -2281,6 +2429,20 @@ export default function AdminDashboard() {
           >
             <BarChart3 size={14} />
             <span>Reports & Downloads</span>
+          </button>
+          <button 
+            onClick={() => { setViewMode("scheduler"); resetForm(); }}
+            className={`px-5 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "scheduler" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <Calendar size={14} />
+            <span>Sale Scheduler</span>
+          </button>
+          <button 
+            onClick={() => { setViewMode("alerts"); resetForm(); }}
+            className={`px-5 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${viewMode === "alerts" ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-md shadow-pink-500/15" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            <Bell size={14} />
+            <span>Stock Alerts</span>
           </button>
         </div>
       </div>
@@ -4095,7 +4257,7 @@ export default function AdminDashboard() {
                                   Out of Stock
                                 </span>
                               ) : stockQuantity <= 5 ? (
-                                <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-1 rounded-full">
+                                <span className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">
                                   {stockQuantity} Low Stock
                                 </span>
                               ) : (
@@ -4321,6 +4483,430 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* Sale Scheduler Dashboard */}
+          {viewMode === "scheduler" && (
+            <div className="lg:col-span-12 space-y-8 animate-fade-in text-slate-350">
+              <div>
+                <h2 className="text-xl font-black text-white">Visual Banner & Sale Scheduler</h2>
+                <p className="text-xs text-slate-400 mt-1">Queue storewide promotional discounts and custom slide banners for holiday campaigns or weekend sales.</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Create Promo Form */}
+                <div className="lg:col-span-5 bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl space-y-5">
+                  <h3 className="text-base font-extrabold text-white border-b border-slate-850 pb-2 mb-4 uppercase tracking-wider text-xs">Create Promotion</h3>
+                  
+                  <form onSubmit={handleCreatePromo} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Promotion Title *</label>
+                      <input
+                        type="text"
+                        required
+                        value={promoTitle}
+                        onChange={(e) => setPromoTitle(e.target.value)}
+                        placeholder="E.g., Diwali Festive Bonanza"
+                        className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all font-semibold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Discount % *</label>
+                        <input
+                          type="number"
+                          required
+                          min={1}
+                          max={90}
+                          value={promoDiscount}
+                          onChange={(e) => setPromoDiscount(Number(e.target.value))}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Target Category *</label>
+                        <select
+                          value={promoCategory}
+                          onChange={(e) => setPromoCategory(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all font-semibold cursor-pointer"
+                        >
+                          <option value="All" className="bg-slate-950 text-white">All Categories</option>
+                          {availableCategories.map(cat => (
+                            <option key={cat} value={cat} className="bg-slate-950 text-white">{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Start Date & Time *</label>
+                        <input
+                          type="datetime-local"
+                          required
+                          value={promoStartDate}
+                          onChange={(e) => setPromoStartDate(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all font-semibold cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">End Date & Time *</label>
+                        <input
+                          type="datetime-local"
+                          required
+                          value={promoEndDate}
+                          onChange={(e) => setPromoEndDate(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-850 rounded-lg px-3 py-2.5 text-xs focus:border-pink-500 outline-none text-white transition-all font-semibold cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Banner upload section */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Holiday Slide Banner *</label>
+                      <div className="flex items-center gap-3">
+                        <label className="bg-slate-950 hover:bg-slate-900 border border-slate-850 text-slate-300 font-bold px-4 py-2.5 rounded-lg text-[10px] uppercase cursor-pointer transition-all flex items-center gap-1.5">
+                          <UploadCloud size={14} />
+                          <span>Select Banner File</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handlePromoBannerUpload(e.target.files[0]);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                        {uploadingPromoBanner && <span className="text-[10px] text-pink-500 font-bold animate-pulse">Uploading to ImgBB...</span>}
+                      </div>
+                      {promoBannerUrl && (
+                        <div className="mt-3 relative w-full aspect-[21/9] rounded-xl overflow-hidden border border-slate-850 shadow-inner bg-slate-950">
+                          <img src={promoBannerUrl} alt="Promo banner preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="promoIsActive"
+                        checked={promoIsActive}
+                        onChange={(e) => setPromoIsActive(e.target.checked)}
+                        className="w-4 h-4 text-pink-650 accent-pink-600 border-slate-850 bg-slate-950 rounded cursor-pointer"
+                      />
+                      <label htmlFor="promoIsActive" className="text-xs text-slate-350 font-bold select-none cursor-pointer">
+                        Enable scheduled campaign immediately
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={savingPromo || uploadingPromoBanner}
+                      className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 disabled:opacity-50 text-white font-extrabold py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-transparent mt-4"
+                    >
+                      {savingPromo ? "Scheduling..." : "Schedule Sale Campaign"}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Queue list */}
+                <div className="lg:col-span-7 bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl overflow-x-auto space-y-4">
+                  <h3 className="text-base font-extrabold text-white border-b border-slate-850 pb-2 uppercase tracking-wider text-xs">Scheduled Sales & Banners Queue ({promotions.length})</h3>
+                  
+                  {promotions.length > 0 ? (
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-850 text-slate-400 font-bold">
+                          <th className="py-3 px-2">Campaign Details</th>
+                          <th className="py-3 px-2">Date Range</th>
+                          <th className="py-3 px-2 text-center">Status</th>
+                          <th className="py-3 px-2 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850/50">
+                        {promotions.map((promo) => {
+                          const nowIso = new Date().toISOString();
+                          const isUpcoming = promo.startDate > nowIso;
+                          const isExpired = promo.endDate < nowIso;
+                          const isLive = promo.isActive && promo.startDate <= nowIso && promo.endDate >= nowIso;
+                          
+                          return (
+                            <tr key={promo.id} className="hover:bg-slate-900/20 transition-colors">
+                              <td className="py-3.5 px-2 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  {promo.bannerUrl && (
+                                    <div className="w-12 h-6 rounded bg-slate-950 overflow-hidden border border-slate-800">
+                                      <img src={promo.bannerUrl} alt="banner" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                  <div className="flex flex-col">
+                                    <span className="font-extrabold text-white">{promo.title}</span>
+                                    <span className="text-[10px] text-pink-500 font-bold">{promo.discountPercent}% OFF | Category: {promo.targetCategory}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-2 text-slate-400 font-medium space-y-0.5">
+                                <div className="text-[10px]">Start: {new Date(promo.startDate).toLocaleString("en-IN")}</div>
+                                <div className="text-[10px]">End: {new Date(promo.endDate).toLocaleString("en-IN")}</div>
+                              </td>
+                              <td className="py-3.5 px-2 text-center">
+                                {isLive ? (
+                                  <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Live Now</span>
+                                ) : isExpired ? (
+                                  <span className="bg-slate-800 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Expired</span>
+                                ) : isUpcoming ? (
+                                  <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Scheduled</span>
+                                ) : (
+                                  <span className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Disabled</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-2 text-right space-x-2">
+                                <button
+                                  onClick={() => handleTogglePromo(promo.id, promo.isActive)}
+                                  className={`px-2 py-1 rounded text-[9px] font-extrabold uppercase transition-all cursor-pointer border ${
+                                    promo.isActive 
+                                      ? "bg-slate-850 text-slate-400 border-slate-800 hover:text-white" 
+                                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white hover:border-transparent"
+                                  }`}
+                                >
+                                  {promo.isActive ? "Pause" : "Resume"}
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePromo(promo.id)}
+                                  className="bg-rose-500/10 text-rose-450 hover:bg-rose-500 hover:text-white border border-rose-500/20 hover:border-transparent p-1 rounded transition-all cursor-pointer inline-flex items-center justify-center"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-10 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                      <span className="text-slate-500 text-xs font-semibold">No promotional campaigns scheduled in queue.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Low Stock & Restock alerts dashboard */}
+          {viewMode === "alerts" && (
+            <div className="lg:col-span-12 space-y-8 animate-fade-in text-slate-350">
+              <div>
+                <h2 className="text-xl font-black text-white">Low Stock & Restock Alerts</h2>
+                <p className="text-xs text-slate-400 mt-1">Monitor catalog items with low stock counts (&lt; 5) and view user subscriptions requesting alerts when products return to availability.</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* 1. Low stock catalog items */}
+                <div className="lg:col-span-6 bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl space-y-4">
+                  <h3 className="text-base font-extrabold text-white border-b border-slate-850 pb-2 uppercase tracking-wider text-xs">Low Stock Catalog Items (&lt; 5 units)</h3>
+                  
+                  {(() => {
+                    const lowStockProds = products.filter(p => Number(p.quantity || 0) < 5);
+                    if (lowStockProds.length > 0) {
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-850 text-slate-400 font-bold">
+                                <th className="py-2.5 px-2">Item</th>
+                                <th className="py-2.5 px-2">SKU</th>
+                                <th className="py-2.5 px-2">Stock Level</th>
+                                <th className="py-2.5 px-2 text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-850/50">
+                              {lowStockProds.map(product => {
+                                const qty = Number(product.quantity || 0);
+                                return (
+                                  <tr key={product.id} className="hover:bg-slate-900/10 transition-colors">
+                                    <td className="py-3 px-2 flex items-center gap-2">
+                                      <img src={product.image} className="w-8 h-10 object-cover rounded bg-slate-950 border border-slate-800" />
+                                      <div className="flex flex-col">
+                                        <span className="font-extrabold text-white">{product.title}</span>
+                                        <span className="text-[10px] text-slate-400">{product.brand}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-2 font-mono text-slate-450 font-bold">{product.sku || "—"}</td>
+                                    <td className="py-3 px-2">
+                                      {qty === 0 ? (
+                                        <span className="bg-rose-500/10 border border-rose-500/20 text-rose-455 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Out of Stock</span>
+                                      ) : (
+                                        <span className="bg-rose-500/10 border border-rose-500/20 text-rose-455 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{qty} left</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-2 text-right">
+                                      <button
+                                        onClick={() => {
+                                          setEditingId(product.id);
+                                          setBrand(product.brand || "");
+                                          setTitle(product.title || "");
+                                          setCategory(product.category || "");
+                                          setSubCategory(product.subCategory || "");
+                                          setPrice(product.price ? product.price.toString() : "");
+                                          setQuantity(product.quantity ? product.quantity.toString() : "0");
+                                          setPurchasePrice(product.purchasePrice ? product.purchasePrice.toString() : "");
+                                          setPackingCharges(product.packingCharges ? product.packingCharges.toString() : "");
+                                          setCourierCharges(product.courierCharges ? product.courierCharges.toString() : "");
+                                          setOtherExpenses(product.otherExpenses ? product.otherExpenses.toString() : "");
+                                          setGstRate(product.gstRate ? product.gstRate.toString() : "18");
+                                          setViewMode("add-product");
+                                        }}
+                                        className="bg-slate-850 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-350 font-extrabold px-2.5 py-1.5 rounded-lg text-[9px] uppercase tracking-wide transition-all cursor-pointer"
+                                      >
+                                        Restock
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-center py-10 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                        <span className="text-slate-500 text-xs font-semibold">All inventory items are restocked and healthy (5 or more units).</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 2. Customer Restock Alerts subscriptions */}
+                <div className="lg:col-span-6 bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-slate-900/80 shadow-xl space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-850 pb-2">
+                    <h3 className="text-base font-extrabold text-white uppercase tracking-wider text-xs">Customer Restock Notifications</h3>
+                    <div className="flex bg-slate-950 p-0.5 rounded-lg border border-slate-850 text-[9px] font-bold uppercase select-none">
+                      {(["All", "Pending", "Sent"] as const).map(tab => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setSubsFilter(tab)}
+                          className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${subsFilter === tab ? "bg-slate-850 text-white" : "text-slate-500 hover:text-slate-350"}`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const filteredSubs = backInStockSubs.filter(sub => {
+                      if (subsFilter === "All") return true;
+                      return sub.status === subsFilter;
+                    });
+
+                    if (filteredSubs.length > 0) {
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-850 text-slate-400 font-bold">
+                                <th className="py-2.5 px-2">Customer Details</th>
+                                <th className="py-2.5 px-2">Item Requested</th>
+                                <th className="py-2.5 px-2 text-center">Status</th>
+                                <th className="py-2.5 px-2 text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-850/50">
+                              {filteredSubs.map(sub => {
+                                const requestDate = sub.createdAt ? new Date(sub.createdAt).toLocaleDateString("en-IN", {
+                                  day: "numeric", month: "short"
+                                }) : "—";
+                                
+                                return (
+                                  <tr key={sub.id} className="hover:bg-slate-900/10 transition-colors">
+                                    <td className="py-3 px-2 space-y-0.5 text-left">
+                                      <div className="font-extrabold text-white leading-none">{sub.email}</div>
+                                      {sub.phone && <div className="text-[10px] text-slate-400 font-mono font-medium">{sub.phone}</div>}
+                                      <div className="text-[9px] text-slate-500">Subscribed: {requestDate}</div>
+                                    </td>
+                                    <td className="py-3 px-2 font-medium">
+                                      <div className="text-slate-300 leading-tight">{sub.productName}</div>
+                                      <div className="text-[10px] text-slate-500">{sub.productBrand}</div>
+                                    </td>
+                                    <td className="py-3 px-2 text-center">
+                                      {sub.status === "Pending" ? (
+                                        <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</span>
+                                      ) : (
+                                        <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Notified</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-2 text-right">
+                                      {sub.status === "Pending" ? (
+                                        <button
+                                          onClick={async () => {
+                                            const prod = products.find(p => p.id === sub.productId);
+                                            const currentQty = prod ? Number(prod.quantity || 0) : 0;
+                                            
+                                            if (currentQty <= 0) {
+                                              if (!confirm("Caution: This item is currently showing 0 units in stock. Do you still want to send the Restock email notification to the customer?")) {
+                                                return;
+                                              }
+                                            }
+
+                                            try {
+                                              const apiRes = await fetch("/api/notify-restock", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                  productId: sub.productId,
+                                                  brand: sub.productBrand,
+                                                  title: sub.productName,
+                                                  quantity: Math.max(1, currentQty)
+                                                })
+                                              });
+
+                                              if (apiRes.ok) {
+                                                await updateDoc(doc(db, "back_in_stock_subscriptions", sub.id), {
+                                                  status: "Sent"
+                                                });
+                                                setSuccess("Stock alert email sent successfully to " + sub.email + "!");
+                                                setTimeout(() => setSuccess(""), 3000);
+                                              } else {
+                                                alert("API failed to process mail: " + apiRes.statusText);
+                                              }
+                                            } catch (err: any) {
+                                              console.error(err);
+                                              alert("Failed to trigger notification: " + err.message);
+                                            }
+                                          }}
+                                          className="bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 hover:border-transparent text-emerald-400 hover:text-white font-extrabold px-2 py-1 rounded-lg text-[9px] uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1"
+                                        >
+                                          Send Alert
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-500 font-bold italic">Alert Sent</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-center py-10 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                        <span className="text-slate-500 text-xs font-semibold">No back-in-stock alert subscriptions found in this tab.</span>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           )}

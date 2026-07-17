@@ -5,7 +5,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, MapPin, CreditCard, QrCode, Smartphone, Building, Check, Loader2, ShieldCheck, X, AlertTriangle, Tag, Coins, Plus } from "lucide-react";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Script from "next/script";
 
@@ -440,11 +440,26 @@ export default function CheckoutPage() {
   const [discountPercent, setDiscountPercent] = useState(0);
 
   useEffect(() => {
-    getDoc(doc(db, "settings", "discount")).then((snap) => {
-      if (snap.exists() && typeof snap.data().percent === "number") {
-        setDiscountPercent(snap.data().percent);
+    const checkScheduledDiscount = async () => {
+      try {
+        const now = new Date().toISOString();
+        const promoSnap = await getDocs(collection(db, "promotions"));
+        const activePromo = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }) as any)
+          .find(p => p.isActive && p.startDate <= now && p.endDate >= now);
+
+        if (activePromo && activePromo.discountPercent !== undefined) {
+          setDiscountPercent(Number(activePromo.discountPercent));
+        } else {
+          const snap = await getDoc(doc(db, "settings", "discount"));
+          if (snap.exists() && typeof snap.data().percent === "number") {
+            setDiscountPercent(snap.data().percent);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch scheduled discount:", err);
       }
-    });
+    };
+    checkScheduledDiscount();
   }, []);
 
   const totalMRP = checkoutItems.reduce((sum, item) => sum + (item.mrp || Math.round(item.price * 1.5)) * item.quantity, 0);

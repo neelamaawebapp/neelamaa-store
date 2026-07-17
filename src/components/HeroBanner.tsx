@@ -5,7 +5,7 @@ import { ChevronRight, Edit2, UploadCloud, X, Save, Plus, Trash2 } from "lucide-
 import { useState, useEffect } from "react";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { autoAdjustImage } from "@/lib/imageUtils";
@@ -84,14 +84,33 @@ export default function HeroBanner() {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const docRef = doc(db, "settings", "banners");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().data) {
-          setBanners(docSnap.data().data);
-          setEditBanners(docSnap.data().data);
+        const now = new Date().toISOString();
+        const promoSnap = await getDocs(collection(db, "promotions"));
+        const activePromo = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }) as any)
+          .find(p => p.isActive && p.startDate <= now && p.endDate >= now);
+
+        if (activePromo && activePromo.bannerUrl) {
+          const promoSlide = {
+            id: activePromo.id,
+            image: activePromo.bannerUrl,
+            title: activePromo.title,
+            subtitle: `${activePromo.discountPercent}% STOREWIDE DISCOUNT`,
+            brand1: "PROMO",
+            brand2: "FESTIVE SALE",
+            link: activePromo.targetCategory ? `/category/${activePromo.targetCategory.toLowerCase()}` : "/category/all"
+          };
+          setBanners([promoSlide]);
+          setEditBanners([promoSlide]);
         } else {
-          setBanners(defaultBanners);
-          setEditBanners(defaultBanners);
+          const docRef = doc(db, "settings", "banners");
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().data) {
+            setBanners(docSnap.data().data);
+            setEditBanners(docSnap.data().data);
+          } else {
+            setBanners(defaultBanners);
+            setEditBanners(defaultBanners);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch banners", err);
