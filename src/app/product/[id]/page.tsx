@@ -57,6 +57,17 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [deliveryInfo, setDeliveryInfo] = useState("Deliver to Mukesh - Jodhpur 342008");
 
+  // Reviews & Ratings States
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingCounts, setRatingCounts] = useState<any>({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
+  const [uploadingReviewPhotos, setUploadingReviewPhotos] = useState(false);
+  const [activeReviewImage, setActiveReviewImage] = useState<string | null>(null);
+
   // Dynamically load delivery information
   useEffect(() => {
     const fetchDeliveryInfo = async () => {
@@ -92,6 +103,150 @@ export default function ProductDetailPage() {
     
     fetchDeliveryInfo();
   }, [user]);
+
+  // Fetch reviews of the product
+  useEffect(() => {
+    if (!id) return;
+    
+    const fetchReviews = async () => {
+      try {
+        const q = query(
+          collection(db, "reviews"),
+          where("productId", "==", id)
+        );
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Sort reviews by date descending locally
+        list.sort((a: any, b: any) => {
+          const timeA = a.createdAt?.seconds || 0;
+          const timeB = b.createdAt?.seconds || 0;
+          return timeB - timeA;
+        });
+
+        setReviews(list);
+
+        if (list.length > 0) {
+          const sum = list.reduce((acc, r: any) => acc + Number(r.rating || 0), 0);
+          setAverageRating(sum / list.length);
+
+          const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+          list.forEach((r: any) => {
+            const star = Math.round(r.rating || 5);
+            if (star >= 1 && star <= 5) {
+              counts[star as keyof typeof counts]++;
+            }
+          });
+          setRatingCounts(counts);
+        } else {
+          setAverageRating(0);
+          setRatingCounts({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+        }
+      } catch (err) {
+        console.error("Failed to load reviews:", err);
+      }
+    };
+
+    fetchReviews();
+  }, [id]);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      alert("Please log in to submit a review");
+      return;
+    }
+
+    if (reviewRating < 1 || reviewRating > 5) {
+      alert("Please select a rating between 1 and 5 stars");
+      return;
+    }
+
+    setSubmittingReview(true);
+    setUploadingReviewPhotos(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      // 1. Upload review photos to ImgBB
+      for (const file of reviewPhotos) {
+        const formData = new FormData();
+        formData.append("image", file);
+        
+        const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=738fe2483790d2c978f26b378607193c", {
+          method: "POST",
+          body: formData
+        });
+        
+        if (uploadRes.ok) {
+          const resJson = await uploadRes.json();
+          const url = resJson?.data?.url;
+          if (url) {
+            uploadedUrls.push(url);
+          }
+        }
+      }
+
+      setUploadingReviewPhotos(false);
+
+      // 2. Save review in Firestore
+      const reviewData = {
+        productId: id,
+        userId: user.uid,
+        userName: user.displayName || user.email?.split("@")[0] || "Verified Buyer",
+        userEmail: user.email || "",
+        rating: Number(reviewRating),
+        comment: reviewComment.trim(),
+        photos: uploadedUrls,
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, "reviews"), reviewData);
+
+      // 3. Reset form states
+      setReviewRating(5);
+      setReviewComment("");
+      setReviewPhotos([]);
+      setToast("Thank you! Review submitted successfully.");
+      setTimeout(() => setToast(""), 4000);
+
+      // 4. Reload reviews list
+      const q = query(
+        collection(db, "reviews"),
+        where("productId", "==", id)
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+      
+      setReviews(list);
+
+      if (list.length > 0) {
+        const sum = list.reduce((acc, r: any) => acc + Number(r.rating || 0), 0);
+        setAverageRating(sum / list.length);
+        
+        const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        list.forEach((r: any) => {
+          const star = Math.round(r.rating || 5);
+          if (star >= 1 && star <= 5) {
+            counts[star as keyof typeof counts]++;
+          }
+        });
+        setRatingCounts(counts);
+      }
+
+    } catch (err: any) {
+      console.error("Failed to submit review:", err);
+      alert("Error submitting review: " + (err.message || "Unknown error"));
+    } finally {
+      setSubmittingReview(false);
+      setUploadingReviewPhotos(false);
+    }
+  };
 
   // Reset quantity to 1 when options change
   useEffect(() => {
@@ -782,6 +937,26 @@ export default function ProductDetailPage() {
       <div className="p-4 bg-white border-b border-gray-100">
         <h1 className="font-sans font-semibold text-[18px] text-[#222222] leading-tight tracking-tight">{product.title}</h1>
         <h2 className="font-sans font-normal text-[12px] text-[#666666] mt-1 leading-snug tracking-tight uppercase tracking-wider">{product.brand}</h2>
+        {reviews.length > 0 && (
+          <div 
+            onClick={() => {
+              const element = document.getElementById("reviews-section");
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            className="flex items-center gap-1.5 mt-2 cursor-pointer w-fit group select-none"
+          >
+            <div className="flex text-amber-500 text-[11px] font-bold">
+              {[...Array(5)].map((_, i) => (
+                <span key={i}>{i < Math.round(averageRating) ? "★" : "☆"}</span>
+              ))}
+            </div>
+            <span className="text-[11px] text-[#007185] font-extrabold group-hover:underline">
+              {averageRating.toFixed(1)} ({reviews.length} {reviews.length === 1 ? "review" : "reviews"})
+            </span>
+          </div>
+        )}
         {product.oneLiner && (
           <p className="text-xs text-slate-500 font-medium mt-1.5 leading-normal tracking-wide bg-slate-50 px-2.5 py-1.5 rounded-lg inline-block border border-slate-100">
             {product.oneLiner}
@@ -1440,6 +1615,248 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Product Reviews & Ratings Section */}
+      <div id="reviews-section" className="p-4 bg-white border-t border-gray-100 space-y-5">
+        <div className="border-b border-gray-100 pb-3">
+          <h2 className="font-sans font-black text-[#1A1A1A] uppercase text-xs tracking-widest flex items-center gap-1.5">
+            Customer Ratings & Reviews
+          </h2>
+        </div>
+
+        {/* Ratings summary breakdown */}
+        <div className="grid grid-cols-12 gap-4 items-center">
+          <div className="col-span-5 text-center flex flex-col justify-center items-center border-r border-gray-100 py-1">
+            <span className="text-4xl font-extrabold text-gray-900">{averageRating.toFixed(1)}</span>
+            <div className="flex text-amber-500 text-sm font-bold mt-1.5 mb-1">
+              {[...Array(5)].map((_, i) => (
+                <span key={i}>{i < Math.round(averageRating) ? "★" : "☆"}</span>
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide">
+              {reviews.length} {reviews.length === 1 ? "Rating" : "Ratings"}
+            </span>
+          </div>
+
+          <div className="col-span-7 space-y-1.5 pl-2">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = ratingCounts[star] || 0;
+              const percent = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+              return (
+                <div key={star} className="flex items-center text-[10px] text-gray-500 font-semibold gap-2">
+                  <span className="w-3 text-right">{star}★</span>
+                  <div className="flex-1 bg-gray-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
+                  <span className="w-6 text-right text-gray-400">{Math.round(percent)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Write a Review Submission Form */}
+        <div className="bg-slate-50/50 p-4 border border-slate-100/50 rounded-2xl space-y-4">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">
+            {user ? "Share Your Experience" : "Login to write a review"}
+          </h3>
+
+          {user ? (
+            <form onSubmit={handleReviewSubmit} className="space-y-3.5">
+              {/* Star selector */}
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Your Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className={`text-2xl transition-all cursor-pointer ${
+                        star <= reviewRating ? "text-amber-500 scale-110" : "text-gray-300 hover:text-amber-400"
+                      }`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review Text */}
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Detailed Review</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="w-full bg-white border border-gray-200/80 rounded-xl p-3 text-xs text-gray-800 focus:border-pink-500 focus:ring-1 focus:ring-pink-500/25 outline-none transition-all resize-none font-medium"
+                  placeholder="What did you like or dislike? How is the quality, packaging, and delivery?"
+                />
+              </div>
+
+              {/* Photo Upload */}
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Add Photos</label>
+                
+                {/* Chosen files preview strip */}
+                {reviewPhotos.length > 0 && (
+                  <div className="flex gap-2 mb-2 overflow-x-auto py-1">
+                    {reviewPhotos.map((file, idx) => (
+                      <div key={idx} className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt="preview" 
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setReviewPhotos(prev => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black"
+                        >
+                          <X size={8} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <label className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-xl text-[10px] uppercase cursor-pointer transition-colors shadow-sm inline-block">
+                    Select Images
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setReviewPhotos(prev => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[9px] text-gray-400 font-medium">PNG, JPG formats (Max 3 files)</span>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submittingReview}
+                className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-extrabold py-3 rounded-full text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {submittingReview ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Submitting Review...</span>
+                  </>
+                ) : (
+                  <span>Submit Review</span>
+                )}
+              </button>
+            </form>
+          ) : (
+            <div className="text-center py-2.5">
+              <p className="text-xs text-gray-500 font-semibold mb-2.5">
+                Share your valuable thoughts with other customers.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push(`/login?redirectTo=/product/${id}`)}
+                className="bg-white hover:bg-gray-50 text-pink-600 border border-pink-200 hover:border-pink-300 font-bold px-4 py-2 rounded-xl text-[10px] uppercase shadow-sm tracking-wider transition-colors cursor-pointer"
+              >
+                Login to Write a Review
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Customer reviews list */}
+        <div className="space-y-4">
+          <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest border-b border-gray-50 pb-1.5">
+            Review feed ({reviews.length})
+          </h3>
+
+          {reviews.length > 0 ? (
+            <div className="space-y-4 divide-y divide-gray-100">
+              {reviews.map((review, idx) => (
+                <div key={review.id || idx} className={`space-y-1.5 ${idx > 0 ? 'pt-4' : ''}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-extrabold text-[11px] text-slate-800 flex items-center gap-1">
+                      {review.userName}
+                      <span className="text-[8px] bg-green-50 text-green-600 border border-green-200/50 px-1 py-0.5 rounded uppercase font-extrabold">
+                        Verified Buyer
+                      </span>
+                    </span>
+                    <span className="text-[9px] text-gray-400 font-bold">
+                      {review.createdAt ? new Date(review.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric"
+                      }) : "Just now"}
+                    </span>
+                  </div>
+
+                  <div className="flex text-amber-400 text-[10px] font-bold">
+                    {[...Array(5)].map((_, i) => (
+                      <span key={i}>{i < Math.round(review.rating) ? "★" : "☆"}</span>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-750 font-semibold leading-relaxed">
+                    {review.comment}
+                  </p>
+
+                  {/* Customer Review Uploaded Photos Grid */}
+                  {review.photos && review.photos.length > 0 && (
+                    <div className="flex gap-1.5 pt-1 overflow-x-auto hide-scrollbar">
+                      {review.photos.map((photo: string, photoIdx: number) => (
+                        <div 
+                          key={photoIdx} 
+                          onClick={() => setActiveReviewImage(photo)}
+                          className="w-16 h-16 rounded-lg overflow-hidden border border-gray-150 bg-gray-50 flex-shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity"
+                        >
+                          <img 
+                            src={photo} 
+                            alt={`customer-upload-${photoIdx}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/20">
+              <span className="text-gray-400 text-xs font-semibold">No reviews yet. Be the first to review this product!</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Review Photo Zoom Lightbox Modal */}
+      {activeReviewImage && (
+        <div 
+          onClick={() => setActiveReviewImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 cursor-zoom-out animate-fade-in"
+        >
+          <button 
+            onClick={() => setActiveReviewImage(null)}
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 border border-white/25 transition-colors cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+          <img 
+            src={activeReviewImage} 
+            alt="Customer review photo zoom" 
+            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 animate-scale-in"
+          />
+        </div>
+      )}
 
       {/* Suggested Items Section */}
       {suggestions.length > 0 && (

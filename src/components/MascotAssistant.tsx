@@ -11,6 +11,18 @@ export default function MascotAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
+  // Chatbot conversation states
+  const [messages, setMessages] = useState<any[]>([
+    {
+      id: "init",
+      sender: "bot",
+      text: "Hi! I am Aarohi, your Craft Style shopping assistant. How can I help you today? Ask me about orders, shipping rules, or rewards!",
+      timestamp: new Date()
+    }
+  ]);
+  const [inputText, setInputText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
   useEffect(() => {
     // Hide assistant in admin panel
     if (pathname?.startsWith("/admin")) {
@@ -29,9 +41,98 @@ export default function MascotAssistant() {
 
   if (pathname?.startsWith("/admin")) return null;
 
-  const handleActionClick = (path: string) => {
-    setIsOpen(false);
-    router.push(path);
+  const getBotResponse = (input: string): { text: string; actionPath?: string; actionLabel?: string } => {
+    const text = input.toLowerCase();
+    
+    if (text.includes("order") || text.includes("track") || text.includes("status")) {
+      return {
+        text: "You can track your active orders and print manifests inside your Profile > Orders tab. Click below to view your order history:",
+        actionPath: "/profile/orders",
+        actionLabel: "📦 View My Orders"
+      };
+    }
+    
+    if (text.includes("wallet") || text.includes("cashback") || text.includes("refer") || text.includes("reward") || text.includes("balance")) {
+      return {
+        text: "Check your referral bonuses, wallet history, and cashback rewards inside the Profile > Wallet section:",
+        actionPath: "/profile/wallet",
+        actionLabel: "🎁 View My Wallet"
+      };
+    }
+
+    if (text.includes("return") || text.includes("refund") || text.includes("cancel")) {
+      return {
+        text: "Returns are allowed within 7 days of delivery. You can initiate a return directly from the specific order card in your Profile:",
+        actionPath: "/profile/orders",
+        actionLabel: "📦 Request Return"
+      };
+    }
+
+    if (text.includes("shipping") || text.includes("charge") || text.includes("delivery") || text.includes("free")) {
+      return {
+        text: "Shipping is FREE for all orders of ₹500 or above! For orders below ₹500, dynamic courier rates are calculated at checkout, falling back to a flat ₹100 if the connection fails.",
+        actionPath: "/customer-care",
+        actionLabel: "🚚 View Shipping Policy"
+      };
+    }
+
+    if (text.includes("care") || text.includes("help") || text.includes("support") || text.includes("contact") || text.includes("chat")) {
+      return {
+        text: "Need direct assistance? You can query our FAQs or start a 24/7 support ticket on our customer care page:",
+        actionPath: "/customer-care",
+        actionLabel: "💬 Open Customer Care"
+      };
+    }
+
+    if (text.includes("hi") || text.includes("hello") || text.includes("hey") || text.includes("aarohi")) {
+      return {
+        text: "Hello! 😊 I am Aarohi, your virtual companion. Try asking me about 'shipping costs', 'how to track orders', 'refund status', or 'wallet balance'!"
+      };
+    }
+
+    return {
+      text: "I didn't quite catch that. I am a helper bot — try asking about 'orders', 'shipping charges', 'wallet rewards', or 'returns'!"
+    };
+  };
+
+  const handleSendMessage = (textToSend: string) => {
+    if (!textToSend.trim()) return;
+
+    // 1. Add User Message
+    const userMsg = {
+      id: `user_${Date.now()}`,
+      sender: "user",
+      text: textToSend,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMsg]);
+    setInputText("");
+    setIsTyping(true);
+
+    // 2. Simulate Bot Typing Delay
+    setTimeout(() => {
+      const response = getBotResponse(textToSend);
+      const botMsg = {
+        id: `bot_${Date.now()}`,
+        sender: "bot",
+        text: response.text,
+        actionPath: response.actionPath,
+        actionLabel: response.actionLabel,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, botMsg]);
+      setIsTyping(false);
+      
+      // Auto scroll chat log to bottom
+      const chatLog = document.getElementById("mascot-chat-log");
+      if (chatLog) {
+        setTimeout(() => {
+          chatLog.scrollTop = chatLog.scrollHeight;
+        }, 80);
+      }
+    }, 850);
   };
 
   const closeTooltip = (e: React.MouseEvent) => {
@@ -98,10 +199,10 @@ export default function MascotAssistant() {
 
       {/* 3. Interactive Glassmorphism Assistant Card */}
       {isOpen && (
-        <div className="absolute left-0 bottom-16 w-[280px] bg-white/95 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl shadow-pink-500/10 p-5 animate-fade-in-up z-50 text-left overflow-hidden">
+        <div className="absolute left-0 bottom-20 w-[300px] bg-white/95 backdrop-blur-md border border-pink-100 rounded-3xl shadow-2xl shadow-pink-500/10 p-4 animate-fade-in-up z-50 text-left overflow-hidden flex flex-col h-[380px]">
           {/* Header section with brand colors */}
-          <div className="flex items-center gap-3 border-bottom border-gray-100 pb-3 mb-3.5">
-            <div className="w-12 h-12 rounded-full border border-pink-400/30 bg-pink-50 overflow-hidden shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500/10 to-orange-500/10">
+          <div className="flex items-center gap-2.5 border-b border-gray-100 pb-2 mb-2 shrink-0">
+            <div className="w-10 h-10 rounded-full border border-pink-400/30 bg-pink-50 overflow-hidden shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500/10 to-orange-500/10">
               <img
                 src="/mascot/aarohi_waving.png"
                 alt="Aarohi mascot"
@@ -109,57 +210,122 @@ export default function MascotAssistant() {
               />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-gray-900 tracking-wide">Aarohi Assistant</h3>
-              <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block animate-pulse"></span> Online & Ready
+              <h3 className="font-extrabold text-xs text-gray-900 tracking-wide">Aarohi Chatbot</h3>
+              <p className="text-[9px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                <span className="w-1 h-1 bg-green-500 rounded-full inline-block animate-pulse"></span> Online
               </p>
             </div>
             <button 
               onClick={() => setIsOpen(false)}
-              className="ml-auto text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="ml-auto text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
 
-          <p className="text-xs text-gray-600 font-medium leading-relaxed mb-4">
-            Welcome to **Craft Style**! I am your companion here. Pick a shortcut below to guide you:
-          </p>
+          {/* Chat Messages Log */}
+          <div 
+            id="mascot-chat-log"
+            className="flex-1 overflow-y-auto space-y-2.5 pr-1 py-1 text-xs scrollbar-thin scrollbar-thumb-pink-100"
+          >
+            {messages.map((msg) => (
+              <div 
+                key={msg.id} 
+                className={`flex flex-col max-w-[85%] ${
+                  msg.sender === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                }`}
+              >
+                <div 
+                  className={`p-2.5 rounded-2xl leading-normal font-semibold ${
+                    msg.sender === "user" 
+                      ? "bg-pink-500 text-white rounded-tr-none" 
+                      : "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/40"
+                  }`}
+                >
+                  <p>{msg.text}</p>
+                </div>
+                
+                {/* Render quick navigation button if returned by bot */}
+                {msg.sender === "bot" && msg.actionPath && (
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push(msg.actionPath);
+                    }}
+                    className="mt-1 bg-pink-500/10 text-pink-650 hover:bg-pink-500 hover:text-white border border-pink-500/20 hover:border-transparent px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase transition-all tracking-wide cursor-pointer w-fit"
+                  >
+                    {msg.actionLabel || "View Details"}
+                  </button>
+                )}
+              </div>
+            ))}
 
-          {/* Quick Actions List */}
-          <div className="flex flex-col gap-2.5">
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex gap-1 items-center bg-slate-100 text-slate-500 px-3 py-2 rounded-2xl rounded-tl-none border border-slate-200/40 w-fit animate-pulse">
+                <span className="w-1.5 h-1.5 bg-gray-405 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                <span className="w-1.5 h-1.5 bg-gray-405 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                <span className="w-1.5 h-1.5 bg-gray-405 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+              </div>
+            )}
+          </div>
+
+          {/* Quick replies scroll list */}
+          <div className="flex gap-1.5 overflow-x-auto py-1.5 shrink-0 select-none hide-scrollbar border-t border-gray-50 mt-1">
             <button
-              onClick={() => handleActionClick("/profile/orders")}
-              className="w-full flex items-center gap-3 p-3 bg-pink-50/50 hover:bg-pink-50 border border-pink-100/50 rounded-2xl text-left text-xs font-semibold text-gray-800 transition-all hover:scale-[1.02]"
+              onClick={() => handleSendMessage("track my order")}
+              className="bg-slate-50 hover:bg-pink-50 hover:text-pink-600 text-[10px] font-bold text-slate-600 border border-slate-200/60 hover:border-pink-200/60 px-2 py-1 rounded-lg flex-shrink-0 transition-colors cursor-pointer"
             >
-              <ShoppingBag size={16} className="text-pink-500" />
-              <span>📦 Track My Orders</span>
+              📦 Track Order
             </button>
-
             <button
-              onClick={() => handleActionClick("/profile/wallet")}
-              className="w-full flex items-center gap-3 p-3 bg-pink-50/50 hover:bg-pink-50 border border-pink-100/50 rounded-2xl text-left text-xs font-semibold text-gray-800 transition-all hover:scale-[1.02]"
+              onClick={() => handleSendMessage("referral rewards")}
+              className="bg-slate-50 hover:bg-pink-50 hover:text-pink-600 text-[10px] font-bold text-slate-600 border border-slate-200/60 hover:border-pink-200/60 px-2 py-1 rounded-lg flex-shrink-0 transition-colors cursor-pointer"
             >
-              <Wallet size={16} className="text-pink-500" />
-              <span>🎁 Wallet & Referral Rewards</span>
+              🎁 Rewards
             </button>
-
             <button
-              onClick={() => handleActionClick("/customer-care")}
-              className="w-full flex items-center gap-3 p-3 bg-pink-50/50 hover:bg-pink-50 border border-pink-100/50 rounded-2xl text-left text-xs font-semibold text-gray-800 transition-all hover:scale-[1.02]"
+              onClick={() => handleSendMessage("shipping charge")}
+              className="bg-slate-50 hover:bg-pink-50 hover:text-pink-600 text-[10px] font-bold text-slate-600 border border-slate-200/60 hover:border-pink-200/60 px-2 py-1 rounded-lg flex-shrink-0 transition-colors cursor-pointer"
             >
-              <HelpCircle size={16} className="text-pink-500" />
-              <span>💬 24/7 Customer Care Chat</span>
+              🚚 Shipping Rules
             </button>
-
             <button
-              onClick={() => handleActionClick("/")}
-              className="w-full flex items-center gap-3 p-3 bg-pink-50/50 hover:bg-pink-50 border border-pink-100/50 rounded-2xl text-left text-xs font-semibold text-gray-800 transition-all hover:scale-[1.02]"
+              onClick={() => handleSendMessage("refund policy")}
+              className="bg-slate-50 hover:bg-pink-50 hover:text-pink-600 text-[10px] font-bold text-slate-600 border border-slate-200/60 hover:border-pink-200/60 px-2 py-1 rounded-lg flex-shrink-0 transition-colors cursor-pointer"
             >
-              <TrendingUp size={16} className="text-pink-500" />
-              <span>🔥 Shop Trending Collection</span>
+              🔄 Returns
+            </button>
+            <button
+              onClick={() => handleSendMessage("contact care")}
+              className="bg-slate-50 hover:bg-pink-50 hover:text-pink-600 text-[10px] font-bold text-slate-600 border border-slate-200/60 hover:border-pink-200/60 px-2 py-1 rounded-lg flex-shrink-0 transition-colors cursor-pointer"
+            >
+              💬 Support
             </button>
           </div>
+
+          {/* Typing input */}
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage(inputText);
+            }}
+            className="flex items-center gap-1.5 pt-1 border-t border-gray-100 shrink-0"
+          >
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-pink-500 transition-all font-semibold outline-none"
+              placeholder="Ask Aarohi..."
+            />
+            <button
+              type="submit"
+              className="bg-pink-500 hover:bg-pink-600 text-white rounded-xl p-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-md shadow-pink-500/10 w-8 h-8"
+            >
+              <MessageSquare size={14} />
+            </button>
+          </form>
         </div>
       )}
       <style>{`
