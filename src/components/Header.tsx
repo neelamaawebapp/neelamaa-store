@@ -28,17 +28,29 @@ export default function Header() {
 
     const loadBalance = async () => {
       try {
-        const { getAuthHeaders } = await import("@/lib/api-client");
-        const headers = await getAuthHeaders();
-        const res = await fetch(`/api/wallet/balance?userId=${user.uid}`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setWalletBalance(data.balance);
+        // Try reading directly from Firestore (client SDK is authenticated as owner)
+        const walletRef = doc(db, "wallets", user.uid);
+        const walletSnap = await getDoc(walletRef);
+        
+        if (walletSnap.exists()) {
+          setWalletBalance(walletSnap.data().balance);
+        } else {
+          // If no wallet document exists yet, invoke API to trigger auto-initialization
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const headers = await getAuthHeaders();
+          const res = await fetch(`/api/wallet/balance?userId=${user.uid}`, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              setWalletBalance(data.balance);
+              return;
+            }
           }
+          setWalletBalance(0);
         }
       } catch (err) {
         console.error("Failed to load header wallet balance", err);
+        setWalletBalance(0);
       }
     };
 

@@ -29,16 +29,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 2. Wallets Collection: User can read their own, Admin can read/write
+    // 2. Wallets Collection: User can read their own, Admin can read/write, Owner can initialize
     match /wallets/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if isAdmin(); // Users should NOT be able to modify their balance directly!
+      allow create: if isOwner(userId) && request.resource.data.balance == 100;
+      allow update, delete: if isAdmin(); // Users cannot modify their balance directly!
     }
 
-    // 3. Wallet Transactions: User can read their own, only Admin can write
+    // 3. Wallet Transactions: User can read their own, Admin write, Owner can create signup transaction
     match /wallet_transactions/{txId} {
       allow read: if isAuthenticated() && resource.data.walletId == request.auth.uid || isAdmin();
-      allow write: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.walletId == request.auth.uid && request.resource.data.amount == 100 && request.resource.data.source == "SIGNUP_BONUS";
+      allow update, delete: if isAdmin();
     }
 
     // 4. Orders Collection: User can read/create their own, Admin has full access
