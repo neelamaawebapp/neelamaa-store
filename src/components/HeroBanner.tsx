@@ -89,6 +89,12 @@ export default function HeroBanner() {
         const activePromo = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }) as any)
           .find(p => p.isActive && p.startDate <= now && p.endDate >= now);
 
+        // Always retrieve the default editable banners first
+        const docRef = doc(db, "settings", "banners");
+        const docSnap = await getDoc(docRef);
+        const defaultBannersData = (docSnap.exists() && docSnap.data().data) ? docSnap.data().data : defaultBanners;
+        setEditBanners(defaultBannersData);
+
         if (activePromo && activePromo.bannerUrl) {
           const promoSlide = {
             id: activePromo.id,
@@ -100,17 +106,8 @@ export default function HeroBanner() {
             link: activePromo.targetCategory ? `/category/${activePromo.targetCategory.toLowerCase()}` : "/category/all"
           };
           setBanners([promoSlide]);
-          setEditBanners([promoSlide]);
         } else {
-          const docRef = doc(db, "settings", "banners");
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists() && docSnap.data().data) {
-            setBanners(docSnap.data().data);
-            setEditBanners(docSnap.data().data);
-          } else {
-            setBanners(defaultBanners);
-            setEditBanners(defaultBanners);
-          }
+          setBanners(defaultBannersData);
         }
       } catch (err) {
         console.error("Failed to fetch banners", err);
@@ -121,7 +118,6 @@ export default function HeroBanner() {
     };
     fetchBanners();
   }, []);
-
   // Auto Slider
   useEffect(() => {
     if (isEditing || banners.length === 0) return; // Pause slider when editing
@@ -182,7 +178,28 @@ export default function HeroBanner() {
       // Sanitize data to remove any undefined values or non-serializable objects
       const cleanData = JSON.parse(JSON.stringify(editBanners));
       await setDoc(doc(db, "settings", "banners"), { data: cleanData });
-      setBanners(editBanners);
+      
+      // Re-evaluate if there is an active promotion overriding the banner
+      const now = new Date().toISOString();
+      const promoSnap = await getDocs(collection(db, "promotions"));
+      const activePromo = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }) as any)
+        .find(p => p.isActive && p.startDate <= now && p.endDate >= now);
+
+      if (activePromo && activePromo.bannerUrl) {
+        const promoSlide = {
+          id: activePromo.id,
+          image: activePromo.bannerUrl,
+          title: activePromo.title,
+          subtitle: `${activePromo.discountPercent}% STOREWIDE DISCOUNT`,
+          brand1: "PROMO",
+          brand2: "FESTIVE SALE",
+          link: activePromo.targetCategory ? `/category/${activePromo.targetCategory.toLowerCase()}` : "/category/all"
+        };
+        setBanners([promoSlide]);
+      } else {
+        setBanners(editBanners);
+      }
+      
       setIsEditing(false);
       alert("Banners updated successfully!");
     } catch (err: any) {
