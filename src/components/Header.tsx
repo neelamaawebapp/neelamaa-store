@@ -131,7 +131,7 @@ export default function Header() {
               <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />
             </div>
             <Link href="/profile/wallet" className="flex items-center bg-[#eaffea] hover:bg-[#dfffdf] transition-all text-green-700 px-2.5 py-0.5 rounded-full font-bold border border-green-200 shadow-sm cursor-pointer select-none">
-              <span className="mr-0.5">Rs. {walletBalance}</span>
+              <span className="mr-0.5">₹{walletBalance}</span>
               <div className="bg-green-600 text-white rounded-full p-0.5">
                 <Sparkles size={8} />
               </div>
