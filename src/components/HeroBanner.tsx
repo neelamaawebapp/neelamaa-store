@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import Link from "next/link";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
@@ -209,7 +209,8 @@ export default function HeroBanner() {
       alert("Banners updated successfully!");
     } catch (err: any) {
       console.error("Firebase Save Error:", err);
-      alert(`Failed to save banners: ${err.message || err}`);
+      const authEmail = auth.currentUser?.email || "NOT SIGNED IN";
+      alert(`Failed to save banners: ${err.message || err}\n\nDiagnostic Info:\n- Authenticated User Email: ${authEmail}\n- Project ID: ${auth.app.options.projectId || "Unknown"}`);
     }
   };
 
