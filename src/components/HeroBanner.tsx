@@ -210,7 +210,8 @@ export default function HeroBanner() {
     } catch (err: any) {
       console.error("Firebase Save Error:", err);
       const authEmail = auth.currentUser?.email || "NOT SIGNED IN";
-      alert(`Failed to save banners: ${err.message || err}\n\nDiagnostic Info:\n- Authenticated User Email: ${authEmail}\n- Project ID: ${auth.app.options.projectId || "Unknown"}`);
+      const authUid = auth.currentUser?.uid || "N/A";
+      alert(`Failed to save banners: ${err.message || err}\n\nDiagnostic Info:\n- Authenticated User Email: ${authEmail}\n- User UID: ${authUid}\n- Project ID: ${auth.app.options.projectId || "Unknown"}`);
     }
   };
 

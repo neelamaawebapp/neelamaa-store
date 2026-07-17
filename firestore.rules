@@ -16,10 +16,10 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (
-          request.auth.token.email == 'admincraftstyle@gmail.com' || 
-          request.auth.token.email == 'admin@craftstyle.com' ||
-          request.auth.token.email == 'manishagaur1983@gmail.com' ||
-          request.auth.token.email == 'guddu20484@gmail.com'
+          request.auth.token.email.matches('(?i).*admincraftstyle@gmail\\.com.*') || 
+          request.auth.token.email.matches('(?i).*admin@craftstyle\\.com.*') ||
+          request.auth.token.email.matches('(?i).*manishagaur1983@gmail\\.com.*') ||
+          request.auth.token.email.matches('(?i).*guddu20484@gmail\\.com.*')
         );
     }
 
@@ -81,6 +81,19 @@ service cloud.firestore {
     match /push_subscriptions/{subscriptionId} {
       allow read, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // 10. Promotions Collection: Public read, Admin write
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 11. Back in Stock Subscriptions: Public create, Admin full access
+    match /back_in_stock_subscriptions/{subId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
   }
 }
