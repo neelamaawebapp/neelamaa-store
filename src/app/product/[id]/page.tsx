@@ -388,8 +388,25 @@ export default function ProductDetailPage() {
        ? [matchedVariant.image] 
        : (product?.images && product.images.length > 0 ? product.images : [product?.image].filter(Boolean)));
 
+  const getDirectVideoUrl = (url: string) => {
+    if (!url) return "";
+    let cleanUrl = url.trim();
+    const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+    const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+    const match1 = cleanUrl.match(gdRegex1);
+    const match2 = cleanUrl.match(gdRegex2);
+    const docId = (match1 && match1[1]) || (match2 && match2[1]);
+    if (docId) {
+      return `https://drive.google.com/uc?export=download&id=${docId}`;
+    }
+    if (cleanUrl.includes("dropbox.com")) {
+      return cleanUrl.replace("?dl=0", "?raw=1").replace("?dl=1", "?raw=1");
+    }
+    return cleanUrl;
+  };
+
   const mediaSlides = [
-    ...(product?.videoUrl ? [{ type: "video", url: product.videoUrl }] : []),
+    ...(product?.videoUrl ? [{ type: "video", url: getDirectVideoUrl(product.videoUrl) }] : []),
     ...displayImages.map((img: string) => ({ type: "image", url: img }))
   ];
 

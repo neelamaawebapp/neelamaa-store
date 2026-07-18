@@ -9,6 +9,23 @@ import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
 import ImageEditorModal from "@/components/ImageEditorModal";
 import { autoAdjustImage } from "@/lib/imageUtils";
 
+const getDirectVideoUrl = (url: string) => {
+  if (!url) return "";
+  let cleanUrl = url.trim();
+  const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+  const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+  const match1 = cleanUrl.match(gdRegex1);
+  const match2 = cleanUrl.match(gdRegex2);
+  const docId = (match1 && match1[1]) || (match2 && match2[1]);
+  if (docId) {
+    return `https://drive.google.com/uc?export=download&id=${docId}`;
+  }
+  if (cleanUrl.includes("dropbox.com")) {
+    return cleanUrl.replace("?dl=0", "?raw=1").replace("?dl=1", "?raw=1");
+  }
+  return cleanUrl;
+};
+
 export default function AdminDashboard() {
   const [viewMode, setViewMode] = useState<"inventory" | "add-product" | "bulk" | "bulk-pricing" | "reports" | "scheduler" | "alerts">("inventory");
 
@@ -1725,7 +1742,7 @@ export default function AdminDashboard() {
         gstRate: Number(gstRate),
         image: primaryImage, // For backwards compatibility
         images: uploadedUrls, // The full array of angles!
-        videoUrl: finalVideoUrl ? finalVideoUrl.trim() : "",
+        videoUrl: finalVideoUrl ? getDirectVideoUrl(finalVideoUrl) : "",
         
         // Flexible model fields
         sku: sku.trim() || `${brand ? brand.trim().substring(0, 3).toUpperCase() : "CS"}-${category ? category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -2691,7 +2708,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : videoUrl && (
                     <div className="relative aspect-[9/16] max-w-[150px] mx-auto rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3 shadow-md">
-                      <video src={videoUrl} className="w-full h-full object-cover" controls />
+                      <video src={getDirectVideoUrl(videoUrl)} className="w-full h-full object-cover" controls />
                       <button 
                         type="button" 
                         onClick={() => {
