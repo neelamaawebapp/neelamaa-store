@@ -1623,28 +1623,23 @@ export default function AdminDashboard() {
           const storageRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
           const uploadTask = uploadBytesResumable(storageRef, videoFile);
           
-          await new Promise<void>((resolve, reject) => {
-            uploadTask.on(
-              "state_changed",
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                setUploadProgress(progress);
-              },
-              (error) => {
-                console.error("Firebase Video Upload Error:", error);
-                reject(new Error("Failed to upload product video: " + error.message));
-              },
-              () => {
-                resolve();
-              }
-            );
-          });
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              setUploadProgress(progress);
+            },
+            (error) => {
+              console.error("Firebase Video Upload Error:", error);
+            }
+          );
           
+          await uploadTask;
           finalVideoUrl = await getDownloadURL(storageRef);
           setVideoUrl(finalVideoUrl);
         } catch (uploadErr: any) {
           setUploadingVideo(false);
-          throw uploadErr;
+          throw new Error("Failed to upload product video: " + uploadErr.message);
         } finally {
           setUploadingVideo(false);
         }
@@ -2725,32 +2720,44 @@ export default function AdminDashboard() {
                   {/* Drag & Drop / Select Video from Local Drive */}
                   <div 
                     onClick={() => {
-                      const el = document.getElementById("admin-video-file-input");
-                      el?.click();
+                      document.getElementById("admin-video-file-input")?.click();
                     }}
-                    className="border border-dashed border-slate-855 bg-slate-950/40 hover:bg-slate-950/60 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith("video/")) {
+                        setVideoFile(file);
+                        setVideoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="border border-dashed border-slate-800 bg-slate-950/40 hover:bg-slate-950/60 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3"
                   >
                     <UploadCloud size={24} className="mb-1 text-slate-500" />
                     <p className="text-[10px] text-center text-slate-400 font-medium">
-                      Click to upload vertical video reel from local drive
+                      Click or drag to upload vertical video reel from local drive
                     </p>
                     <p className="text-[8px] text-center text-slate-500 font-semibold mt-0.5 uppercase tracking-wide">
                       Supports MP4, MOV, WebM, AVI (Max 15s)
                     </p>
-                    <input 
-                      type="file" 
-                      id="admin-video-file-input" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setVideoFile(file);
-                          setVideoPreview(URL.createObjectURL(file));
-                        }
-                      }} 
-                      accept="video/*" 
-                      className="hidden" 
-                    />
                   </div>
+                  <input 
+                    type="file" 
+                    id="admin-video-file-input" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setVideoFile(file);
+                        setVideoPreview(URL.createObjectURL(file));
+                      }
+                    }} 
+                    accept="video/*" 
+                    className="hidden" 
+                  />
 
                   {/* Fallback Paste URL */}
                   <div className="flex gap-2">
