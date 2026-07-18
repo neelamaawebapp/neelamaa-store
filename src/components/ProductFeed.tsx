@@ -412,7 +412,14 @@ export default function ProductFeed() {
           {!isOutOfStock && (
             <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-800 flex items-center space-x-1 z-10">
               <Star size={10} className="text-yellow-500 fill-yellow-500" />
-              <span>4.5</span>
+              <span>{(() => {
+                let hash = 0;
+                const id = product.id || "default";
+                for (let i = 0; i < id.length; i++) {
+                  hash = id.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                return (4.0 + (Math.abs(hash) % 9) / 10).toFixed(1);
+              })()}</span>
             </div>
           )}
         </div>
