@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { db, storage } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
 import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell, ArrowUpDown, ChevronUp, ChevronDown, Calendar } from "lucide-react";
 import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
@@ -1618,30 +1618,15 @@ export default function AdminDashboard() {
       // Upload local video file if present to Firebase Storage
       if (videoFile) {
         setUploadingVideo(true);
-        setUploadProgress(10);
+        setUploadProgress(40);
         try {
           const storageRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, videoFile);
-          
-          await new Promise<void>((resolve, reject) => {
-            uploadTask.on(
-              "state_changed",
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                setUploadProgress(progress);
-              },
-              (error) => {
-                console.error("Firebase Video Upload Error:", error);
-                reject(error);
-              },
-              () => {
-                resolve();
-              }
-            );
-          });
-          
-          finalVideoUrl = await getDownloadURL(storageRef);
+          setUploadProgress(70);
+          const snapshot = await uploadBytes(storageRef, videoFile);
+          setUploadProgress(90);
+          finalVideoUrl = await getDownloadURL(snapshot.ref);
           setVideoUrl(finalVideoUrl);
+          setUploadProgress(100);
         } catch (uploadErr: any) {
           setUploadingVideo(false);
           throw new Error("Failed to upload video to Firebase Storage: " + uploadErr.message);
