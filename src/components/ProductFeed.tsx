@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getDailyGradients } from "@/lib/colorUtils";
 import OptimizedImage from "./OptimizedImage";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
 // Seeded pseudo-random number generator (Mulberry32 or similar)
 function seededRandom(seedStr: string) {
@@ -39,6 +40,8 @@ function seededShuffle<T>(array: T[], seed: string): T[] {
 
 export default function ProductFeed() {
   const { user } = useAuth();
+  const { addToBag } = useCart();
+  const [popHeartId, setPopHeartId] = useState<string | null>(null);
   const trendingScrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
@@ -81,6 +84,11 @@ export default function ProductFeed() {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
+
+    // Trigger heart pop animation
+    setPopHeartId(productId);
+    setTimeout(() => setPopHeartId(null), 450);
+
     let newWishlist;
     if (wishlist.includes(productId)) {
       newWishlist = wishlist.filter((id) => id !== productId);
@@ -336,7 +344,7 @@ export default function ProductFeed() {
     return (
       <Link 
         href={`/product/${product.id}`} 
-        className={`bg-white flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 border-none
+        className={`bg-white/85 backdrop-blur-xs flex flex-col relative group cursor-pointer block rounded-2xl overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(0,59,179,0.06)] hover:border-pink-300/40 hover:-translate-y-1 transition-all duration-300 border border-gray-100/50
           ${isHorizontal ? 'w-52 flex-shrink-0' : 'w-full'}`}
       >
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#F9F9F9]">
@@ -362,7 +370,7 @@ export default function ProductFeed() {
             const isWishlisted = wishlist.includes(product.id);
             return (
               <button 
-                className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm transition-all z-20 cursor-pointer"
+                className={`absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm transition-all z-20 cursor-pointer ${popHeartId === product.id ? 'animate-heart-pop' : ''}`}
                 onClick={(e) => toggleWishlist(product.id, e)}
               >
                 <Heart 
@@ -372,6 +380,35 @@ export default function ProductFeed() {
               </button>
             );
           })()}
+          
+          {/* Quick Add To Bag overlay */}
+          {!isOutOfStock && (
+            <div 
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const defaultSize = (product.sizesInventory && Object.keys(product.sizesInventory)[0]) || "S";
+                try {
+                  await addToBag({
+                    productId: product.id,
+                    brand: product.brand,
+                    title: product.title,
+                    price: product.price,
+                    image: product.image,
+                    size: defaultSize
+                  }, 1);
+                  alert(`Added ${product.title} to your Shopping Bag! 🛍️`);
+                } catch (err: any) {
+                  console.error(err);
+                  alert("Failed to add to bag. Please select details on product page.");
+                }
+              }}
+              className="absolute bottom-0 left-0 right-0 bg-pink-500/90 text-white font-bold text-center py-2.5 text-[10px] tracking-wider uppercase backdrop-blur-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20 cursor-pointer shadow-md"
+            >
+              🛍️ Quick Add
+            </div>
+          )}
+
           {!isOutOfStock && (
             <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-800 flex items-center space-x-1 z-10">
               <Star size={10} className="text-yellow-500 fill-yellow-500" />

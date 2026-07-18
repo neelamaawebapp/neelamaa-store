@@ -151,6 +151,36 @@ body.category-overlay-open .category-menu-list {
   animation: marquee 35s linear infinite;
 }
 
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-bob {
+  animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.4); }
+  65% { transform: scale(0.85); }
+  100% { transform: scale(1); }
+}
+
+.animate-heart-pop {
+  animation: heartPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes bagJiggle {
+  0%, 100% { transform: scale(1) rotate(0); }
+  20%, 60% { transform: scale(1.25) rotate(-10deg); }
+  40%, 80% { transform: scale(1.25) rotate(10deg); }
+}
+
+.animate-bag-jiggle {
+  animation: bagJiggle 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
 
 
 

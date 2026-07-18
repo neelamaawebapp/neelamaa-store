@@ -115,7 +115,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 text-gray-800">
+    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100/50 text-gray-800 shadow-sm">
       {/* Dynamic Promo Ticker Strip */}
       <div className="bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 text-white text-center py-2 px-4 text-[10px] font-black uppercase tracking-widest select-none min-h-[30px] flex items-center justify-center overflow-hidden shadow-inner">
         <div className={`transition-all duration-300 ease-out transform ${fadeClass} text-center`}>

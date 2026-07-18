@@ -7,6 +7,70 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, onSnapshot, collection, runTransaction } from "firebase/firestore";
 
+const triggerConfetti = () => {
+  if (typeof window === "undefined") return;
+  const canvas = document.createElement("canvas");
+  canvas.style.position = "fixed";
+  canvas.style.inset = "0";
+  canvas.style.width = "100vw";
+  canvas.style.height = "100vh";
+  canvas.style.pointerEvents = "none";
+  canvas.style.zIndex = "99999";
+  document.body.appendChild(canvas);
+  
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  const particles: any[] = [];
+  const colors = ["#FF3366", "#003bb3", "#ffd200", "#2e7d32", "#FF9900", "#CC33FF"];
+  
+  for (let i = 0; i < 150; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height * 0.6,
+      vx: (Math.random() - 0.5) * 18,
+      vy: -Math.random() * 16 - 6,
+      radius: Math.random() * 5 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1,
+      decay: Math.random() * 0.015 + 0.01
+    });
+  }
+  
+  function animate() {
+    if (particles.length === 0) {
+      canvas.remove();
+      return;
+    }
+    ctx!.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.35; // Gravity
+      p.vx *= 0.98; // Drag
+      p.alpha -= p.decay;
+      
+      ctx!.save();
+      ctx!.globalAlpha = Math.max(0, p.alpha);
+      ctx!.fillStyle = p.color;
+      ctx!.beginPath();
+      ctx!.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.restore();
+      
+      if (p.alpha <= 0 || p.y > canvas.height) {
+        particles.splice(i, 1);
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+};
+
 export default function MascotAssistant() {
   const pathname = usePathname();
   const router = useRouter();
@@ -282,6 +346,7 @@ export default function MascotAssistant() {
       });
       
       setShowBirthdaySuccess(true);
+      triggerConfetti();
       
       // Update local states
       setBirthdayVal(birthdayInput);
@@ -321,8 +386,12 @@ export default function MascotAssistant() {
           setShowTooltip(false);
           sessionStorage.setItem("aarohi_tooltip_dismissed", "true");
         }}
-        className="relative w-16 h-16 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none"
+        className="relative w-16 h-16 rounded-full bg-white border-2 border-pink-500 shadow-lg shadow-pink-500/20 hover:border-pink-600 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center overflow-hidden shrink-0 group focus:outline-none animate-bob"
       >
+        {/* Pulsating Ring Glow */}
+        {((walletBalance !== null && walletBalance > 0) || (!birthdayVal && !birthdayGiftClaimed && user)) && (
+          <span className="absolute inset-0 rounded-full bg-pink-500/25 animate-ping pointer-events-none"></span>
+        )}
         <img
           src="/mascot/aarohi_waving.png"
           alt="Aarohi Mascot Assistant"
@@ -376,9 +445,31 @@ export default function MascotAssistant() {
                 <span className="w-1 h-1 bg-green-500 rounded-full inline-block animate-pulse"></span> Online
               </p>
             </div>
+            {/* Speaker Button for Text-To-Speech greetings */}
+            <button 
+              type="button"
+              onClick={() => {
+                const initMsg = messages.find(m => m.id === "init");
+                if (initMsg) {
+                  if ("speechSynthesis" in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(initMsg.text);
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1.05;
+                    window.speechSynthesis.speak(utterance);
+                  }
+                }
+              }}
+              className="ml-auto text-pink-600 hover:text-pink-705 hover:bg-pink-50 p-1.5 rounded-full transition-colors cursor-pointer mr-0.5 flex items-center justify-center"
+              title="Listen to Aarohi's greeting"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9.5H4.5v5h3.25L12 18.75z" />
+              </svg>
+            </button>
             <button 
               onClick={() => setIsOpen(false)}
-              className="ml-auto text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>

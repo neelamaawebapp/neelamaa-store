@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, LayoutGrid, ShoppingBag, User } from "lucide-react";
@@ -8,6 +9,15 @@ import { useCart } from "@/context/CartContext";
 export default function BottomNav() {
   const pathname = usePathname();
   const { cart } = useCart();
+  const [jiggle, setJiggle] = useState(false);
+
+  useEffect(() => {
+    if (cart.length > 0) {
+      setJiggle(true);
+      const timer = setTimeout(() => setJiggle(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [cart.length]);
   
   if (pathname?.startsWith("/admin") || pathname?.startsWith("/checkout") || pathname === "/bag") {
     return null;
@@ -35,7 +45,7 @@ export default function BottomNav() {
                 {item.name}
               </span>
               {item.count ? (
-                <span className="absolute top-0 right-1 bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transform translate-x-1/2 -translate-y-1/2">
+                <span className={`absolute top-0 right-1 bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transform translate-x-1/2 -translate-y-1/2 ${jiggle && item.name === "Bag" ? "animate-bag-jiggle" : ""}`}>
                   {item.count}
                 </span>
               ) : null}
