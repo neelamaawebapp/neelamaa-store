@@ -15,6 +15,18 @@ const getDirectVideoUrl = (url: string) => {
   if (cleanUrl.includes("dropbox.com")) {
     return cleanUrl.replace("?dl=0", "?raw=1").replace("?dl=1", "?raw=1");
   }
+  if (cleanUrl.includes("drive.google.com") || cleanUrl.includes("docs.google.com")) {
+    const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+    const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+    const gdRegex3 = /drive\.google\.com\/uc\?.*?id=([a-zA-Z0-9_-]+)/;
+    const match1 = cleanUrl.match(gdRegex1);
+    const match2 = cleanUrl.match(gdRegex2);
+    const match3 = cleanUrl.match(gdRegex3);
+    const docId = (match1 && match1[1]) || (match2 && match2[1]) || (match3 && match3[1]);
+    if (docId) {
+      return `https://drive.google.com/uc?export=download&id=${docId}`;
+    }
+  }
   return cleanUrl;
 };
 
@@ -1624,21 +1636,48 @@ export default function AdminDashboard() {
 
       let finalVideoUrl = videoUrl;
 
-      // Upload local video file if present to Firebase Storage
+      // Upload local video file if present (with local fallback if Firebase Storage fails)
       if (videoFile) {
         setUploadingVideo(true);
-        setUploadProgress(40);
+        setUploadProgress(20);
         try {
+          // Attempt Firebase Storage upload first
           const storageRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
-          setUploadProgress(70);
+          setUploadProgress(50);
           const snapshot = await uploadBytes(storageRef, videoFile);
-          setUploadProgress(90);
+          setUploadProgress(80);
           finalVideoUrl = await getDownloadURL(snapshot.ref);
           setVideoUrl(finalVideoUrl);
           setUploadProgress(100);
         } catch (uploadErr: any) {
-          setUploadingVideo(false);
-          throw new Error("Failed to upload video to Firebase Storage: " + uploadErr.message);
+          console.warn("Firebase Storage failed, attempting local server upload fallback...", uploadErr);
+          setUploadProgress(60);
+          try {
+            const formData = new FormData();
+            formData.append("file", videoFile);
+            
+            const response = await fetch("/api/upload-video", {
+              method: "POST",
+              body: formData,
+            });
+            
+            if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.error || "Server upload endpoint failed");
+            }
+            
+            const resData = await response.json();
+            if (resData.success && resData.url) {
+              finalVideoUrl = resData.url;
+              setVideoUrl(finalVideoUrl);
+              setUploadProgress(100);
+            } else {
+              throw new Error("Invalid response from upload server");
+            }
+          } catch (fallbackErr: any) {
+            setUploadingVideo(false);
+            throw new Error(`Video upload failed. Firebase error: ${uploadErr.message}. Local upload fallback error: ${fallbackErr.message}`);
+          }
         } finally {
           setUploadingVideo(false);
         }
@@ -2700,24 +2739,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : videoUrl && (
                     <div className="relative aspect-[9/16] max-w-[150px] mx-auto rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3 shadow-md">
-                      {videoUrl.includes("drive.google.com") || videoUrl.includes("docs.google.com") ? (
-                        <iframe 
-                          src={(() => {
-                            const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
-                            const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
-                            const gdRegex3 = /drive\.google\.com\/uc\?.*?id=([a-zA-Z0-9_-]+)/;
-                            const match1 = videoUrl.match(gdRegex1);
-                            const match2 = videoUrl.match(gdRegex2);
-                            const match3 = videoUrl.match(gdRegex3);
-                            const docId = (match1 && match1[1]) || (match2 && match2[1]) || (match3 && match3[1]);
-                            return docId ? `https://drive.google.com/file/d/${docId}/preview` : videoUrl;
-                          })()} 
-                          className="w-full h-full border-0" 
-                          allow="autoplay"
-                        />
-                      ) : (
-                        <video src={getDirectVideoUrl(videoUrl)} className="w-full h-full object-cover" controls />
-                      )}
+                      <video src={getDirectVideoUrl(videoUrl)} className="w-full h-full object-cover" controls />
                       <button 
                         type="button" 
                         onClick={() => {
@@ -2786,7 +2808,7 @@ export default function AdminDashboard() {
                         setVideoPreview("");
                       }} 
                       className="flex-1 bg-slate-950/60 border border-slate-855 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 transition-all placeholder-slate-700" 
-                      placeholder="Or paste video URL (e.g. Dropbox, Cloudinary)..." 
+                      placeholder="Or paste video URL (e.g. Google Drive, Dropbox, Cloudinary)..." 
                     />
                     {videoUrl && (
                       <button 
@@ -2802,6 +2824,9 @@ export default function AdminDashboard() {
                       </button>
                     )}
                   </div>
+                  <p className="text-[9px] text-slate-500 mt-1 leading-normal">
+                    💡 <strong>Google Drive Tip:</strong> Set your video's sharing settings to <strong>&quot;Anyone with the link can view&quot;</strong> so customers can stream it.
+                  </p>
 
                   {/* Upload Progress Bar */}
                   {uploadingVideo && (
