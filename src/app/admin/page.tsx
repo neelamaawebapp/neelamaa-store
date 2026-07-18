@@ -113,6 +113,7 @@ export default function AdminDashboard() {
   const [videoPreview, setVideoPreview] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [adminRating, setAdminRating] = useState("4.5");
 
   // SEO Settings
   const [metaTitle, setMetaTitle] = useState("");
@@ -1496,6 +1497,7 @@ export default function AdminDashboard() {
     setVideoPreview("");
     setUploadingVideo(false);
     setUploadProgress(0);
+    setAdminRating("4.5");
   };
 
   const handleEditClick = (product: any) => {
@@ -1608,6 +1610,7 @@ export default function AdminDashboard() {
     setVideoPreview("");
     setUploadingVideo(false);
     setUploadProgress(0);
+    setAdminRating(product.rating !== undefined ? product.rating.toString() : "4.5");
     
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1774,6 +1777,7 @@ export default function AdminDashboard() {
         image: primaryImage, // For backwards compatibility
         images: uploadedUrls, // The full array of angles!
         videoUrl: finalVideoUrl ? getDirectVideoUrl(finalVideoUrl) : "",
+        rating: Number(adminRating || 4.5),
         
         // Flexible model fields
         sku: sku.trim() || `${brand ? brand.trim().substring(0, 3).toUpperCase() : "CS"}-${category ? category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -2877,6 +2881,25 @@ export default function AdminDashboard() {
                       <option value="Active">Active</option>
                       <option value="Draft">Draft</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Rating (Admin Override)</label>
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      min="1.0" 
+                      max="5.0"
+                      value={adminRating} 
+                      onChange={(e) => setAdminRating(e.target.value)} 
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-pink-500 outline-none text-white transition-all placeholder-slate-750" 
+                      placeholder="e.g. 4.5" 
+                    />
+                  </div>
+                  <div>
+                    {/* Empty placeholder to keep column alignment */}
                   </div>
                 </div>
 

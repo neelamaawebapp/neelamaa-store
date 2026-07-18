@@ -39,7 +39,7 @@ export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { addToBag, cart } = useCart();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +67,8 @@ export default function ProductDetailPage() {
   const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
   const [uploadingReviewPhotos, setUploadingReviewPhotos] = useState(false);
   const [activeReviewImage, setActiveReviewImage] = useState<string | null>(null);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [checkingPurchase, setCheckingPurchase] = useState(true);
 
   // Dynamically load delivery information
   useEffect(() => {
@@ -104,6 +106,53 @@ export default function ProductDetailPage() {
     fetchDeliveryInfo();
   }, [user]);
 
+  // Check if user has purchased this product or is admin
+  useEffect(() => {
+    if (!user) {
+      setHasPurchased(false);
+      setCheckingPurchase(false);
+      return;
+    }
+    
+    // Admin override bypass
+    if (isAdmin) {
+      setHasPurchased(true);
+      setCheckingPurchase(false);
+      return;
+    }
+
+    const checkUserPurchase = async () => {
+      setCheckingPurchase(true);
+      try {
+        const ordersRef = collection(db, "orders");
+        const q = query(
+          ordersRef,
+          where("userId", "==", user.uid)
+        );
+        const snap = await getDocs(q);
+        let purchased = false;
+        for (const doc of snap.docs) {
+          const order = doc.data();
+          if (order.items && Array.isArray(order.items)) {
+            const itemMatch = order.items.some((item: any) => item.productId === id);
+            if (itemMatch) {
+              purchased = true;
+              break;
+            }
+          }
+        }
+        setHasPurchased(purchased);
+      } catch (e) {
+        console.error("Failed to check if user purchased product:", e);
+        setHasPurchased(false);
+      } finally {
+        setCheckingPurchase(false);
+      }
+    };
+
+    checkUserPurchase();
+  }, [user, id, isAdmin]);
+
   // Fetch reviews of the product
   useEffect(() => {
     if (!id) return;
@@ -139,14 +188,19 @@ export default function ProductDetailPage() {
           });
           setRatingCounts(counts);
         } else {
-          // Deterministic seeded rating fallback when no reviews are in DB
-          let hash = 0;
-          const docId = id || "default";
-          for (let i = 0; i < docId.length; i++) {
-            hash = docId.charCodeAt(i) + ((hash << 5) - hash);
+          // If there are no reviews, check product.rating first
+          if (product && product.rating !== undefined) {
+            setAverageRating(Number(product.rating));
+          } else {
+            // Deterministic seeded rating fallback when no reviews are in DB
+            let hash = 0;
+            const docId = id || "default";
+            for (let i = 0; i < docId.length; i++) {
+              hash = docId.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const seededRating = 4.0 + (Math.abs(hash) % 9) / 10;
+            setAverageRating(seededRating);
           }
-          const seededRating = 4.0 + (Math.abs(hash) % 9) / 10;
-          setAverageRating(seededRating);
           setRatingCounts({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
         }
       } catch (err) {
@@ -155,7 +209,7 @@ export default function ProductDetailPage() {
     };
 
     fetchReviews();
-  }, [id]);
+  }, [id, product]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1730,7 +1784,13 @@ export default function ProductDetailPage() {
           </h3>
 
           {user ? (
-            <form onSubmit={handleReviewSubmit} className="space-y-3.5">
+            checkingPurchase ? (
+              <div className="flex items-center justify-center py-6 space-x-2 text-slate-400">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Verifying purchase history...</span>
+              </div>
+            ) : (hasPurchased || isAdmin) ? (
+              <form onSubmit={handleReviewSubmit} className="space-y-3.5">
               {/* Star selector */}
               <div>
                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Your Rating</label>
@@ -1824,6 +1884,14 @@ export default function ProductDetailPage() {
                 )}
               </button>
             </form>
+            ) : (
+              <div className="bg-amber-50/85 border border-amber-200/40 rounded-2xl p-4 text-center space-y-2.5">
+                <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Verified Buyer Badge Required</p>
+                <p className="text-[11px] text-amber-700 font-medium leading-relaxed max-w-xs mx-auto">
+                  Only customers who have purchased this product can leave a rating or review to ensure authentic feedback.
+                </p>
+              </div>
+            )
           ) : (
             <div className="text-center py-2.5">
               <p className="text-xs text-gray-500 font-semibold mb-2.5">
