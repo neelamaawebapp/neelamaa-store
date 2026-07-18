@@ -12,14 +12,6 @@ import { autoAdjustImage } from "@/lib/imageUtils";
 const getDirectVideoUrl = (url: string) => {
   if (!url) return "";
   let cleanUrl = url.trim();
-  const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
-  const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
-  const match1 = cleanUrl.match(gdRegex1);
-  const match2 = cleanUrl.match(gdRegex2);
-  const docId = (match1 && match1[1]) || (match2 && match2[1]);
-  if (docId) {
-    return `https://drive.google.com/uc?export=download&id=${docId}`;
-  }
   if (cleanUrl.includes("dropbox.com")) {
     return cleanUrl.replace("?dl=0", "?raw=1").replace("?dl=1", "?raw=1");
   }
@@ -2708,7 +2700,24 @@ export default function AdminDashboard() {
                     </div>
                   ) : videoUrl && (
                     <div className="relative aspect-[9/16] max-w-[150px] mx-auto rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3 shadow-md">
-                      <video src={getDirectVideoUrl(videoUrl)} className="w-full h-full object-cover" controls />
+                      {videoUrl.includes("drive.google.com") || videoUrl.includes("docs.google.com") ? (
+                        <iframe 
+                          src={(() => {
+                            const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+                            const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+                            const gdRegex3 = /drive\.google\.com\/uc\?.*?id=([a-zA-Z0-9_-]+)/;
+                            const match1 = videoUrl.match(gdRegex1);
+                            const match2 = videoUrl.match(gdRegex2);
+                            const match3 = videoUrl.match(gdRegex3);
+                            const docId = (match1 && match1[1]) || (match2 && match2[1]) || (match3 && match3[1]);
+                            return docId ? `https://drive.google.com/file/d/${docId}/preview` : videoUrl;
+                          })()} 
+                          className="w-full h-full border-0" 
+                          allow="autoplay"
+                        />
+                      ) : (
+                        <video src={getDirectVideoUrl(videoUrl)} className="w-full h-full object-cover" controls />
+                      )}
                       <button 
                         type="button" 
                         onClick={() => {

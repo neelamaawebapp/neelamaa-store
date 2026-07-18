@@ -391,14 +391,6 @@ export default function ProductDetailPage() {
   const getDirectVideoUrl = (url: string) => {
     if (!url) return "";
     let cleanUrl = url.trim();
-    const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
-    const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
-    const match1 = cleanUrl.match(gdRegex1);
-    const match2 = cleanUrl.match(gdRegex2);
-    const docId = (match1 && match1[1]) || (match2 && match2[1]);
-    if (docId) {
-      return `https://drive.google.com/uc?export=download&id=${docId}`;
-    }
     if (cleanUrl.includes("dropbox.com")) {
       return cleanUrl.replace("?dl=0", "?raw=1").replace("?dl=1", "?raw=1");
     }
@@ -1000,15 +992,34 @@ export default function ProductDetailPage() {
           }}
         >
           {mediaSlides[activeImageIdx]?.type === "video" ? (
-            <video
-              src={mediaSlides[activeImageIdx].url}
-              className="w-full h-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-              controls
-            />
+            mediaSlides[activeImageIdx].url.includes("drive.google.com") || mediaSlides[activeImageIdx].url.includes("docs.google.com") ? (
+              <iframe
+                src={(() => {
+                  const url = mediaSlides[activeImageIdx].url;
+                  const gdRegex1 = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+                  const gdRegex2 = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+                  const gdRegex3 = /drive\.google\.com\/uc\?.*?id=([a-zA-Z0-9_-]+)/;
+                  const match1 = url.match(gdRegex1);
+                  const match2 = url.match(gdRegex2);
+                  const match3 = url.match(gdRegex3);
+                  const docId = (match1 && match1[1]) || (match2 && match2[1]) || (match3 && match3[1]);
+                  return docId ? `https://drive.google.com/file/d/${docId}/preview` : url;
+                })()}
+                className="w-full h-full border-0"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                src={mediaSlides[activeImageIdx].url}
+                className="w-full h-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+              />
+            )
           ) : (
             <OptimizedImage
               src={mediaSlides[activeImageIdx]?.url || product.image}
