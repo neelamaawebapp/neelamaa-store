@@ -274,7 +274,7 @@ export default function ProductDetailPage() {
   const handleTouchEnd = () => {
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
-    const imgCount = displayImages?.length || 0;
+    const imgCount = mediaSlides?.length || 0;
     if (imgCount <= 1) return;
 
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
@@ -387,6 +387,11 @@ export default function ProductDetailPage() {
     : ((matchedVariant && matchedVariant.image) 
        ? [matchedVariant.image] 
        : (product?.images && product.images.length > 0 ? product.images : [product?.image].filter(Boolean)));
+
+  const mediaSlides = [
+    ...(product?.videoUrl ? [{ type: "video", url: product.videoUrl }] : []),
+    ...displayImages.map((img: string) => ({ type: "image", url: img }))
+  ];
 
   const displayPrice = matchedVariant ? matchedVariant.price : (product?.price || 0);
   const displayMrp = matchedVariant ? matchedVariant.mrp : (product?.mrp || Math.round((product?.price || 0) * 1.5));
@@ -967,31 +972,53 @@ export default function ProductDetailPage() {
       {/* Product Image / Carousel */}
       <div className="relative bg-gray-150">
         <div 
-          className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden select-none touch-pan-y cursor-zoom-in"
+          className="w-full aspect-[3/4] bg-gray-100 relative overflow-hidden select-none touch-pan-y"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          onClick={() => setShowFullPhoto(true)}
+          onClick={() => {
+            if (mediaSlides[activeImageIdx]?.type !== 'video') {
+              setShowFullPhoto(true);
+            }
+          }}
         >
-          <OptimizedImage
-            src={displayImages[activeImageIdx] || product.image}
-            alt={product.brand}
-            fill
-            priority={activeImageIdx === 0}
-            className="w-full h-full object-cover transition-all duration-305"
-          />
+          {mediaSlides[activeImageIdx]?.type === "video" ? (
+            <video
+              src={mediaSlides[activeImageIdx].url}
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+            />
+          ) : (
+            <OptimizedImage
+              src={mediaSlides[activeImageIdx]?.url || product.image}
+              alt={product.brand}
+              fill
+              priority={activeImageIdx === 0}
+              className="w-full h-full object-cover transition-all duration-305 cursor-zoom-in"
+            />
+          )}
           
           {/* Navigation Arrows for Carousel */}
-          {displayImages && displayImages.length > 1 && (
+          {mediaSlides && mediaSlides.length > 1 && (
             <>
               <button 
-                onClick={() => setActiveImageIdx(prev => (prev - 1 + displayImages.length) % displayImages.length)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImageIdx(prev => (prev - 1 + mediaSlides.length) % mediaSlides.length);
+                }}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
               >
                 &lsaquo;
               </button>
               <button 
-                onClick={() => setActiveImageIdx(prev => (prev + 1) % displayImages.length)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImageIdx(prev => (prev + 1) % mediaSlides.length);
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-gray-800 transition-all font-black text-sm cursor-pointer z-10"
               >
                 &rsaquo;
@@ -999,11 +1026,14 @@ export default function ProductDetailPage() {
               
               {/* Pagination Dots */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
-                {displayImages.map((_: any, idx: number) => (
+                {mediaSlides.map((slide: any, idx: number) => (
                   <button
                     key={idx}
-                    onClick={() => setActiveImageIdx(idx)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeImageIdx === idx ? 'bg-pink-600 w-3' : 'bg-gray-300/80'}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveImageIdx(idx);
+                    }}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${activeImageIdx === idx ? 'bg-pink-600 w-3' : 'bg-gray-300/80'} ${slide.type === 'video' ? 'w-2 h-2 border border-pink-500' : 'w-1.5'}`}
                   />
                 ))}
               </div>
@@ -1012,16 +1042,23 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Thumbnail strip */}
-        {displayImages && displayImages.length > 1 && (
+        {mediaSlides && mediaSlides.length > 1 && (
           <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 overflow-x-auto hide-scrollbar">
-            {displayImages.map((imgUrl: string, idx: number) => (
+            {mediaSlides.map((slide: any, idx: number) => (
               <button
                 key={idx}
                 onClick={() => setActiveImageIdx(idx)}
                 className={`w-10 h-14 rounded-md overflow-hidden bg-gray-100 border-2 transition-all flex-shrink-0 cursor-pointer relative
                   ${activeImageIdx === idx ? 'border-pink-500 scale-95 shadow-sm' : 'border-transparent'}`}
               >
-                <OptimizedImage src={imgUrl} alt={`Angle ${idx + 1}`} fill className="object-cover" />
+                {slide.type === "video" ? (
+                  <div className="w-full h-full relative flex flex-col items-center justify-center bg-slate-900 text-white">
+                    <span className="text-[8px] font-black uppercase text-pink-500">Reel</span>
+                    <span className="text-[8px]">▶</span>
+                  </div>
+                ) : (
+                  <OptimizedImage src={slide.url} alt={`Angle ${idx + 1}`} fill className="object-cover" />
+                )}
               </button>
             ))}
           </div>

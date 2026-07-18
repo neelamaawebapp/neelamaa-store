@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
 import { UploadCloud, Edit2, Trash2, X, Layers, AlertTriangle, CheckCircle2, Package, Coins, BarChart3, Search, Filter, Bell, ArrowUpDown, ChevronUp, ChevronDown, Calendar } from "lucide-react";
 import { STORE_CATEGORIES, ParentCategory } from "@/lib/constants";
@@ -84,6 +85,13 @@ export default function AdminDashboard() {
   const [manufacturer, setManufacturer] = useState("");
   const [packer, setPacker] = useState("");
   const [hsnCode, setHsnCode] = useState("");
+
+  // Product Showcase Video (Reel) States
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState("");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // SEO Settings
   const [metaTitle, setMetaTitle] = useState("");
@@ -1462,6 +1470,11 @@ export default function AdminDashboard() {
     setSizeUnit("");
     setColor("");
     setMaterial("");
+    setVideoUrl("");
+    setVideoFile(null);
+    setVideoPreview("");
+    setUploadingVideo(false);
+    setUploadProgress(0);
   };
 
   const handleEditClick = (product: any) => {
@@ -1569,6 +1582,11 @@ export default function AdminDashboard() {
     setSizeUnit(product.sizeUnit || "");
     setColor(product.color || "");
     setMaterial(product.material || "");
+    setVideoUrl(product.videoUrl || "");
+    setVideoFile(null);
+    setVideoPreview("");
+    setUploadingVideo(false);
+    setUploadProgress(0);
     
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1593,6 +1611,43 @@ export default function AdminDashboard() {
     try {
       if (productImages.length === 0) {
         throw new Error("Please add at least one product photo.");
+      }
+
+      let finalVideoUrl = videoUrl;
+
+      // Upload local video file if present to Firebase Storage
+      if (videoFile) {
+        setUploadingVideo(true);
+        setUploadProgress(10);
+        try {
+          const storageRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, videoFile);
+          
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                setUploadProgress(progress);
+              },
+              (error) => {
+                console.error("Firebase Video Upload Error:", error);
+                reject(new Error("Failed to upload product video: " + error.message));
+              },
+              () => {
+                resolve();
+              }
+            );
+          });
+          
+          finalVideoUrl = await getDownloadURL(storageRef);
+          setVideoUrl(finalVideoUrl);
+        } catch (uploadErr: any) {
+          setUploadingVideo(false);
+          throw uploadErr;
+        } finally {
+          setUploadingVideo(false);
+        }
       }
 
       // Upload all queued image files sequentially
@@ -1685,6 +1740,7 @@ export default function AdminDashboard() {
         gstRate: Number(gstRate),
         image: primaryImage, // For backwards compatibility
         images: uploadedUrls, // The full array of angles!
+        videoUrl: finalVideoUrl ? finalVideoUrl.trim() : "",
         
         // Flexible model fields
         sku: sku.trim() || `${brand ? brand.trim().substring(0, 3).toUpperCase() : "CS"}-${category ? category.trim().substring(0, 3).toUpperCase() : "GEN"}-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -2621,6 +2677,121 @@ export default function AdminDashboard() {
                       Add URL
                     </button>
                   </div>
+                </div>
+
+                {/* Product Showcase Video (Reel) Section */}
+                <div className="border-b border-slate-900 pb-5 pt-3">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                    Product Showcase Video (Reel)
+                  </label>
+                  
+                  {/* Local Video Selection / Preview */}
+                  {videoPreview ? (
+                    <div className="relative aspect-[9/16] max-w-[150px] mx-auto rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3 shadow-md">
+                      <video src={videoPreview} className="w-full h-full object-cover" controls />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setVideoFile(null);
+                          setVideoPreview("");
+                          if (videoUrl.startsWith("blob:") || !videoUrl.startsWith("http")) {
+                            setVideoUrl("");
+                          }
+                        }}
+                        className="absolute top-1.5 right-1.5 bg-rose-650 text-white p-1 rounded-full hover:bg-rose-700 transition-colors cursor-pointer shadow-sm z-10"
+                        title="Remove video"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ) : videoUrl && (
+                    <div className="relative aspect-[9/16] max-w-[150px] mx-auto rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3 shadow-md">
+                      <video src={videoUrl} className="w-full h-full object-cover" controls />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setVideoUrl("");
+                          setVideoFile(null);
+                          setVideoPreview("");
+                        }}
+                        className="absolute top-1.5 right-1.5 bg-rose-650 text-white p-1 rounded-full hover:bg-rose-700 transition-colors cursor-pointer shadow-sm z-10"
+                        title="Remove video link"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Drag & Drop / Select Video from Local Drive */}
+                  <div 
+                    onClick={() => {
+                      const el = document.getElementById("admin-video-file-input");
+                      el?.click();
+                    }}
+                    className="border border-dashed border-slate-855 bg-slate-950/40 hover:bg-slate-950/60 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 mb-3"
+                  >
+                    <UploadCloud size={24} className="mb-1 text-slate-500" />
+                    <p className="text-[10px] text-center text-slate-400 font-medium">
+                      Click to upload vertical video reel from local drive
+                    </p>
+                    <p className="text-[8px] text-center text-slate-500 font-semibold mt-0.5 uppercase tracking-wide">
+                      Supports MP4, MOV, WebM, AVI (Max 15s)
+                    </p>
+                    <input 
+                      type="file" 
+                      id="admin-video-file-input" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setVideoFile(file);
+                          setVideoPreview(URL.createObjectURL(file));
+                        }
+                      }} 
+                      accept="video/*" 
+                      className="hidden" 
+                    />
+                  </div>
+
+                  {/* Fallback Paste URL */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={videoUrl} 
+                      onChange={(e) => {
+                        setVideoUrl(e.target.value);
+                        setVideoFile(null);
+                        setVideoPreview("");
+                      }} 
+                      className="flex-1 bg-slate-950/60 border border-slate-855 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-pink-500 transition-all placeholder-slate-700" 
+                      placeholder="Or paste video URL (e.g. Dropbox, Cloudinary)..." 
+                    />
+                    {videoUrl && (
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setVideoUrl("");
+                          setVideoFile(null);
+                          setVideoPreview("");
+                        }}
+                        className="bg-slate-850 hover:bg-slate-805 border border-slate-805 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-350 hover:text-white transition-all cursor-pointer flex-shrink-0"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Upload Progress Bar */}
+                  {uploadingVideo && (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center text-[8px] font-extrabold text-pink-500 uppercase tracking-widest mb-1">
+                        <span>Uploading Video Reel...</span>
+                        <span>{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-pink-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3.5">

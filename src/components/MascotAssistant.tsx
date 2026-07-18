@@ -2,26 +2,113 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { X, MessageSquare, Wallet, ShoppingBag, TrendingUp, HelpCircle } from "lucide-react";
+import { X, MessageSquare, Wallet, ShoppingBag, TrendingUp, HelpCircle, Gift, Sparkles } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, onSnapshot, collection, runTransaction } from "firebase/firestore";
 
 export default function MascotAssistant() {
   const pathname = usePathname();
   const router = useRouter();
   
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Chatbot conversation states
-  const [messages, setMessages] = useState<any[]>([
-    {
-      id: "init",
-      sender: "bot",
-      text: "Hi! I am Aarohi, your Craft Style shopping assistant. How can I help you today? Ask me about orders, shipping rules, or rewards!",
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+
+  // Video / Wallet / Birthday States
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [birthdayGiftClaimed, setBirthdayGiftClaimed] = useState(false);
+  const [birthdayVal, setBirthdayVal] = useState("");
+  const [claimingBirthday, setClaimingBirthday] = useState(false);
+  const [claimingStatus, setClaimingStatus] = useState("");
+  const [showBirthdaySuccess, setShowBirthdaySuccess] = useState(false);
+  const [birthdayInput, setBirthdayInput] = useState("");
+  const [tooltipText, setTooltipText] = useState("Hi! Need help tracking your orders or claiming rewards? Tap me! 😊");
+
+  // 1. Listen for real-time Wallet and Birthday details
+  useEffect(() => {
+    if (!user) {
+      setWalletBalance(null);
+      setBirthdayGiftClaimed(false);
+      setBirthdayVal("");
+      return;
+    }
+
+    // Subscribe to Wallet
+    const walletRef = doc(db, "wallets", user.uid);
+    const unsubWallet = onSnapshot(walletRef, (snap) => {
+      if (snap.exists()) {
+        setWalletBalance(snap.data().balance);
+      } else {
+        setWalletBalance(0);
+      }
+    }, (err) => {
+      console.warn("Mascot failed to load wallet details", err);
+    });
+
+    // Subscribe to User profile
+    const userRef = doc(db, "users", user.uid);
+    const unsubUser = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setBirthdayVal(data.birthday || "");
+        setBirthdayGiftClaimed(data.birthdayGiftClaimed || false);
+      }
+    }, (err) => {
+      console.warn("Mascot failed to load user profile details", err);
+    });
+
+    return () => {
+      unsubWallet();
+      unsubUser();
+    };
+  }, [user]);
+
+  // 2. Dynamically set first welcome message
+  useEffect(() => {
+    let greetingText = "Hi! I am Aarohi, your Craft Style shopping assistant. How can I help you today? Ask me about orders, shipping rules, or rewards!";
+    
+    if (user) {
+      const name = user.displayName || user.email?.split("@")[0] || "friend";
+      if (walletBalance !== null) {
+        if (walletBalance > 0) {
+          greetingText = `Welcome back, ${name}! You have ₹${walletBalance} in wallet credits available. How can I help you today? 😊`;
+        } else {
+          greetingText = `Welcome back, ${name}! I am Aarohi, your shopping assistant. How can I help you today? Ask me about 'shipping costs', 'orders', or 'returns'! 😊`;
+        }
+      }
+    }
+    
+    setMessages([
+      {
+        id: "init",
+        sender: "bot",
+        text: greetingText,
+        timestamp: new Date()
+      }
+    ]);
+  }, [user, walletBalance]);
+
+  // 3. Dynamically update floating hover speech bubble tooltip
+  useEffect(() => {
+    if (user) {
+      const name = user.displayName || user.email?.split("@")[0] || "friend";
+      if (walletBalance !== null && walletBalance > 0) {
+        setTooltipText(`Hey ${name}! You have ₹${walletBalance} credits waiting. Tap me to check! 🎁`);
+      } else if (!birthdayVal && !birthdayGiftClaimed) {
+        setTooltipText(`Hey ${name}! Claim your ₹200 birthday reward today. Tap me! 🎂`);
+      } else {
+        setTooltipText(`Welcome back, ${name}! Tap me if you need help shopping! 😊`);
+      }
+    } else {
+      setTooltipText("Hi! Need help tracking your orders or claiming rewards? Tap me! 😊");
+    }
+  }, [user, walletBalance, birthdayVal, birthdayGiftClaimed]);
 
   useEffect(() => {
     // Hide assistant in admin panel
@@ -141,6 +228,80 @@ export default function MascotAssistant() {
     sessionStorage.setItem("aarohi_tooltip_dismissed", "true");
   };
 
+  const handleClaimBirthday = async () => {
+    if (!user || !birthdayInput) return;
+    setClaimingBirthday(true);
+    setClaimingStatus("");
+    
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const walletRef = doc(db, "wallets", user.uid);
+      const txnRef = doc(db, "wallet_transactions", `birthday_${user.uid}`);
+      
+      await runTransaction(db, async (transaction) => {
+        // Read user profile
+        const userSnap = await transaction.get(userRef);
+        if (userSnap.exists() && userSnap.data().birthdayGiftClaimed) {
+          throw new Error("Birthday gift already claimed!");
+        }
+        
+        // Read wallet
+        const walletSnap = await transaction.get(walletRef);
+        let currentBalance = 0;
+        if (walletSnap.exists()) {
+          currentBalance = walletSnap.data().balance || 0;
+        }
+        
+        // Update User
+        transaction.update(userRef, {
+          birthday: birthdayInput,
+          birthdayGiftClaimed: true
+        });
+        
+        // Update Wallet
+        if (walletSnap.exists()) {
+          transaction.update(walletRef, {
+            balance: currentBalance + 200,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          throw new Error("Wallet not found. Please click the wallet badge in the header first to initialize your account.");
+        }
+        
+        // Write transaction ledger doc
+        transaction.set(txnRef, {
+          walletId: user.uid,
+          amount: 200,
+          transactionType: "CREDIT",
+          source: "BIRTHDAY_GIFT",
+          referenceId: "birthday",
+          description: `Birthday Gift Reward (DOB: ${birthdayInput})`,
+          status: "Active",
+          createdAt: new Date().toISOString()
+        });
+      });
+      
+      setShowBirthdaySuccess(true);
+      
+      // Update local states
+      setBirthdayVal(birthdayInput);
+      setBirthdayGiftClaimed(true);
+      
+      // Emit update event to refresh other components
+      window.dispatchEvent(new Event("wallet-update"));
+      
+      setTimeout(() => {
+        setShowBirthdaySuccess(false);
+      }, 5000);
+      
+    } catch (err: any) {
+      console.error("Birthday Claim Error:", err);
+      setClaimingStatus(err.message || "Failed to claim birthday gift.");
+    } finally {
+      setClaimingBirthday(false);
+    }
+  };
+
   const isCartOrCheckout = pathname === "/bag" || pathname === "/checkout";
   const isProductPage = pathname?.startsWith("/product/");
 
@@ -190,7 +351,7 @@ export default function MascotAssistant() {
           </button>
           <span className="text-[10px] text-pink-500 font-extrabold uppercase tracking-wide">Aarohi says:</span>
           <p className="text-xs text-gray-700 font-semibold leading-snug pr-3">
-            Hi! Need help tracking your orders or claiming rewards? Tap me! 😊
+            {tooltipText}
           </p>
           {/* Speech bubble arrow point */}
           <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-l border-b border-pink-100 rotate-45"></div>
@@ -199,7 +360,7 @@ export default function MascotAssistant() {
 
       {/* 3. Interactive Glassmorphism Assistant Card */}
       {isOpen && (
-        <div className="absolute left-0 bottom-20 w-[300px] bg-white/95 backdrop-blur-md border border-pink-100 rounded-3xl shadow-2xl shadow-pink-500/10 p-4 animate-fade-in-up z-50 text-left overflow-hidden flex flex-col h-[380px]">
+        <div className="absolute left-0 bottom-20 w-[300px] bg-white/95 backdrop-blur-md border border-pink-100 rounded-3xl shadow-2xl shadow-pink-500/10 p-4 animate-fade-in-up z-50 text-left overflow-hidden flex flex-col h-auto max-h-[440px]">
           {/* Header section with brand colors */}
           <div className="flex items-center gap-2.5 border-b border-gray-100 pb-2 mb-2 shrink-0">
             <div className="w-10 h-10 rounded-full border border-pink-400/30 bg-pink-50 overflow-hidden shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500/10 to-orange-500/10">
@@ -226,7 +387,7 @@ export default function MascotAssistant() {
           {/* Chat Messages Log */}
           <div 
             id="mascot-chat-log"
-            className="flex-1 overflow-y-auto space-y-2.5 pr-1 py-1 text-xs scrollbar-thin scrollbar-thumb-pink-100"
+            className="flex-1 overflow-y-auto space-y-2.5 pr-1 py-1 text-xs scrollbar-thin scrollbar-thumb-pink-100 min-h-[140px] max-h-[220px]"
           >
             {messages.map((msg) => (
               <div 
@@ -269,6 +430,52 @@ export default function MascotAssistant() {
               </div>
             )}
           </div>
+
+          {/* Persistent Birthday Claim Banner inside Aarohi Card */}
+          {user && !birthdayVal && !birthdayGiftClaimed && (
+            <div className="mx-0.5 my-1.5 p-2 rounded-xl bg-gradient-to-r from-pink-500/10 via-rose-500/10 to-orange-500/10 border border-pink-100/60 shrink-0 select-none animate-fade-in flex flex-col gap-1.5 relative">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-1">
+                  <Gift size={12} className="text-pink-600 animate-bounce" />
+                  <span className="text-[9px] font-black text-pink-700 uppercase tracking-wider">₹200 Birthday Gift!</span>
+                </div>
+              </div>
+              <p className="text-[8px] text-slate-650 font-semibold leading-normal">
+                Enter your birthday to instantly claim ₹200 wallet credits!
+              </p>
+              
+              {showBirthdaySuccess ? (
+                <div className="flex items-center gap-1 text-[8px] text-green-700 font-bold bg-green-50 p-1 rounded-lg border border-green-200">
+                  <Sparkles size={10} className="text-green-600" />
+                  <span>Success! ₹200 credited to your wallet! 🎉</span>
+                </div>
+              ) : (
+                <div className="flex gap-1 items-center">
+                  <input
+                    type="date"
+                    value={birthdayInput}
+                    onChange={(e) => setBirthdayInput(e.target.value)}
+                    className="flex-1 border border-pink-200 rounded-lg px-2 py-0.5 text-[9px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-pink-500"
+                    disabled={claimingBirthday}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClaimBirthday}
+                    disabled={claimingBirthday || !birthdayInput}
+                    className="bg-pink-500 hover:bg-pink-600 text-white font-extrabold px-2 py-0.5 rounded-lg text-[8px] uppercase tracking-wide cursor-pointer flex-shrink-0 disabled:opacity-50"
+                  >
+                    {claimingBirthday ? "Claiming..." : "Claim"}
+                  </button>
+                </div>
+              )}
+
+              {claimingStatus && (
+                <span className="text-[8px] font-bold text-red-500 uppercase tracking-wide">
+                  {claimingStatus}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Quick replies scroll list */}
           <div className="flex gap-1.5 overflow-x-auto py-1.5 shrink-0 select-none hide-scrollbar border-t border-gray-50 mt-1">

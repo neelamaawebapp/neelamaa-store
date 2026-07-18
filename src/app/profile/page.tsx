@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [city, setCity] = useState("");
   const [pin, setPin] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -92,6 +93,9 @@ export default function ProfilePage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
+          if (data.birthday) {
+            setBirthday(data.birthday);
+          }
           if (Array.isArray(data.addresses)) {
             firestoreAddresses = data.addresses;
           }
@@ -427,6 +431,16 @@ export default function ProfilePage() {
           </div>
           <h2 className="text-lg font-bold text-gray-900">{user.displayName || user.email?.split("@")[0]}</h2>
           <p className="text-sm text-gray-500">{user.email}</p>
+          
+          {birthday ? (
+            <p className="text-xs text-gray-500 mt-2 font-semibold">
+              🎂 Date of Birth: <span className="font-bold text-gray-800">{new Date(birthday).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </p>
+          ) : (
+            <p className="text-xs text-pink-600 mt-2.5 font-bold bg-pink-50 border border-pink-100 px-3 py-1.5 rounded-full select-none">
+              🎁 Claim ₹200 Birthday Gift via Aarohi Chatbot! 🎂
+            </p>
+          )}
           
           {isAdmin && (
             <span className="mt-2 bg-slate-100 text-pink-800 text-xs font-bold px-2.5 py-0.5 rounded border border-slate-200">
