@@ -1623,23 +1623,28 @@ export default function AdminDashboard() {
           const storageRef = ref(storage, `products/videos/${Date.now()}_${videoFile.name}`);
           const uploadTask = uploadBytesResumable(storageRef, videoFile);
           
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-              setUploadProgress(progress);
-            },
-            (error) => {
-              console.error("Firebase Video Upload Error:", error);
-            }
-          );
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                setUploadProgress(progress);
+              },
+              (error) => {
+                console.error("Firebase Video Upload Error:", error);
+                reject(error);
+              },
+              () => {
+                resolve();
+              }
+            );
+          });
           
-          await uploadTask;
           finalVideoUrl = await getDownloadURL(storageRef);
           setVideoUrl(finalVideoUrl);
         } catch (uploadErr: any) {
           setUploadingVideo(false);
-          throw new Error("Failed to upload product video: " + uploadErr.message);
+          throw new Error("Failed to upload video to Firebase Storage: " + uploadErr.message);
         } finally {
           setUploadingVideo(false);
         }
