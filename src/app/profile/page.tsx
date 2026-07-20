@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin, Wallet, RefreshCw } from "lucide-react";
+import { ChevronLeft, LogOut, Package, Heart, Settings, UserCircle, MapPin, Wallet, RefreshCw, Gift, Sparkles, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
@@ -17,6 +17,48 @@ export default function ProfilePage() {
   const [birthday, setBirthday] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Birthday Claim States
+  const [claimingBirthday, setClaimingBirthday] = useState(false);
+  const [profileBirthdayInput, setProfileBirthdayInput] = useState("");
+  const [birthdaySuccessMsg, setBirthdaySuccessMsg] = useState("");
+  const [birthdayErrMsg, setBirthdayErrMsg] = useState("");
+
+  const handleClaimProfileBirthday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !profileBirthdayInput) return;
+    setClaimingBirthday(true);
+    setBirthdayErrMsg("");
+    setBirthdaySuccessMsg("");
+
+    try {
+      const { getAuthHeaders } = await import("@/lib/api-client");
+      const authHeaders = await getAuthHeaders();
+
+      const res = await fetch("/api/wallet/claim-birthday", {
+        method: "POST",
+        headers: { ...authHeaders },
+        body: JSON.stringify({
+          userId: user.uid,
+          birthday: profileBirthdayInput
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to claim birthday reward.");
+      }
+
+      setBirthday(profileBirthdayInput);
+      setBirthdaySuccessMsg("🎉 Success! ₹200 credited to your wallet & Date of Birth locked!");
+      window.dispatchEvent(new Event("wallet-update"));
+    } catch (err: any) {
+      console.error("Profile birthday claim error:", err);
+      setBirthdayErrMsg(err.message || "Failed to claim birthday reward.");
+    } finally {
+      setClaimingBirthday(false);
+    }
+  };
 
   // Multi-address states
   interface SavedAddress {
@@ -433,13 +475,48 @@ export default function ProfilePage() {
           <p className="text-sm text-gray-500">{user.email}</p>
           
           {birthday ? (
-            <p className="text-xs text-gray-500 mt-2 font-semibold">
-              🎂 Date of Birth: <span className="font-bold text-gray-800">{new Date(birthday).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <p className="text-xs text-gray-600 mt-2 font-semibold flex items-center gap-1 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full">
+              <span>🎂 Date of Birth:</span>
+              <span className="font-bold text-gray-900">{new Date(birthday).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <Lock size={12} className="text-gray-400 ml-1" title="Locked - Cannot be modified" />
             </p>
           ) : (
-            <p className="text-xs text-pink-600 mt-2.5 font-bold bg-pink-50 border border-pink-100 px-3 py-1.5 rounded-full select-none">
-              🎁 Claim ₹200 Birthday Gift via Aarohi Chatbot! 🎂
-            </p>
+            <div className="mt-3 w-full bg-gradient-to-r from-pink-50 via-rose-50 to-orange-50 border border-pink-200/80 rounded-2xl p-3.5 flex flex-col gap-2 shadow-sm text-left select-none">
+              <div className="flex items-center gap-1.5">
+                <Gift size={16} className="text-pink-600 animate-bounce" />
+                <span className="text-xs font-black text-pink-700 uppercase tracking-wider">Claim ₹200 Birthday Gift!</span>
+              </div>
+              <p className="text-xs text-gray-600 font-medium">Add your Date of Birth to claim your ₹200 wallet reward. Note: Once set, your date of birth is locked permanently.</p>
+
+              {birthdaySuccessMsg ? (
+                <div className="bg-green-100 border border-green-300 text-green-800 font-bold text-xs p-2 rounded-xl flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-green-600" />
+                  <span>{birthdaySuccessMsg}</span>
+                </div>
+              ) : (
+                <form onSubmit={handleClaimProfileBirthday} className="flex gap-2 items-center mt-1">
+                  <input
+                    type="date"
+                    value={profileBirthdayInput}
+                    onChange={(e) => setProfileBirthdayInput(e.target.value)}
+                    className="flex-1 border border-pink-300 rounded-xl px-3 py-2 text-xs text-gray-900 bg-white font-semibold outline-none focus:ring-2 focus:ring-pink-500"
+                    required
+                    disabled={claimingBirthday}
+                  />
+                  <button
+                    type="submit"
+                    disabled={claimingBirthday || !profileBirthdayInput}
+                    className="bg-pink-500 hover:bg-pink-600 text-white font-bold px-3 py-2 rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md disabled:opacity-50 transition-all shrink-0"
+                  >
+                    {claimingBirthday ? "Claiming..." : "Claim ₹200"}
+                  </button>
+                </form>
+              )}
+
+              {birthdayErrMsg && (
+                <p className="text-xs font-bold text-red-600 bg-red-50 p-1.5 rounded-lg border border-red-200">{birthdayErrMsg}</p>
+              )}
+            </div>
           )}
           
           {isAdmin && (

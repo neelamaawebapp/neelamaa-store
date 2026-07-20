@@ -164,6 +164,24 @@ function SignupContent() {
         }
       }
 
+      // 5. Trigger birthday reward if date of birth provided
+      if (birthday) {
+        try {
+          const { getAuthHeaders } = await import("@/lib/api-client");
+          const authHeaders = await getAuthHeaders();
+          await fetch("/api/wallet/claim-birthday", {
+            method: "POST",
+            headers: { ...authHeaders },
+            body: JSON.stringify({
+              userId: user.uid,
+              birthday: birthday
+            })
+          });
+        } catch (birthdayErr) {
+          console.error("Failed to credit birthday reward on signup:", birthdayErr);
+        }
+      }
+
       router.push(redirect);
     } catch (err: any) {
       console.error(err);
@@ -347,13 +365,12 @@ function SignupContent() {
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" placeholder="10-digit number" required minLength={10} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Date of Birth *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Date of Birth (Optional - Get ₹200 Reward)</label>
                 <input 
                   type="date" 
                   value={birthday} 
                   onChange={(e) => setBirthday(e.target.value)} 
                   className="w-full border border-gray-300 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900" 
-                  required 
                 />
               </div>
               <div>
